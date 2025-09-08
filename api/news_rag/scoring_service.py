@@ -20,7 +20,8 @@ from config import (
     MAX_RERANKED_CONTEXT_ITEMS,
     CONTEXT_SUFFICIENCY_THRESHOLD,
     MIN_CONTEXT_LENGTH,
-    MIN_RELEVANT_DOCS
+    MIN_RELEVANT_DOCS,
+    credible_domains
 )
 
 # Set seed for langdetect to ensure consistent results
@@ -414,24 +415,21 @@ class NewsRagScoringService:
                 return 0.5
 
     def _calculate_time_decay_score(self, publication_date_str: str, query: str) -> float:
-        """Query-aware time decay with different decay rates for different content types."""
+        """Calculates a time decay score based on the age of the content with linear interpolation."""
         if not publication_date_str:
             return 0.4  # Default score for unknown dates
-            
+
         try:
             published_date = None
             date_str_cleaned = str(publication_date_str).strip()
 
             # --- PARSING LOGIC ---
-            # Priority 1: Try parsing RFC 1123 format from "Last-Modified" header
             try:
                 published_date = parsedate_to_datetime(date_str_cleaned)
             except (TypeError, ValueError):
-                # Priority 2: Try parsing ISO 8601 format (from Brave API 'page_age')
                 try:
                     published_date = datetime.fromisoformat(date_str_cleaned.replace('Z', '+00:00'))
                 except (ValueError, TypeError):
-                    # Priority 3: Fallback for other common formats
                     try:
                         published_date = datetime.strptime(date_str_cleaned.split('T')[0], '%Y-%m-%d')
                     except (ValueError, TypeError):
@@ -442,30 +440,43 @@ class NewsRagScoringService:
                             return 0.4
 
             # --- TIME DECAY CALCULATION ---
-            # Ensure the current time is timezone-aware if the parsed date is
             now = datetime.now(published_date.tzinfo)
-            age_in_days = (now - published_date).total_seconds() / (24 * 3600) # Use total_seconds for more precision
-            
-            if age_in_days < 0: age_in_days = 0 # Handle future dates just in case
+            age_in_days = (now - published_date).total_seconds() / (24 * 3600)
 
+            if age_in_days < 0:
+                age_in_days = 100  # Future dates treated as very old
 
-            #today , 3 days , 7 days , 15 days , 21 days , 30 days
-            # Adjust decay rate based on query context
-            query_lower = query.lower()
-            if any(word in query_lower for word in ['annual', 'yearly']):
-                half_life_days = 180
-            else:
-                half_life_days = 7 # Always prioritize recency unless it's a yearly query
-                
-            # Exponential decay function
-            decay_constant = np.log(2) / half_life_days
-            score = np.exp(-decay_constant * age_in_days)
-            
-            return max(0.1, min(1.0, score))
-            
+            # Define the points for linear interpolation
+            points = [
+                (0, 1.0),
+                (3, 0.8),
+                (7, 0.75),
+                (15, 0.6),
+                (21, 0.5),
+                (30, 0.3)
+            ]
+
+            # Handle cases outside the defined range
+            if age_in_days >= 30 or age_in_days < 0:
+                return 0.1
+            if age_in_days == 0:
+                return 0.1
+
+            # Find the two points to interpolate between
+            for i in range(len(points) - 1):
+                if points[i][0] <= age_in_days < points[i+1][0]:
+                    x1, y1 = points[i]
+                    x2, y2 = points[i+1]
+                    # Linear interpolation formula: y = y1 + (x - x1) * (y2 - y1) / (x2 - x1)
+                    score = y1 + (age_in_days - x1) * (y2 - y1) / (x2 - x1)
+                    return score
+
+            # This should not be reached if age_in_days is handled correctly, but as a fallback
+            return 0.1
+
         except Exception as e:
             print(f"WARNING: Failed to calculate time decay score for date '{publication_date_str}': {e}")
-            return 0.4
+            return 0.1
 
     def _calculate_impact_score(self, text: str, source_link: str) -> float:
         """Estimates impact score based on keyword mentions and source credibility."""
@@ -476,8 +487,9 @@ class NewsRagScoringService:
         # Normalize keyword impact (diminishing returns)
         normalized_keyword_impact = min(1.0, keyword_count / 3.0)
         
-        # Get source credibility
+        # Get source credibility and check for credible domain bonus
         domain = "default"
+        credibility_bonus = 0
         if source_link:
             try:
                 parsed_url = urlparse(source_link)
@@ -485,6 +497,8 @@ class NewsRagScoringService:
                 # Remove common prefixes
                 if domain.startswith('m.'):
                     domain = domain[2:]
+                if domain in credible_domains:
+                    credibility_bonus = 0.5
             except Exception as e:
                 print(f"WARNING: Could not parse domain from link '{source_link}': {e}")
 
@@ -497,8 +511,8 @@ class NewsRagScoringService:
         ]
         phrase_bonus = 0.2 if any(phrase in text_lower for phrase in high_impact_phrases) else 0
         
-        # Combine scores
-        impact_score = min(1.0, (normalized_keyword_impact * 0.5) + (source_credibility * 0.4) + phrase_bonus)
+        # Combine scores, including the new credibility bonus
+        impact_score = min(1.0, (normalized_keyword_impact * 0.5) + (source_credibility * 0.4) + phrase_bonus + credibility_bonus)
         
         return impact_score
 
