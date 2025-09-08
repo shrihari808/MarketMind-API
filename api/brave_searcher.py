@@ -213,9 +213,9 @@ class BraveNews:
         
         return extracted_data
 
-    async def _fetch_brave_page(self, session: aiohttp.ClientSession, query_term: str, page_num: int, country: str = "IN") -> tuple[dict, bool]:
+    async def _fetch_brave_page(self, session: aiohttp.ClientSession, query_term: str, page_num: int, country: str = "IN", freshness: str = "") -> tuple[dict, bool]:
         """
-        Optimized Brave API call with better error handling and retry logic.
+        Optimized Brave API call with better error handling, retry logic, and freshness parameter.
         """
         offset = (page_num - 1) * 20
         
@@ -224,7 +224,7 @@ class BraveNews:
             "count": 20, 
             "country": country,
             "result_filter": "web,news", 
-            "freshness": "",
+            "freshness": freshness,
             "offset": offset
         }
         brave_headers = {
@@ -319,22 +319,22 @@ class BraveNews:
             print(f"WARNING: Deduplication failed: {e}. Returning original items.")
             return processed_items
 
-    async def search_and_scrape(self, session: aiohttp.ClientSession, query_term: str, max_pages: int = MAX_PAGES, max_sources: int = 30, country: str = "IN") -> list[dict]:
+    async def search_and_scrape(self, session: aiohttp.ClientSession, query_term: str, max_pages: int = MAX_PAGES, max_sources: int = 30, country: str = "IN", freshness: str = "") -> list[dict]:
         """
-        Accepts an active aiohttp session to prevent premature closing.
+        Accepts an active aiohttp session and an optional freshness parameter.
         """
         start_time = time.time()
         all_extracted_content = []
         links_encountered = set()
 
-        print(f"DEBUG: Starting Broad Search for: '{query_term}' (max_sources={max_sources})")
+        print(f"DEBUG: Starting Broad Search for: '{query_term}' (max_sources={max_sources}, freshness='{freshness}')")
 
         for current_page in range(1, max_pages + 1):
             if len(all_extracted_content) >= max_sources:
                 print(f"DEBUG: Reached max_sources ({max_sources}). Stopping API calls.")
                 break
 
-            brave_results, has_more = await self._fetch_brave_page(session, query_term, current_page, country)
+            brave_results, has_more = await self._fetch_brave_page(session, query_term, current_page, country, freshness)
 
             if not brave_results:
                 break

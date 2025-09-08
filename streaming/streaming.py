@@ -366,14 +366,14 @@ def is_followup_question(query: str, chat_history: list[str]) -> bool:
 
 async def combined_preprocessing(query: str, chat_history: list[str], today: str, country: str) -> dict:
     """
-    Combined LLM call that validates the query, generates sub-queries,
+    Combined LLM call that validates the query, generates three types of sub-queries,
     and identifies if numerical stock data is required.
     """
     extracted_date, cleaned_query = extract_date_robust(query, today)
 
     # UPDATED PROMPT
     combined_prompt = """
-You are a financial markets expert AI. Your task is to analyze a user's query and break it down into targeted sub-queries for a financial news search engine. You must also validate if the query is related to the financial market and determine if it requires real-time numerical stock data.
+You are a financial markets expert AI. Your task is to analyze a user's query and break it down into three distinct types of sub-queries for a financial news search engine. You must also validate if the query is related to the financial market and determine if it requires real-time numerical stock data.
 
 User Query: "{query}"
 Today's Date: {today}
@@ -383,20 +383,24 @@ Country Code: {country}
 1.  **VALIDATE:** Is the query about the financial market, business, or finance of the specified country?
 2.  **NUMERICAL DATA:** Does the query ask for a stock price, market cap, or other specific numerical data for a company?
 3.  **EXTRACT COMPANY:** If numerical data is required, what is the name of the company?
-4.  **DECOMPOSE:** Generate a list of 2 to 3 specific sub-queries for news search.
+4.  **DECOMPOSE:** Generate a list of 3 specific sub-queries for news search, categorized as follows:
+    - A "recency_query" to get the absolute latest news and updates (within the last day).
+    - An "analytical_query" to find expert opinions, analysis, and broader market commentary.
+    - A "factual_query" to retrieve background information, definitions, and established facts.
 5.  **FORMAT:** Return a single JSON object.
 
 **Example 1 (Numerical):**
-User Query: "What is the current stock price of Force Motors?"
+User Query: "What is the current stock price of Force Motors and any recent news?"
 Country Code: "IN"
 {{
     "valid": 1,
     "requires_numerical_data": 1,
     "company_name": "Force Motors",
-    "sub_queries": [
-        "latest news on Force Motors",
-        "Force Motors stock performance analysis"
-    ]
+    "sub_queries": {{
+        "recency_query": "latest news Force Motors stock movement today",
+        "analytical_query": "Force Motors stock analysis and expert opinions",
+        "factual_query": "Force Motors company profile and products"
+    }}
 }}
 
 **Example 2 (Non-Numerical):**
@@ -406,10 +410,11 @@ Country Code: "IN"
     "valid": 1,
     "requires_numerical_data": 0,
     "company_name": null,
-    "sub_queries": [
-        "details of India's new semiconductor PLI scheme",
-        "impact of PLI scheme on Indian auto industry supply chain"
-    ]
+    "sub_queries": {{
+        "recency_query": "recent updates on India semiconductor PLI scheme for automotive sector",
+        "analytical_query": "analyst opinions on semiconductor PLI scheme impact on Indian auto industry",
+        "factual_query": "details of Indian government semiconductor PLI scheme"
+    }}
 }}
 
 **Your Response (JSON only):**
@@ -435,12 +440,16 @@ Country Code: "IN"
         # Add our non-LLM data to the result
         result["extracted_date"] = extracted_date
         result["tokens_used"] = cb.total_tokens
-        
-        # Ensure 'sub_queries' key exists
-        if "sub_queries" not in result:
-            result["sub_queries"] = [query] if result.get("valid") == 1 else []
 
-        print(f"DEBUG: Preprocessing complete. Generated {len(result.get('sub_queries', []))} sub-queries.")
+        # Ensure 'sub_queries' key exists and is a dictionary
+        if "sub_queries" not in result or not isinstance(result.get("sub_queries"), dict):
+            result["sub_queries"] = {
+                "recency_query": query,
+                "analytical_query": f"{query} analysis",
+                "factual_query": f"what is {query}"
+            } if result.get("valid") == 1 else {}
+
+        print(f"DEBUG: Preprocessing complete. Generated sub-queries.")
         print(f"DEBUG: Tokens used: {cb.total_tokens}")
         return result
 
@@ -449,7 +458,11 @@ Country Code: "IN"
         # Fallback to use the original query
         return {
             "valid": 1,
-            "sub_queries": [query],
+            "sub_queries": {
+                "recency_query": query,
+                "analytical_query": f"{query} analysis",
+                "factual_query": f"what is {query}"
+            },
             "extracted_date": extracted_date,
             "tokens_used": 0
         }
@@ -569,7 +582,6 @@ class InRequest(BaseModel):
 # In streaming/streaming.py
 use_caching = ENABLE_CACHING
 @web_rag.post("/web_rag")
-@web_rag.post("/web_rag")
 async def web_rag_mix(
     request: InRequest,
     session_id: int = Query(...),
@@ -590,7 +602,7 @@ async def web_rag_mix(
     if not brave_api_key:
         raise HTTPException(status_code=500, detail="Brave API key not configured.")
 
-    brave_searcher = BraveNews(brave_api_key)
+    searcher = BraveNews(brave_api_key)
 
     async def tiered_stream_generator():
         total_start_time = time.time() # Start total timer
@@ -607,7 +619,10 @@ async def web_rag_mix(
             yield f"I am a financial markets search engine and can only answer questions related to {country} markets, business, and finance. Please ask a relevant question.".encode("utf-8")
             return
 
-        sub_queries = preprocessing_result.get("sub_queries", [original_query])
+        sub_queries = preprocessing_result.get("sub_queries", {})
+        recency_query = sub_queries.get("recency_query", original_query)
+        analytical_query = sub_queries.get("analytical_query", f"{original_query} analysis")
+        factual_query = sub_queries.get("factual_query", f"what is {original_query}")
         
         final_ranking_query = original_query
 
@@ -631,18 +646,24 @@ async def web_rag_mix(
             final_passages = cached_passages
         else:
             # --- Search, Scrape, and Rerank within a single session ---
-            async with aiohttp.ClientSession(**brave_searcher.session_config) as session:
+            async with aiohttp.ClientSession(**searcher.session_config) as session:
                 
-                # --- Multi-query search and aggregation ---
-                search_start_time = time.time()
-                
-                search_tasks = []
-                for i, sub_query in enumerate(sub_queries):
-                    yield f"& Executing search {i+1} of {len(sub_queries)}...\n".encode("utf-8")
-                    task = brave_searcher.search_and_scrape(session, sub_query, max_sources=5, country=country) 
-                    search_tasks.append(task)
-                
-                search_results_lists = await asyncio.gather(*search_tasks)
+                # --- Tier 1: Recency Search ---
+                yield "& Searching for recent updates...\n".encode("utf-8")
+                recency_articles = await searcher.search_and_scrape(
+                    session, recency_query, max_sources=10, country=country, freshness='pd'
+                )
+                recency_scraped_articles = await searcher.scrape_top_urls(session, recency_articles)
+                recency_passages = await scoring_service.rerank_content_chunks(recency_query, recency_scraped_articles, top_n=5)
+                recency_context = scoring_service.create_enhanced_context(recency_passages) if recency_passages else ""
+
+
+                # --- Tier 2: Analytical and Factual Search ---
+                yield "& Searching for analysis and facts...\n".encode("utf-8")
+                analytical_task = searcher.search_and_scrape(session, analytical_query, max_sources=5, country=country)
+                factual_task = searcher.search_and_scrape(session, factual_query, max_sources=5, country=country)
+
+                search_results_lists = await asyncio.gather(analytical_task, factual_task)
                 
                 yield "& Consolidating sources...\n".encode("utf-8")
                 
@@ -671,7 +692,7 @@ async def web_rag_mix(
                     yield "\nCould not find any initial sources.".encode("utf-8")
                     return
                 search_end_time = time.time()
-                print(f"DEBUG: Brave search & aggregation took {search_end_time - search_start_time:.2f} seconds.")
+                print(f"DEBUG: Brave search & aggregation took {search_end_time - total_start_time:.2f} seconds.")
 
                 yield f"& Searching sources ... | {len(initial_sources)} unique articles\n".encode("utf-8")
                 for source in initial_sources:
@@ -684,7 +705,7 @@ async def web_rag_mix(
                 sources_to_scrape = initial_sources[:10]
 
                 # The same session from the 'with' block is used here
-                scraped_sources = await brave_searcher.scrape_top_urls(session, sources_to_scrape)
+                scraped_sources = await searcher.scrape_top_urls(session, sources_to_scrape)
                 
                 scrape_end_time = time.time()
                 print(f"DEBUG: Scraping took {scrape_end_time - scrape_start_time:.2f} seconds.")
@@ -740,6 +761,9 @@ async def web_rag_mix(
             """
             You are a financial markets expert. Today's date is {today}, make sure your answers use today as reference. Provide a detailed, well-structured final answer using the comprehensive context provided.
             If available, use the Real-time Numerical Data provided below to answer questions about specific stock prices or values.
+            
+            **Recent Updates (from the last 24 hours):** -> Answer from this section first if relevant.
+            {recency_context}
 
             **Real-time Numerical Data (if relevant):** -> Prioritize this data for stock price/value questions, otherwise ignore.
             {numerical_data}
@@ -752,7 +776,7 @@ async def web_rag_mix(
             **CRITICAL INSTRUCTION:** Focus exclusively on financial, startup, corporate, and stock market-related information.
             **CRITICAL INSTRUCTION:** The "&sources" value must be a JSON array of objects at the beginning of your response. Each object should represent a source you will cite in the answer and have the format {{"id": "[citation number]","name": "name of the website" "title": "source title", "url": "source url"}}. Only include sources that you have cited. Cite your sources using [number] notation in the answer text wherever relevant. You can also use multiple citations like [1,2] if the information is supported by multiple sources. DO NOT cite sources at the bottom.
             
-            Comprehensive Context:
+            **Broader Context (analysis and facts):**
             {context}
 
             Chat History:
@@ -770,6 +794,7 @@ async def web_rag_mix(
         with get_openai_callback() as cb:
             # UPDATE THE ASTREAM CALL WITH THE NEW VARIABLE
             async for chunk in final_chain.astream({
+                "recency_context": recency_context,
                 "context": final_context, 
                 "history": chat_history, 
                 "input": original_query, 
@@ -783,7 +808,7 @@ async def web_rag_mix(
                     yield chunk.content.encode("utf-8")
             
             if not cached_passages and 'scraped_sources' in locals():
-                df_to_insert = await asyncio.to_thread(brave_searcher._process_for_dataframe, scraped_sources)
+                df_to_insert = await asyncio.to_thread(searcher._process_for_dataframe, scraped_sources)
                 if not df_to_insert.empty:
                     asyncio.create_task(insert_post1(df_to_insert, db_pool))
 
