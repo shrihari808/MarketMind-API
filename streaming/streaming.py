@@ -387,7 +387,8 @@ Country Code: {country}
     - A "recency_query" to get the absolute latest news and updates (within the last day).
     - An "analytical_query" to find expert opinions, analysis, and broader market commentary.
     - A "factual_query" to retrieve background information, definitions, and established facts.
-5.  **FORMAT:** Return a single JSON object.
+5. Always ensure you make 3 distinct sub-queries, even if the original query is vague.
+6.  **FORMAT:** Return a single JSON object.
 
 **Example 1 (Numerical):**
 User Query: "What is the current stock price of Force Motors and any recent news?"
@@ -761,7 +762,8 @@ async def web_rag_mix(
             """
             You are a financial markets expert. Today's date is {today}, make sure your answers use today as reference. Provide a detailed, well-structured final answer using the comprehensive context provided.
             If available, use the Real-time Numerical Data provided below to answer questions about specific stock prices or values.
-            
+            **CRITICAL INSTRUCTION:** The "&sources" value must be a JSON array of objects at the beginning of your response. Each object should represent a source you will cite in the answer and have the format {{"id": "[citation number]","name": "name of the website" "title": "source title", "url": "source url"}}. Only include sources that you have cited. Cite your sources using [number] notation in the answer text wherever relevant. You can also use multiple citations like [1,2] if the information is supported by multiple sources. DO NOT cite sources at the bottom.
+
             **Recent Updates (from the last 24 hours):** -> Answer from this section first if relevant.
             {recency_context}
 
@@ -774,7 +776,6 @@ async def web_rag_mix(
             Do not cite from {blacklist} domains.
             
             **CRITICAL INSTRUCTION:** Focus exclusively on financial, startup, corporate, and stock market-related information.
-            **CRITICAL INSTRUCTION:** The "&sources" value must be a JSON array of objects at the beginning of your response. Each object should represent a source you will cite in the answer and have the format {{"id": "[citation number]","name": "name of the website" "title": "source title", "url": "source url"}}. Only include sources that you have cited. Cite your sources using [number] notation in the answer text wherever relevant. You can also use multiple citations like [1,2] if the information is supported by multiple sources. DO NOT cite sources at the bottom.
             
             **Broader Context (analysis and facts):**
             {context}

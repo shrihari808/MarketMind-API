@@ -137,24 +137,27 @@ class BraveNews:
                 print(f"ERROR: Failed to get snippets: {str(e)}")
                 return []
 
-    async def _fetch_and_parse_url_async(self, session: aiohttp.ClientSession, url: str) -> tuple[str, str]:
+    async def _fetch_and_parse_url_async(self, session: aiohttp.ClientSession, url: str) -> tuple[str, str, str | None]:
         """
         Optimized fetch and parse with a domain blacklist and better error handling.
+        It now returns the URL, extracted text, and the Last-Modified header.
         """
         try:
             parsed_url = urlparse(url)
             if parsed_url.netloc.replace('www.', '') in BLACKLISTED_DOMAINS:
                 print(f"DEBUG: Skipping blacklisted domain: {url}")
-                return url, ""
+                return url, "", None
             async with session.get(url, timeout=aiohttp.ClientTimeout(total=3)) as response:
                 if response.status != 200:
                     print(f"WARNING: HTTP {response.status} for URL: {url}")
-                    return url, ""
+                    return url, "", None
+
+                last_modified = response.headers.get("Last-Modified")
 
                 content_type = response.headers.get('content-type', '').lower()
                 if not any(ct in content_type for ct in ['text/html', 'application/xhtml']):
                     print(f"WARNING: Skipping non-HTML content for URL: {url}")
-                    return url, ""
+                    return url, "", last_modified
                 
                 text_content = await response.text()
 
@@ -171,17 +174,17 @@ class BraveNews:
                 if len(tokens) > MAX_WEBPAGE_CONTENT_TOKENS:
                     extracted_text = encoding.decode(tokens[:MAX_WEBPAGE_CONTENT_TOKENS]) + "..."
                 print(f"DEBUG: Successfully parsed URL: {url} ({len(extracted_text)} chars)")
-                return url, extracted_text
+                return url, extracted_text, last_modified
             else:
                 print(f"WARNING: Could not extract content from URL: {url}")
-                return url, ""
+                return url, "", last_modified
                 
         except asyncio.TimeoutError:
             print(f"WARNING: Timeout fetching URL: {url}")
-            return url, ""
+            return url, "", None
         except Exception as e:
             print(f"WARNING: Unexpected error for URL {url}: {str(e)}")
-            return url, ""
+            return url, "", None
 
     def _extract_relevant_text(self, brave_results: dict) -> list[dict]:
         """
@@ -361,7 +364,7 @@ class BraveNews:
 
     async def scrape_top_urls(self, session: aiohttp.ClientSession, sources: list[dict]) -> list[dict]:
         """
-        Accepts an active aiohttp session.
+        Accepts an active aiohttp session and adds last_modified date to sources.
         """
         scrape_start_time = time.time()
         links_to_scrape = [source['link'] for source in sources if source.get('link')]
@@ -380,15 +383,17 @@ class BraveNews:
             batch_results = await asyncio.gather(*batch_tasks, return_exceptions=True)
             
             for result in batch_results:
-                if not isinstance(result, Exception) and isinstance(result, tuple) and len(result) == 2:
-                    url, content = result
-                    scraped_content_map[url] = content
+                if not isinstance(result, Exception) and isinstance(result, tuple) and len(result) == 3:
+                    url, content, last_modified = result
+                    scraped_content_map[url] = {"content": content, "last_modified": last_modified}
             
             if i + batch_size < len(links_to_scrape):
                 await asyncio.sleep(0.2)
         
         for source in sources:
-            source['full_webpage_content'] = scraped_content_map.get(source.get('link'), "")
+            scraped_data = scraped_content_map.get(source.get('link'), {})
+            source['full_webpage_content'] = scraped_data.get("content", "")
+            source['last_modified'] = scraped_data.get("last_modified")
 
         scrape_time = time.time() - scrape_start_time
         print(f"DEBUG: Deep Scrape phase completed in {scrape_time:.2f}s.")

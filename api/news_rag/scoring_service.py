@@ -7,6 +7,7 @@ from transformers import pipeline
 from sentence_transformers import CrossEncoder
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langdetect import detect, DetectorFactory
+from email.utils import parsedate_to_datetime
 import asyncio
 
 from config import (
@@ -150,8 +151,9 @@ class NewsRagScoringService:
             text = chunk.get("text", "")
             
             # Calculate remaining fast scores
+            date_str = metadata.get("last_modified") or metadata.get("publication_date") or str(metadata.get("date", ""))
             chunk['time_decay_score'] = self._calculate_time_decay_score(
-                metadata.get("publication_date") or str(metadata.get("date", "")),
+                date_str,
                 query
             )
             chunk['impact_score'] = self._calculate_impact_score(text, metadata.get("link"))
@@ -420,26 +422,29 @@ class NewsRagScoringService:
             published_date = None
             date_str_cleaned = str(publication_date_str).strip()
 
-            # Try parsing ISO 8601 format (which Brave API uses)
+            # --- PARSING LOGIC ---
+            # Priority 1: Try parsing RFC 1123 format from "Last-Modified" header
             try:
-                # Handle timezone info like 'Z' or '+00:00'
-                published_date = datetime.fromisoformat(date_str_cleaned.replace('Z', '+00:00'))
-            except (ValueError, TypeError):
-                # Fallback for other common formats if the first fails
+                published_date = parsedate_to_datetime(date_str_cleaned)
+            except (TypeError, ValueError):
+                # Priority 2: Try parsing ISO 8601 format (from Brave API 'page_age')
                 try:
-                    # Handle formats like 'YYYY-MM-DD HH:MM:SS' or just 'YYYY-MM-DD'
-                    published_date = datetime.strptime(date_str_cleaned.split('T')[0], '%Y-%m-%d')
+                    published_date = datetime.fromisoformat(date_str_cleaned.replace('Z', '+00:00'))
                 except (ValueError, TypeError):
-                     # Handle YYYYMMDD integer format
-                    if date_str_cleaned.isdigit() and len(date_str_cleaned) == 8:
-                        published_date = datetime.strptime(date_str_cleaned, '%Y%m%d')
-                    else:
-                        print(f"WARNING: Could not parse date string: '{publication_date_str}'")
-                        return 0.4 # Return default if all parsing fails
-            
+                    # Priority 3: Fallback for other common formats
+                    try:
+                        published_date = datetime.strptime(date_str_cleaned.split('T')[0], '%Y-%m-%d')
+                    except (ValueError, TypeError):
+                        if date_str_cleaned.isdigit() and len(date_str_cleaned) == 8:
+                            published_date = datetime.strptime(date_str_cleaned, '%Y%m%d')
+                        else:
+                            print(f"WARNING: Could not parse date string: '{publication_date_str}'")
+                            return 0.4
+
+            # --- TIME DECAY CALCULATION ---
             # Ensure the current time is timezone-aware if the parsed date is
             now = datetime.now(published_date.tzinfo)
-            age_in_days = (now - published_date).days
+            age_in_days = (now - published_date).total_seconds() / (24 * 3600) # Use total_seconds for more precision
             
             if age_in_days < 0: age_in_days = 0 # Handle future dates just in case
 

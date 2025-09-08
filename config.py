@@ -225,3 +225,30 @@ vs_promoter = Chroma(
 )
 
 default_ef = embedding_functions.DefaultEmbeddingFunction()
+
+
+credible_domains = [
+    "economictimes.indiatimes.com",
+    "business-standard.com",
+    "moneycontrol.com",
+    "livemint.com",
+    "financialexpress.com",
+    "cnbctv18.com",
+    "ndtvprofit.com",
+    "reuters.com",
+    "bloomberg.com",
+    "nseindia.com",
+    "bseindia.com",
+    "investing.com",
+    "tradingeconomics.com",
+    "hindubusinessline.com",
+    "indiatoday.in/business",
+    "thehindu.com/business",
+    "outlookbusiness.com",
+    "forbesindia.com",
+    "zeebiz.com",
+    "moneylife.in",
+    "businesstoday.in",
+    "theprint.in/economy",
+    "scroll.in/business"
+]
