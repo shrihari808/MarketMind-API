@@ -448,14 +448,14 @@ class NewsRagScoringService:
             
             if age_in_days < 0: age_in_days = 0 # Handle future dates just in case
 
+
+            #today , 3 days , 7 days , 15 days , 21 days , 30 days
             # Adjust decay rate based on query context
             query_lower = query.lower()
-            if any(word in query_lower for word in ['latest', 'recent', 'today', 'current']):
-                half_life_days = 7
-            elif any(word in query_lower for word in ['annual', 'yearly']):
+            if any(word in query_lower for word in ['annual', 'yearly']):
                 half_life_days = 180
             else:
-                half_life_days = 21
+                half_life_days = 7 # Always prioritize recency unless it's a yearly query
                 
             # Exponential decay function
             decay_constant = np.log(2) / half_life_days
