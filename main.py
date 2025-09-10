@@ -12,6 +12,7 @@ import uvicorn
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from api.dashboard.data_aggregator import aggregate_and_process_data, generate_trending_stocks_data
 from config import POPULAR_COUNTRIES
+from api.dashboard import postgres_history
 
 # --- Add the project root to the Python path ---
 CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -56,8 +57,10 @@ async def lifespan(app: FastAPI):
         app.state.db_pool = pool
         DB_POOL = pool  # Make pool globally available
         tracker.DB_POOL = pool # Correctly assign the pool to the tracker module
+        postgres_history.DB_POOL = pool # Assign the pool to the new history module
         print("INFO: Database connection pool initialized successfully.")
         await tracker.create_contracts_table() # Create contracts table
+        await postgres_history.create_dashboard_output_table() # Create the new dashboard table
     else:
         app.state.db_pool = None
         print("ERROR: DATABASE_URL not set. Database pool not initialized.")

@@ -11,6 +11,7 @@ from api.dashboard.scoring_service import DashboardScoringService
 from api.dashboard.llm_generator import LLMGenerator, PortfolioLLMGenerator # Import the new class
 from api.dashboard.history import save_dashboard_history
 import sys
+from api.dashboard.postgres_history import save_dashboard_output
 
 # --- Define Paths ---
 OUTPUT_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -208,10 +209,17 @@ async def aggregate_and_process_data(country_code="IN", country_name="India"):
     llm_generator = LLMGenerator(input_path=data_json_path)
     final_dashboard_content = await llm_generator.generate_dashboard_content()
 
-    # Save the final output
+    # Save the final output to the JSON file (existing process)
     final_output_path = os.path.join(OUTPUTS_DIR, f'dashboard_output_{country_code}.json')
     save_data_to_json(final_dashboard_content, final_output_path)
+    
+    # Also save to the old SQLite history file (existing process)
     save_dashboard_history(final_dashboard_content)
+
+    # --- NEW SNIPPET ---
+    # Also save the final output to the new PostgreSQL table
+    await save_dashboard_output(final_dashboard_content, country_code)
+    # --- END NEW SNIPPET ---
 
     print(f"\n--- Pipeline Complete for {country_name}: Final dashboard output generated. ---")
     return final_dashboard_content
