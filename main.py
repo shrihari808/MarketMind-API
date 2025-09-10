@@ -11,6 +11,7 @@ from fastapi.responses import Response
 import uvicorn
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from api.dashboard.data_aggregator import aggregate_and_process_data, generate_trending_stocks_data
+from api.timeline.timeline_generator import generate_timeline # Import the timeline generator
 from config import POPULAR_COUNTRIES
 from api.dashboard import postgres_history
 
@@ -69,6 +70,7 @@ async def lifespan(app: FastAPI):
     scheduler.add_job(aggregate_and_process_data, 'interval', minutes=40, args=["US", "USA"])
     scheduler.add_job(generate_trending_stocks_data, 'interval', minutes=30, args=["IN"])
     scheduler.add_job(generate_trending_stocks_data, 'interval', minutes=60, args=["US"])
+    scheduler.add_job(generate_timeline, 'interval', hours=6) # Add the timeline job
     scheduler.start()
     yield # The application is now running
 
