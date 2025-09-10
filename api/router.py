@@ -11,6 +11,7 @@ from .dashboard.portfolio import portfolio_snapshot
 from .dashboard.stock import stock_snapshot
 from .dashboard import trending
 from .timeline import timeline # Import the new timeline router
+from .doc_rag import doc_chat
 
 from streaming import streaming
 
@@ -35,3 +36,4 @@ api_router.include_router(stock_snapshot.router, tags=["Dashboard"])
 api_router.include_router(trending.router, tags=["Dashboard"])
 api_router.include_router(tracker.router, tags=["Tracker"])
 api_router.include_router(timeline.router, tags=["Timeline"]) # Add the timeline router
+api_router.include_router(doc_chat.router, tags=["Document RAG"])
