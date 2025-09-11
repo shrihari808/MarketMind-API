@@ -13,6 +13,7 @@ import os
 import tempfile
 import json
 import time
+from typing import List
 
 router = APIRouter()
 
@@ -48,32 +49,54 @@ async def upload_document(
     user_id: int = Form(...),
     plan_id: int = Form(...),
     prompt_history_id: int = Form(...),
-    file: UploadFile = File(...),
+    files: List[UploadFile] = File(...),
     api_key: str = Depends(api_key_auth)
 ):
-    if not file.filename.endswith(".pdf"):
-        raise HTTPException(status_code=400, detail="Only PDF files are supported.")
-    with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as tmp:
-        tmp.write(await file.read())
-        pdf_path = tmp.name
-    print(f"[{time.strftime('%H:%M:%S')}] PDF saved to temp path: {pdf_path}")
-    try:
-        print(f"[{time.strftime('%H:%M:%S')}] Starting PDF deconstruction...")
-        data = deconstruct_pdf(pdf_path)
-        print(f"[{time.strftime('%H:%M:%S')}] Deconstruction complete. Found {len(data['images'])} images.")
-        text_chunks = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=200).split_text(data["text"])
-        table_chunks = [table["data_as_markdown"] for table in data["tables"]]
-        all_text_chunks = text_chunks + table_chunks
-        print(f"[{time.strftime('%H:%M:%S')}] Creating vector store with {len(all_text_chunks)} text/table chunks...")
-        vector_store = Chroma.from_texts(texts=all_text_chunks, embedding=embeddings)
-        SESSION_STORES[session_id] = {
-            "vector_store": vector_store,
-            "image_metadata": data["images"]
-        }
-        print(f"[{time.strftime('%H:%M:%S')}] Document processed. Ready for queries.")
-        return {"message": f"Document with {len(data['images'])} images processed. You can now ask questions."}
-    finally:
-        os.remove(pdf_path)
+    if len(files) > 5:
+        raise HTTPException(status_code=400, detail="You can upload a maximum of 5 documents.")
+
+    all_text = ""
+    all_images = []
+    all_tables = []
+
+    for file in files:
+        if not file.filename.endswith(".pdf"):
+            raise HTTPException(status_code=400, detail="Only PDF files are supported.")
+        
+        with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as tmp:
+            tmp.write(await file.read())
+            pdf_path = tmp.name
+        
+        print(f"[{time.strftime('%H:%M:%S')}] PDF saved to temp path: {pdf_path}")
+        
+        try:
+            print(f"[{time.strftime('%H:%M:%S')}] Starting PDF deconstruction for {file.filename}...")
+            data = deconstruct_pdf(pdf_path)
+            print(f"[{time.strftime('%H:%M:%S')}] Deconstruction complete for {file.filename}. Found {len(data['images'])} images.")
+            
+            all_text += data["text"]
+            all_images.extend(data["images"])
+            all_tables.extend(data["tables"])
+            
+        finally:
+            os.remove(pdf_path)
+
+    text_chunks = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=200).split_text(all_text)
+    table_chunks = [table["data_as_markdown"] for table in all_tables]
+    all_text_chunks = text_chunks + table_chunks
+    
+    print(f"[{time.strftime('%H:%M:%S')}] Creating vector store with {len(all_text_chunks)} text/table chunks...")
+    
+    vector_store = Chroma.from_texts(texts=all_text_chunks, embedding=embeddings)
+    
+    SESSION_STORES[session_id] = {
+        "vector_store": vector_store,
+        "image_metadata": all_images
+    }
+    
+    print(f"[{time.strftime('%H:%M:%S')}] Documents processed. Ready for queries.")
+    
+    return {"message": f"{len(files)} documents with a total of {len(all_images)} images processed. You can now ask questions."}
 
 @router.post("/doc_chat/query")
 async def query_document(
