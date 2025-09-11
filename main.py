@@ -31,7 +31,6 @@ if sys.platform == "win32":
 # --- Import the master API router ---
 from api.router import api_router
 from config import DB_POOL as CONFIG_DB_POOL
-from api import tracker # Import the tracker module
 
 # --- Database Connection Pool Management ---
 DB_POOL = None
@@ -57,10 +56,8 @@ async def lifespan(app: FastAPI):
         )
         app.state.db_pool = pool
         DB_POOL = pool  # Make pool globally available
-        tracker.DB_POOL = pool # Correctly assign the pool to the tracker module
         postgres_history.DB_POOL = pool # Assign the pool to the new history module
         print("INFO: Database connection pool initialized successfully.")
-        await tracker.create_contracts_table() # Create contracts table
         await postgres_history.create_dashboard_output_table() # Create the new dashboard table
     else:
         app.state.db_pool = None

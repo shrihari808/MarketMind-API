@@ -175,7 +175,8 @@ if OPENAI_API_TYPE == "azure":
         api_base=azure_endpoint,
         api_type='azure',
         api_version=api_version,
-        model_name=azure_embedding_deployment
+        model_name=azure_embedding_deployment,
+        deployment_id=azure_embedding_deployment
     )
     
     GPT4o_mini = AzureChatOpenAI(
