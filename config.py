@@ -217,18 +217,54 @@ if OPENAI_API_TYPE == "azure":
     )
 
 else:
-    # Standard OpenAI Configuration
+    # --- LOCAL GPT-OSS Model Configuration ---
+    LOCAL_API_BASE = "http://localhost:8000/v1"
+    LOCAL_MODEL_NAME = "meta-llama/Meta-Llama-3-8B-Instruct"
+    LOCAL_API_KEY = "EMPTY" # vLLM does not require an API key
+
+    # Standard OpenAI and LOCAL GPT-OSS Configuration
     embeddings = OpenAIEmbeddings(model="text-embedding-3-small")
     openai_ef = embedding_functions.OpenAIEmbeddingFunction(
         api_key=os.getenv("OPENAI_API_KEY"),
         model_name="text-embedding-3-small"
     )
-    GPT3_16k = ChatOpenAI(temperature=0, model="gpt-3.5-turbo-16k")
-    GPT4o_mini = ChatOpenAI(temperature=0.2, model="gpt-4o-mini")
-    llm_stream = ChatOpenAI(temperature=0.5, model="gpt-4o-mini", stream_usage=True, streaming=True)
-    llm_date = ChatOpenAI(temperature=0.3, model="gpt-4o-2024-05-13")
-    llm_screener = ChatOpenAI(temperature=0.5, model='gpt-4o-mini')
 
+    # --- All LLM instances now point to the local server ---
+    GPT4o_mini = ChatOpenAI(
+        model=LOCAL_MODEL_NAME,
+        openai_api_key=LOCAL_API_KEY,
+        openai_api_base=LOCAL_API_BASE,
+        temperature=0.2
+    )
+
+    llm_stream = ChatOpenAI(
+        model=LOCAL_MODEL_NAME,
+        openai_api_key=LOCAL_API_KEY,
+        openai_api_base=LOCAL_API_BASE,
+        temperature=0.5,
+        streaming=True
+    )
+
+    llm_date = ChatOpenAI(
+        model=LOCAL_MODEL_NAME,
+        openai_api_key=LOCAL_API_KEY,
+        openai_api_base=LOCAL_API_BASE,
+        temperature=0.3
+    )
+
+    llm_screener = ChatOpenAI(
+        model=LOCAL_MODEL_NAME,
+        openai_api_key=LOCAL_API_KEY,
+        openai_api_base=LOCAL_API_BASE,
+        temperature=0.5
+    )
+
+    GPT3_16k = ChatOpenAI(
+        model=LOCAL_MODEL_NAME,
+        openai_api_key=LOCAL_API_KEY,
+        openai_api_base=LOCAL_API_BASE,
+        temperature=0
+    )
 # --- Pinecone Vector Store Initialization ---
 if not PINECONE_API_KEY:
     raise ValueError("PINECONE_API_KEY environment variable must be set")
