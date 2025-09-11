@@ -218,3 +218,7 @@ playwright
 PyMuPDF
 camelot-py[cv]
 python-multipart
+--extra-index-url https://wheels.vllm.ai/gpt-oss/
+--extra-index-url https://download.pytorch.org/whl/nightly/cu128
+vllm==0.10.1+gptoss
+openai-harmony
