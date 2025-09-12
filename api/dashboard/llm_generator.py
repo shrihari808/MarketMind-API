@@ -61,7 +61,8 @@ class LLMGenerator:
             "latest_news": {},
             "sector_analysis": {},
             "standouts_analysis": {},
-            "market_drivers": {}
+            "market_drivers": {},
+            "market_sentiment": {}
         }
         
         contexts = self.data.get("llm_contexts", {})
@@ -117,20 +118,34 @@ class LLMGenerator:
             """,
             partial_variables={"format_instructions": drivers_parser.get_format_instructions()},
         )
+        
+        sentiment_parser = JsonOutputParser()
+        sentiment_prompt = ChatPromptTemplate.from_template(
+            """Analyze the provided context to determine the overall market sentiment.
+            Provide a score from 0 (Extremely Bearish) to 10 (Extremely Bullish).
+            The output should be a JSON object with a single key "sentiment_score".
+
+            Context: {context}
+
+            {format_instructions}
+            """,
+            partial_variables={"format_instructions": sentiment_parser.get_format_instructions()},
+        )
 
         # --- Create a list of tasks to run concurrently ---
         tasks = [
             self._generate_section("market_summary", contexts.get("indices_context"), summary_prompt, summary_parser),
             self._generate_section("sector_analysis", contexts.get("sectors_context"), sectors_prompt, sectors_parser),
             self._generate_section("standouts_analysis", contexts.get("standouts_context"), standouts_prompt, standouts_parser),
-            self._generate_section("market_drivers", contexts.get("market_drivers_context"), drivers_prompt, drivers_parser)
+            self._generate_section("market_drivers", contexts.get("market_drivers_context"), drivers_prompt, drivers_parser),
+            self._generate_section("market_sentiment", contexts.get("indices_context"), sentiment_prompt, sentiment_parser)
         ]
 
         # --- Run all LLM generation tasks in parallel ---
         results = await asyncio.gather(*tasks)
 
         # --- Unpack results ---
-        (summary_content, summary_sources), (sector_content, _), (standouts_content, _), (drivers_content, _) = results
+        (summary_content, summary_sources), (sector_content, _), (standouts_content, _), (drivers_content, _), (sentiment_content, _) = results
 
         # --- Populate final output ---
         final_output["market_summary"] = {
@@ -141,6 +156,7 @@ class LLMGenerator:
         final_output["sector_analysis"] = sector_content
         final_output["standouts_analysis"] = standouts_content
         final_output["market_drivers"] = drivers_content
+        final_output["market_sentiment"] = sentiment_content
 
         print("--- LLM Content Generation Complete ---")
         return final_output
