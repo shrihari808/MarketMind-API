@@ -62,6 +62,7 @@ async def lifespan(app: FastAPI):
         print("INFO: Database connection pool initialized successfully.")
         await tracker.create_contracts_table() # Create contracts table
         await postgres_history.create_dashboard_output_table() # Create the new dashboard table
+        await postgres_history.create_trending_stocks_table() # Create the new trending_stocks table
     else:
         app.state.db_pool = None
         print("ERROR: DATABASE_URL not set. Database pool not initialized.")

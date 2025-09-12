@@ -22,6 +22,22 @@ async def create_dashboard_output_table():
         """)
         print("INFO: 'dashboard_output' table checked/created successfully.")
 
+async def create_trending_stocks_table():
+    """Creates the trending_stocks table in PostgreSQL if it doesn't exist."""
+    if not DB_POOL:
+        print("ERROR: Database connection pool not initialized for postgres_history.")
+        return
+    async with DB_POOL.acquire() as connection:
+        await connection.execute("""
+            CREATE TABLE IF NOT EXISTS trending_stocks (
+                id SERIAL PRIMARY KEY,
+                timestamp TIMESTAMPTZ NOT NULL,
+                country_code VARCHAR(10) NOT NULL,
+                data JSONB NOT NULL
+            );
+        """)
+        print("INFO: 'trending_stocks' table checked/created successfully.")
+
 async def save_dashboard_output(data, country_code):
     """Saves the final dashboard JSON data to the dashboard_output table."""
     if not data or not DB_POOL:
@@ -42,3 +58,24 @@ async def save_dashboard_output(data, country_code):
             data_json
         )
         print(f"INFO: Also saved dashboard output for {country_code} to PostgreSQL.")
+
+async def save_trending_stocks_output(data, country_code):
+    """Saves the trending stocks JSON data to the trending_stocks table."""
+    if not data or not DB_POOL:
+        return
+
+    timestamp = datetime.now(timezone.utc)
+    # Convert the Python dict to a JSON string for storing in the JSONB column
+    data_json = json.dumps(data)
+
+    async with DB_POOL.acquire() as connection:
+        await connection.execute(
+            """
+            INSERT INTO trending_stocks (timestamp, country_code, data)
+            VALUES ($1, $2, $3)
+            """,
+            timestamp,
+            country_code,
+            data_json
+        )
+        print(f"INFO: Also saved trending stocks for {country_code} to PostgreSQL.")

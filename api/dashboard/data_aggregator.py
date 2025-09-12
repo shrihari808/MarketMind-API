@@ -5,6 +5,7 @@ import asyncio
 from datetime import datetime, timezone
 import re
 from api.dashboard.brave_search import BraveDashboard
+from api.dashboard.postgres_history import save_trending_stocks_output
 from api.dashboard.web_scraper import scrape_urls
 from api.dashboard.vector_store import DashboardVectorStore
 from api.dashboard.scoring_service import DashboardScoringService
@@ -227,7 +228,7 @@ async def aggregate_and_process_data(country_code="IN", country_name="India"):
 # --- START OF MODIFICATION ---
 async def generate_trending_stocks_data(country_code: str = "IN"):
     """
-    Fetches trending stocks and saves them to a JSON file.
+    Fetches trending stocks and saves them to a JSON file and PostgreSQL.
     This function will be called by the scheduler.
     """
     print(f"--- Starting Trending Stocks Generation for country: {country_code} ---")
@@ -241,8 +242,12 @@ async def generate_trending_stocks_data(country_code: str = "IN"):
     
     output_path = os.path.join(OUTPUTS_DIR, f'trending_stocks_{country_code}.json')
     save_data_to_json(trending_stocks, output_path)
+
+    # Also save the final output to the new PostgreSQL table
+    await save_trending_stocks_output(trending_stocks, country_code)
+    
     print(f"\n--- Pipeline Complete: Trending stocks for {country_code} identified and saved. ---")
-# --- END OF MODIFICATION ---
+
 
 def get_human_readable_age_in_seconds(age_str):
     if not age_str or not isinstance(age_str, str):
