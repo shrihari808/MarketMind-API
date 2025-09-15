@@ -122,10 +122,10 @@ class BraveDashboard:
 
     async def _scrape_trending_stocks_us(self):
         """
-        Scrapes trending stocks for the US from Business Insider.
+        Scrapes trending stocks for the US from CNBC Market Movers using precise selectors.
         """
-        print("Scraping trending US stocks from Business Insider...")
-        url = "https://markets.businessinsider.com/index/market-movers/s&p_500"
+        print("Scraping trending US stocks from CNBC...")
+        url = "https://www.cnbc.com/us-market-movers/"
         trending_stocks = []
 
         async with async_playwright() as p:
@@ -133,40 +133,52 @@ class BraveDashboard:
             page = await browser.new_page()
             try:
                 await page.goto(url, timeout=60000)
-                await page.wait_for_selector("h2.header-underline")
+                # Wait for the tables to be present on the page
+                await page.wait_for_selector("section.MarketTop-fullWidthContainer", timeout=20000)
 
-                # --- Scrape Gainers ---
-                gainers_header = page.locator('h2:has-text("Top Gainers")')
-                gainers_table = gainers_header.locator('xpath=./following-sibling::div//table')
-                gainer_rows = await gainers_table.locator('tbody tr').all()
+                # --- Scrape Top Gainers ---
+                print("Scraping Top Gainers...")
+                # Locate the specific section for Top Gainers
+                gainers_section = page.locator("section.MarketTop-fullWidthContainer:has(h4:has-text('TOP GAINERS'))")
+                gainer_rows = await gainers_section.locator("table.MarketTop-topTable tbody tr").all()
                 
                 for row in gainer_rows:
-                    name = await row.locator("td:nth-child(1) a").inner_text()
-                    percentage_change = await row.locator("td:nth-child(4) span").nth(1).inner_text()
+                    name_locator = row.locator("td.MarketTop-name a")
+                    name = await name_locator.inner_text()
+                    
+                    change_locator = row.locator("td.MarketTop-quoteGain")
+                    percentage_change = await change_locator.inner_text()
+                    
                     trending_stocks.append({
                         "stock": name.strip(),
-                        "percentage_change": percentage_change.strip(),
+                        "percentage_change": f"+{percentage_change.strip()}",
                         "reason": "N/A",
-                        "source": ""
+                        "source": url
                     })
 
-                # --- Scrape Losers ---
-                losers_header = page.locator('h2:has-text("Top Losers")')
-                losers_table = losers_header.locator('xpath=./following-sibling::div//table')
-                loser_rows = await losers_table.locator('tbody tr').all()
+                # --- Scrape Top Decliners (using the same robust method) ---
+                print("Scraping Top Decliners...")
+                losers_section = page.locator("section.MarketTop-fullWidthContainer:has(h4:has-text('TOP DECLINERS'))")
+                loser_rows = await losers_section.locator("table.MarketTop-topTable tbody tr").all()
 
                 for row in loser_rows:
-                    name = await row.locator("td:nth-child(1) a").inner_text()
-                    percentage_change = await row.locator("td:nth-child(4) span").nth(1).inner_text()
+                    name_locator = row.locator("td.MarketTop-name a")
+                    name = await name_locator.inner_text()
+                    
+                    change_locator = row.locator("td.MarketTop-quoteDecline")
+                    percentage_change = await change_locator.inner_text()
+                    
                     trending_stocks.append({
                         "stock": name.strip(),
-                        "percentage_change": percentage_change.strip(),
+                        "percentage_change": f"-{percentage_change.strip()}",
                         "reason": "N/A",
-                        "source": ""
+                        "source": url
                     })
+                
+                print(f"Successfully scraped {len(trending_stocks)} market movers from CNBC.")
 
             except Exception as e:
-                print(f"Error scraping Business Insider: {e}")
+                print(f"Error scraping CNBC Market Movers: {e}")
             finally:
                 await browser.close()
 

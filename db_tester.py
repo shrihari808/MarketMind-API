@@ -11,7 +11,7 @@ async def print_last_5_trending_stocks():
     DB_POOL = await asyncpg.create_pool(DATABASE_URL)
     async with DB_POOL.acquire() as connection:
         rows = await connection.fetch("""
-            SELECT * FROM trending_stocks_in;
+            SELECT * FROM trending_stocks_us;
         """)
         print("Last 5 rows from 'trending_dashboard':")
         for row in rows:
@@ -38,3 +38,17 @@ async def create_trending_stocks_table():
 
 # import asyncio
 # asyncio.run(create_trending_stocks_table())
+
+async def delete_trending_stocks_us_table():
+    """Deletes the trending_stocks_us table from PostgreSQL if it exists."""
+    DB_POOL = await asyncpg.create_pool(DATABASE_URL)
+    async with DB_POOL.acquire() as connection:
+        await connection.execute("""
+            DROP TABLE IF EXISTS trending_stocks_us;
+        """)
+        print("INFO: 'trending_stocks_us' table deleted if it existed.")
+    await DB_POOL.close()
+
+# Example usage:
+# import asyncio
+# asyncio.run(delete_trending_stocks_us_table())
