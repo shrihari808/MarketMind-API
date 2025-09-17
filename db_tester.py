@@ -11,7 +11,7 @@ async def print_last_5_trending_stocks():
     DB_POOL = await asyncpg.create_pool(DATABASE_URL)
     async with DB_POOL.acquire() as connection:
         rows = await connection.fetch("""
-            SELECT * FROM trending_stocks_in;
+            SELECT * FROM trending_dashboard_us;
         """)
         print("Last 5 rows from 'trending_dashboard':")
         for row in rows:

@@ -61,8 +61,7 @@ async def lifespan(app: FastAPI):
         postgres_history.DB_POOL = pool # Assign the pool to the new history module
         print("INFO: Database connection pool initialized successfully.")
         await tracker.create_contracts_table() # Create contracts table
-        await postgres_history.create_dashboard_output_table() # Create the new dashboard table
-        await postgres_history.create_trending_stocks_tables() # Create the new trending_stocks tables
+        await postgres_history.create_dashboard_tables() # Create the dashboard tables
     else:
         app.state.db_pool = None
         print("ERROR: DATABASE_URL not set. Database pool not initialized.")
