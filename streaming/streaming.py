@@ -377,10 +377,10 @@ You are a financial markets expert AI. Your task is to analyze a user's query an
 
 User Query: "{query}"
 Today's Date: {today}
-Country Code: {country}
+Country Code: {country} (IN for India, US for USA)
 
 **Tasks:**
-1.  **VALIDATE:** Is the query about the financial market, business, or finance of the specified country?
+1.  **VALIDATE:** Is the query about the financial market, business, or finance of the specified country? 1 for valid, 0 for invalid. Ensure the query is relevant only to the specified country.
 2.  **NUMERICAL DATA:** Does the query ask for a stock price, market cap, or other specific numerical data for a company?
 3.  **EXTRACT COMPANY:** If numerical data is required, what is the name of the company?
 4.  **DECOMPOSE:** Generate a list of 3 specific sub-queries for news search, categorized as follows:

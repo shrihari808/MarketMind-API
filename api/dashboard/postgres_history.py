@@ -70,7 +70,10 @@ async def save_dashboard_output(data, country_code):
         print(f"INFO: Also saved dashboard output for {country_code} to PostgreSQL.")
 
 async def save_trending_stocks_output(data, country_code):
-    """Saves the trending stocks JSON data to the appropriate country-specific table."""
+    """
+    Clears the existing data and saves the new trending stocks JSON data to the
+    appropriate country-specific table, ensuring only the latest data is present.
+    """
     if not data or not DB_POOL:
         return
 
@@ -79,13 +82,18 @@ async def save_trending_stocks_output(data, country_code):
     table_name = f"trending_stocks_{country_code.lower()}"
 
     async with DB_POOL.acquire() as connection:
-        await connection.execute(
-            f"""
-            INSERT INTO {table_name} (timestamp, country_code, data)
-            VALUES ($1, $2, $3)
-            """,
-            timestamp,
-            country_code,
-            data_json
-        )
-        print(f"INFO: Also saved trending stocks for {country_code} to PostgreSQL table {table_name}.")
+        async with connection.transaction():
+            # Truncate the table to clear all existing data
+            await connection.execute(f"TRUNCATE TABLE {table_name} RESTART IDENTITY;")
+            
+            # Insert the new, single row of data
+            await connection.execute(
+                f"""
+                INSERT INTO {table_name} (timestamp, country_code, data)
+                VALUES ($1, $2, $3)
+                """,
+                timestamp,
+                country_code,
+                data_json
+            )
+    print(f"INFO: Cleared and saved trending stocks for {country_code} to PostgreSQL table {table_name}.")
