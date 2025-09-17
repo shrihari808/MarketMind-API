@@ -58,6 +58,7 @@ async def save_dashboard_output(data, country_code):
     data_json = json.dumps(data)
 
     async with DB_POOL.acquire() as connection:
+        await connection.execute(f"TRUNCATE TABLE {table_name} RESTART IDENTITY;")
         await connection.execute(
             """
             INSERT INTO dashboard_output (timestamp, country_code, data)
