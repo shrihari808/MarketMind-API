@@ -4,6 +4,7 @@ import os
 import asyncio
 from datetime import datetime, timezone
 import re
+from langdetect import detect
 from api.dashboard.brave_search import BraveDashboard
 from api.dashboard.postgres_history import save_trending_stocks_output
 from api.dashboard.web_scraper import scrape_urls
@@ -59,11 +60,13 @@ def get_human_readable_age(seconds):
 
 def select_latest_news_articles(news_articles, count=3):
     """
-    Selects the newest articles based on page_age and formats them for dashboard output.
+    Selects the newest articles based on page_age, ensures they are in English,
+    and formats them for dashboard output.
     """
     if not news_articles:
         return []
 
+    # Sort articles by age first to process the most recent ones
     sorted_articles = sorted(
         news_articles,
         key=lambda x: get_age_in_seconds(x.get('page_age')),
@@ -71,14 +74,37 @@ def select_latest_news_articles(news_articles, count=3):
     )
 
     selected_articles = []
-    for article in sorted_articles[:count]:
-        age_seconds = get_age_in_seconds(article.get('page_age'))
+    for article in sorted_articles:
+        # Stop once we have collected the required number of articles
+        if len(selected_articles) >= count:
+            break
+
+        title = article.get("title", "")
         description = article.get("description", "")
+        
+        # Combine title and description for a more reliable language check
+        text_to_check = f"{title} {description}".strip()
+        
+        if not text_to_check:
+            continue
+
+        try:
+            # Check if the language of the combined text is English
+            if detect(text_to_check) != 'en':
+                print(f"Skipping non-English article: {title}")
+                continue
+        except Exception as e:
+            # If language detection fails, skip the article to be safe
+            print(f"Could not detect language for article '{title}': {e}")
+            continue
+
+        # If the article is in English, proceed with formatting
+        age_seconds = get_age_in_seconds(article.get('page_age'))
         if not description or description.strip() == "":
             description = "No description available"
 
         formatted_article = {
-            "title": article.get("title", "No Title"),
+            "title": title,
             "snippet": description,
             "url": article.get("url", ""),
             "age": get_human_readable_age(age_seconds)

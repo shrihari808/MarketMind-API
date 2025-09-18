@@ -25,11 +25,25 @@ class BraveDashboard:
     
     # Define specific queries for each data type
     def get_queries(self, country_name="India"):
-        return {
-            "latest_news": f"latest {country_name} stock market news",
-            "standout_gainers": f"top stock market gainers in {country_name} today",
-            "standout_losers": f"top stock market losers in {country_name} today"
-        }
+        if country_name == "India":
+            return {
+                "latest_news": "latest Nifty 50 and Sensex news",
+                "standout_gainers": "top stock market gainers in India today",
+                "standout_losers": "top stock market losers in India today"
+            }
+        elif country_name == "USA":
+            return {
+                "latest_news": "latest NASDAQ and S&P 500 news",
+                "standout_gainers": "top stock market gainers in USA today",
+                "standout_losers": "top stock market losers in USA today"
+            }
+        else:
+            return {
+                "latest_news": f"latest {country_name} stock market news",
+                "standout_gainers": f"top stock market gainers in {country_name} today",
+                "standout_losers": f"top stock market losers in {country_name} today"
+            }
+
 
     def __init__(self, api_key=None):
         self.api_key = api_key or os.getenv("BRAVE_API_KEY")
