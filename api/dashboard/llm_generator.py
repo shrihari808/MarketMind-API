@@ -72,7 +72,7 @@ class LLMGenerator:
         summary_prompt = ChatPromptTemplate.from_template(
             """Analyze the provided context about the Indian stock market. 
             Identify 5-6 distinct key themes or summary points for the day.
-            For each point, create a title, a concise one-paragraph summary, and determine a representative 'age' based on the Source Age of the content you used.
+            For each point, create a title, a concise summary in 2 sentences, and determine a representative 'age' based on the Source Age of the content you used.
             The output should be a JSON object containing a list called "summary_points".
             
             Context: {context}
@@ -126,8 +126,8 @@ class LLMGenerator:
             {{
                 "gainers": [
                     {{
-                        "stock": "DC Infotech and Communication",
-                        "reason": "Led the nine stocks that gained 10% or more."
+                        "stock": "Adani Power Limited",
+                        "reason": "Adani Power has shown exceptional capability in reviving distressed assets and driving meaningful EBITDA improvements from recent acquisitions."
                         "url": "https://example.com/article3"
                     }}
                 ],
@@ -148,7 +148,7 @@ class LLMGenerator:
         drivers_parser = JsonOutputParser()
         drivers_prompt = ChatPromptTemplate.from_template(
             """Analyze the context to determine the key drivers behind today's market performance.
-            Summarize the main factors in a single narrative paragraph. Mention elements like GST reforms, global cues, institutional flows, or specific company news that influenced the market.
+            Summarize the main factors in a single narrative paragraph. Mention elements like global cues, institutional flows, or specific news that influenced the market.
 
             Context: {context}
 
