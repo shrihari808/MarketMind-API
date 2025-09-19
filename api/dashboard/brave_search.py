@@ -22,24 +22,36 @@ class BraveDashboard:
     specifically tailored for a financial dashboard.
     """
     BASE_URL = "https://api.search.brave.com/res/v1/news/search"  # Switched to News API endpoint
-    
+
     # Define specific queries for each data type
     def get_queries(self, country_name="India"):
         if country_name == "India":
             return {
-                "latest_news": "latest Nifty 50 and Sensex news",
+                "latest_news": [
+                    "latest Nifty 50 and Sensex news",
+                    f"latest {country_name} economy news",
+                    f"latest {country_name} corporate news"
+                ],
                 "standout_gainers": "top stock market gainers in India today",
                 "standout_losers": "top stock market losers in India today"
             }
         elif country_name == "USA":
             return {
-                "latest_news": "latest NASDAQ and S&P 500 news",
+                "latest_news": [
+                    "latest NASDAQ and S&P 500 news",
+                    f"latest {country_name} economy news",
+                    f"latest {country_name} corporate news"
+                ],
                 "standout_gainers": "top stock market gainers in USA today",
                 "standout_losers": "top stock market losers in USA today"
             }
         else:
             return {
-                "latest_news": f"latest {country_name} stock market news",
+                "latest_news": [
+                    f"latest {country_name} stock market news",
+                    f"latest {country_name} economy news",
+                    f"latest {country_name} corporate news"
+                ],
                 "standout_gainers": f"top stock market gainers in {country_name} today",
                 "standout_losers": f"top stock market losers in {country_name} today"
             }
@@ -59,13 +71,13 @@ class BraveDashboard:
         Performs an asynchronous search request to the Brave API using aiohttp.
         """
         params = {
-            "q": query, 
-            "count": count, 
-            "country": country, 
+            "q": query,
+            "count": count,
+            "country": country,
             "text_decorations": "false",
             "freshness": freshness
         }
-            
+
         try:
             url = self.BASE_URL if "news" in query else "https://api.search.brave.com/res/v1/news/search"
             async with aiohttp.ClientSession(headers=self.headers) as session:
@@ -104,7 +116,7 @@ class BraveDashboard:
             """,
             input_variables=["stock_name", "snippets"],
         )
-        
+
         parser = JsonOutputParser()
         chain = prompt | GPT4o_mini | parser
 
@@ -155,14 +167,14 @@ class BraveDashboard:
                 # Locate the specific section for Top Gainers
                 gainers_section = page.locator("section.MarketTop-fullWidthContainer:has(h4:has-text('TOP GAINERS'))")
                 gainer_rows = await gainers_section.locator("table.MarketTop-topTable tbody tr").all()
-                
+
                 for row in gainer_rows:
                     name_locator = row.locator("td.MarketTop-name a")
                     name = await name_locator.inner_text()
-                    
+
                     change_locator = row.locator("td.MarketTop-quoteGain")
                     percentage_change = await change_locator.inner_text()
-                    
+
                     trending_stocks.append({
                         "stock": name.strip(),
                         "percentage_change": f"+{percentage_change.strip()}",
@@ -178,17 +190,17 @@ class BraveDashboard:
                 for row in loser_rows:
                     name_locator = row.locator("td.MarketTop-name a")
                     name = await name_locator.inner_text()
-                    
+
                     change_locator = row.locator("td.MarketTop-quoteDecline")
                     percentage_change = await change_locator.inner_text()
-                    
+
                     trending_stocks.append({
                         "stock": name.strip(),
                         "percentage_change": f"-{percentage_change.strip()}",
                         "reason": "N/A",
                         "source": url
                     })
-                
+
                 print(f"Successfully scraped {len(trending_stocks)} market movers from CNBC.")
 
             except Exception as e:
@@ -204,7 +216,7 @@ class BraveDashboard:
         Asynchronously scrapes trending stocks for India from StockEdge using async playwright.
         """
         print("Scraping trending IN stocks from StockEdge...")
-        
+
         base_url = "https://web.stockedge.com/trending-stocks?filter-type=Major%20Stocks"
         urls = {
             "Gainer": f"{base_url}&indicator=Gainers",
@@ -232,7 +244,7 @@ class BraveDashboard:
                     stock_name = (await name_el.inner_text()).strip()
                     chg_text = (await change_el.inner_text()).strip()
                     chg_clean = chg_text.replace("▲", "").replace("▼", "").replace("%", "")
-                    
+
                     try:
                         chg_val = float(chg_clean)
                         if chg_val > 3:
@@ -249,7 +261,7 @@ class BraveDashboard:
                             })
                     except ValueError:
                         continue
-            
+
             await browser.close()
 
         return {"trending_stocks": trending_stocks}
@@ -258,9 +270,9 @@ class BraveDashboard:
     # The synchronous methods are kept for other parts of the app that might not be async yet.
     def _perform_search(self, query, count=20, freshness="pd", country="IN"):
         params = {
-            "q": query, 
-            "count": count, 
-            "country": country, 
+            "q": query,
+            "count": count,
+            "country": country,
             "text_decorations": False,
             "freshness": freshness
         }
@@ -272,28 +284,32 @@ class BraveDashboard:
         except requests.exceptions.RequestException as e:
             print(f"An error occurred during the API request: {e}")
             return None
-            
-    async def get_latest_news(self, query, country_code, target_count=10):
+
+    async def get_latest_news(self, queries, country_code, target_count=10):
         print(f"Fetching up to {target_count} latest news articles from News API for country {country_code}...")
-        results = await self._perform_search_async(query, count=target_count, freshness="pd", country=country_code)
-        if not results or not results.get("results"):
-            print("No news results found or API error.")
-            return []
-        news_items = []
+        all_news_items = []
         urls_seen = set()
-        for item in results["results"]:
-            url = item.get("url")
-            if url and url not in urls_seen:
-                urls_seen.add(url)
-                news_items.append({
-                    "title": item.get("title"),
-                    "url": url,
-                    "description": item.get("description"),
-                    "page_age": item.get("page_age"),
-                    "age": item.get("age")
-                })
-        print(f"Successfully fetched {len(news_items)} unique news articles for {country_code}.")
-        return news_items
+        
+        for query in queries:
+            results = await self._perform_search_async(query, count=target_count, freshness="pd", country=country_code)
+            if not results or not results.get("results"):
+                print(f"No news results found for query: '{query}'")
+                continue
+
+            for item in results["results"]:
+                url = item.get("url")
+                if url and url not in urls_seen:
+                    urls_seen.add(url)
+                    all_news_items.append({
+                        "title": item.get("title"),
+                        "url": url,
+                        "description": item.get("description"),
+                        "page_age": item.get("page_age"),
+                        "age": item.get("age")
+                    })
+        
+        print(f"Successfully fetched {len(all_news_items)} unique news articles for {country_code}.")
+        return all_news_items
 
     def get_portfolio_data(self, portfolio: list[str]):
         print(f"Fetching data for portfolio: {portfolio}")
