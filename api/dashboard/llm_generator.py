@@ -70,7 +70,7 @@ class LLMGenerator:
         # --- Define all prompts and parsers ---
         summary_parser = JsonOutputParser()
         summary_prompt = ChatPromptTemplate.from_template(
-            """Analyze the provided context about the stock market. 
+            """Analyze the provided context about the Indian stock market. 
             Identify 5-6 distinct key themes or summary points for the day.
             For each point, create a title, a concise one-paragraph summary, and determine a representative 'age' based on the Source Age of the content you used.
             The output should be a JSON object containing a list called "summary_points".
@@ -86,28 +86,28 @@ class LLMGenerator:
         sectors_prompt = ChatPromptTemplate.from_template(
             """Based on the context, identify and summarize the performance of key sectors.
             List the top 2-3 performing sectors and the top 2-3 underperforming sectors.
-            Provide the sector name and a brief, one-sentence explanation for its performance.
-
-            Context: {context}
-
-            **CRITICAL:** The output MUST be a JSON object with two keys: "top_performing_sectors" and "top_underperforming_sectors". Each key should contain a list of objects, where each object has a "sector" and an "explanation".
-
+            Provide a brief, one-sentence explanation for each, and include the source URL from which the information was derived.
+            
+            critical instruction: The output must be a JSON object with two keys: top_performing_sectors and top_underperforming_sectors. Each key should contain a list of objects.
             Example format:
             {{
-                "top_performing_sectors": [
-                    {{
-                        "sector": "Realty",
-                        "explanation": "Nifty Realty surged 2.41%, leading all sectors on robust buying interest."
-                    }}
-                ],
-                "top_underperforming_sectors": [
+                "gainers": [
                     {{
                         "sector": "IT",
-                        "explanation": "Nifty IT slid up to 0.6% as investors trimmed technology positions."
+                        "reason": "Due to US fed rate cuts. Robust quarterly earnings from major IT firms."
+                        "url": "https://example.com/article1"
+                    }}
+                ],
+                "losers": [
+                    {{
+                        "sector": "Financial Services",
+                        "reason": "Shriram Finance and HDFC Life Insurance were among the biggest decliners, weighing on the broader financial services space amid sector‐specific headwinds."
+                        "url": "https://example.com/article2"
                     }}
                 ]
             }}
-
+            Context: {context}
+            
             {format_instructions}
             """,
             partial_variables={"format_instructions": sectors_parser.get_format_instructions()},
@@ -116,7 +116,7 @@ class LLMGenerator:
         standouts_parser = JsonOutputParser()
         standouts_prompt = ChatPromptTemplate.from_template(
             """From the provided context, identify the top 2-3 standout stock gainers and top 2-3 standout stock losers for the day.
-            For each stock, provide its name ("stock") and a brief, one-sentence reason ("reason") for its performance.
+            For each stock, provide a brief, one-sentence reason for its performance if mentioned in the text, and include the source URL from which the information was derived.
 
             Context: {context}
 
@@ -128,12 +128,14 @@ class LLMGenerator:
                     {{
                         "stock": "DC Infotech and Communication",
                         "reason": "Led the nine stocks that gained 10% or more."
+                        "url": "https://example.com/article3"
                     }}
                 ],
                 "losers": [
                     {{
                         "stock": "Cipla",
                         "reason": "Slipped 1.75% as pharmaceutical names came under pressure."
+                        "url": "https://example.com/article4"
                     }}
                 ]
             }}
@@ -146,8 +148,7 @@ class LLMGenerator:
         drivers_parser = JsonOutputParser()
         drivers_prompt = ChatPromptTemplate.from_template(
             """Analyze the context to determine the key drivers behind today's market performance.
-            Summarize the main factors in a single narrative paragraph. Mention elements like economic data, global cues, institutional flows, or specific company news that influenced the market.
-            The output should be a JSON object with a single key "summary".
+            Summarize the main factors in a single narrative paragraph. Mention elements like GST reforms, global cues, institutional flows, or specific company news that influenced the market.
 
             Context: {context}
 
