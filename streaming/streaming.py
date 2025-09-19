@@ -2,7 +2,7 @@ import os
 import json
 import tiktoken
 from fastapi.responses import StreamingResponse
-from fastapi import FastAPI, APIRouter, Request, Depends, HTTPException, Query
+from fastapi import FastAPI, APIRouter, Request, Depends, HTTPException, Query, BackgroundTasks
 import asyncio
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_groq import ChatGroq
@@ -12,6 +12,7 @@ from langchain.chains import create_retrieval_chain
 from langchain_core.output_parsers import JsonOutputParser
 from langchain_core.output_parsers import StrOutputParser
 from pinecone import PodSpec, Pinecone as PineconeClient
+from langchain_core.runnables import Runnable
 import requests
 from pydantic import BaseModel
 from typing import Any
@@ -41,6 +42,8 @@ from starlette.status import HTTP_403_FORBIDDEN
 from fastapi.responses import JSONResponse
 import pandas as pd
 import aiohttp
+from langchain_community.callbacks import get_openai_callback
+from token_logger import log_token_usage
 
 # --- Local Project Imports ---
 from config import (
@@ -438,6 +441,15 @@ Country Code: "IN"
         with get_openai_callback() as cb:
             result = await chain.ainvoke(input_data)
 
+        # Add logging call
+        log_token_usage(
+                model_name=GPT4o_mini.model_name,
+                input_tokens=cb.prompt_tokens,
+                output_tokens=cb.completion_tokens,
+                total_tokens=cb.total_tokens,
+                purpose="query_preprocessing_and_validation"
+            )
+
         # Add our non-LLM data to the result
         result["extracted_date"] = extracted_date
         result["tokens_used"] = cb.total_tokens
@@ -585,6 +597,7 @@ use_caching = ENABLE_CACHING
 @web_rag.post("/web_rag")
 async def web_rag_mix(
     request: InRequest,
+    background_tasks: BackgroundTasks,
     session_id: int = Query(...),
     prompt_history_id: int = Query(...),
     user_id: int = Query(...),
@@ -792,41 +805,67 @@ async def web_rag_mix(
 
         final_response_text = ""
         disclaimer = DISCLAIMER_TEXT
-        with get_openai_callback() as cb:
-            # UPDATE THE ASTREAM CALL WITH THE NEW VARIABLE
-            async for chunk in final_chain.astream({
-                "recency_context": recency_context,
-                "context": final_context, 
-                "history": chat_history, 
-                "input": original_query, 
-                "today": today, 
-                "blacklist": BLACKLISTED_DOMAINS, 
-                "disclaimer": disclaimer,
-                "numerical_data": numerical_data_context
-            }):
-                if chunk.content:
-                    final_response_text += chunk.content
-                    yield chunk.content.encode("utf-8")
-            
+        async def post_stream_actions(usage_data, full_response):
+            if not usage_data:
+                print("ERROR: No token usage data was captured to log.")
+                return
+
+            # 1. Log the token usage
+            log_token_usage(
+                model_name=llm_stream.model_name,
+                input_tokens=usage_data.get("prompt_tokens", 0),
+                output_tokens=usage_data.get("completion_tokens", 0),
+                total_tokens=usage_data.get("total_tokens", 0),
+                purpose="web_rag_final_answer"
+            )
+
+            # 2. Update credit usage
+            total_tokens = usage_data.get("total_tokens", 0)
+            await insert_credit_usage(user_id, plan_id, total_tokens / 1000, db_pool)
+
+            # 3. Save to DB and history
             if not cached_passages and 'scraped_sources' in locals():
                 df_to_insert = await asyncio.to_thread(searcher._process_for_dataframe, scraped_sources)
                 if not df_to_insert.empty:
-                    asyncio.create_task(insert_post1(df_to_insert, db_pool))
+                    await insert_post1(df_to_insert, db_pool)
 
-            total_tokens = cb.total_tokens
-            asyncio.create_task(insert_credit_usage(user_id, plan_id, total_tokens / 1000, db_pool))
-            asyncio.create_task(store_into_db(session_id, prompt_history_id, {"links": final_links}, db_pool))
+            await store_into_db(session_id, prompt_history_id, {"links": final_links}, db_pool)
 
-            if final_response_text:
+            if full_response:
                 history_db = PostgresChatMessageHistory(str(session_id), psql_url)
                 await asyncio.to_thread(history_db.add_user_message, original_query)
-                await asyncio.to_thread(history_db.add_ai_message, final_response_text)
-        
-        llm_end_time = time.time()
-        print(f"DEBUG: Final LLM generation took {llm_end_time - llm_start_time:.2f} seconds.")
-        
-        total_end_time = time.time()
-        print(f"DEBUG: Total response generation time: {total_end_time - total_start_time:.2f} seconds.")
+                await asyncio.to_thread(history_db.add_ai_message, full_response)
+
+        token_usage_data = None
+        async for event in final_chain.astream_events(
+            {
+                "recency_context": recency_context,
+                "context": final_context,
+                "history": chat_history,
+                "input": original_query,
+                "today": today,
+                "blacklist": BLACKLISTED_DOMAINS,
+                "disclaimer": DISCLAIMER_TEXT,
+                "numerical_data": numerical_data_context
+            },
+            version="v1"
+        ):
+            kind = event["event"]
+            if kind == "on_chat_model_stream":
+                content = event["data"]["chunk"].content
+                if content:
+                    final_response_text += content
+                    yield content.encode("utf-8") # Stream to client
+            elif kind == "on_llm_end":
+                # Capture the token usage data
+                if "token_usage" in event["data"].get("output", {}).get("llm_output", {}):
+                    token_usage_data = event["data"]["output"]["llm_output"]["token_usage"]
+
+        # THIS IS THE KEY CHANGE:
+        # After the loop finishes, schedule the background task.
+        # FastAPI will wait for the stream to finish before running this.
+        if token_usage_data:
+            background_tasks.add_task(post_stream_actions, token_usage_data, final_response_text)
 
         yield f"\n& Stream finished".encode("utf-8")
     
@@ -1087,6 +1126,15 @@ async def red_rag_bing(
                         final_response += content
                         yield content.encode("utf-8")
                         await asyncio.sleep(0.01)
+
+                # Log token usage for the final answer synthesis
+                log_token_usage(
+                model_name=llm_stream.model_name,
+                input_tokens=cb.prompt_tokens,
+                output_tokens=cb.completion_tokens,
+                total_tokens=cb.total_tokens,
+                purpose="reddit_rag_final_answer"
+                )
 
                 total_tokens = validation_tokens + cb.total_tokens
                 await insert_credit_usage(user_id, plan_id, total_tokens / 1000, db_pool)

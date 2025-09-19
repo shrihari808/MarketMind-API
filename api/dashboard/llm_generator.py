@@ -5,6 +5,8 @@ import asyncio
 from config import GPT4o_mini as llm
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.output_parsers import JsonOutputParser, StrOutputParser
+from langchain_community.callbacks import get_openai_callback
+from token_logger import log_token_usage
 
 class LLMGenerator:
     """
@@ -32,7 +34,7 @@ class LLMGenerator:
         if not context_docs:
             print(f"No context available for {section_name}. Skipping.")
             return {"error": f"No context provided for {section_name}."}, []
-            
+
         context_parts = []
         for doc in context_docs:
             metadata = doc.get('metadata', {})
@@ -40,15 +42,23 @@ class LLMGenerator:
             url = metadata.get('url', 'N/A')
             age = metadata.get('age', 'N/A')
             context_parts.append(f"Source URL: {url}\nSource Age: {age}\nContent: {text}")
-        
+
         context_str = "\n\n---\n\n".join(context_parts)
         source_urls = list(set([doc['metadata'].get('url') for doc in context_docs if doc['metadata'].get('url')]))
-        
+
         chain = prompt_template | llm | output_parser
-        
+
         try:
-            # Use ainvoike for non-blocking LLM call
-            response = await chain.ainvoke({"context": context_str})
+            # Use ainoke for non-blocking LLM call and log token usage
+            with get_openai_callback() as cb:
+                response = await chain.ainvoke({"context": context_str})
+                log_token_usage(
+                    model_name=llm.model_name,
+                    input_tokens=cb.prompt_tokens,
+                    output_tokens=cb.completion_tokens,
+                    total_tokens=cb.total_tokens,
+                    purpose=f"dashboard_generation_{section_name}"
+                )
             return response, source_urls
         except Exception as e:
             print(f"An error occurred during LLM generation for {section_name}: {e}")
@@ -149,7 +159,7 @@ class LLMGenerator:
         drivers_prompt = ChatPromptTemplate.from_template(
             """Analyze the context to determine the key drivers behind today's market performance.
             Summarize the main factors in a single narrative paragraph. Mention elements like global cues, institutional flows, or specific news that influenced the market.
-
+            Your response should be in a JSON object with a single key "summary" containing the narrative.
             Context: {context}
 
             {format_instructions}
@@ -295,11 +305,11 @@ class PortfolioLLMGenerator(LLMGenerator):
         Asynchronously analyzes a single stock to find its key issues.
         """
         print(f"Analyzing key issues for: {stock}")
-        
+
         stock_context_docs = [
-            doc for doc in all_context_docs 
-            if stock.lower() in doc.get('text', '').lower() or 
-               stock.lower() in doc.get('metadata', {}).get('title', '').lower()
+            doc for doc in all_context_docs
+            if stock.lower() in doc.get('text', '').lower() or
+            stock.lower() in doc.get('metadata', {}).get('title', '').lower()
         ]
 
         if not stock_context_docs:
@@ -307,7 +317,7 @@ class PortfolioLLMGenerator(LLMGenerator):
             return []
 
         context_str = self._generate_context_string(stock_context_docs)
-        
+
         issues_parser = JsonOutputParser()
         issues_prompt = ChatPromptTemplate.from_template(
             """Based on the provided news for {stock}, what are the up to 3 most important 'Key Issues' or themes?
@@ -321,9 +331,17 @@ class PortfolioLLMGenerator(LLMGenerator):
             partial_variables={"format_instructions": issues_parser.get_format_instructions()},
         )
         issues_chain = issues_prompt | llm | issues_parser
-        
+
         try:
-            issues_result = await issues_chain.ainvoke({"stock": stock, "context": context_str})
+            with get_openai_callback() as cb:
+                issues_result = await issues_chain.ainvoke({"stock": stock, "context": context_str})
+                log_token_usage(
+                    model_name=llm.model_name,
+                    input_tokens=cb.prompt_tokens,
+                    output_tokens=cb.completion_tokens,
+                    total_tokens=cb.total_tokens,
+                    purpose=f"portfolio_key_issues_identification_for_{stock}"
+                )
             issue_titles = issues_result.get("issues", [])
             print(f"Identified issues for {stock}: {issue_titles}")
         except Exception as e:
@@ -357,12 +375,20 @@ class PortfolioLLMGenerator(LLMGenerator):
             )
             views_chain = views_prompt | llm | views_parser
             try:
-                views = await views_chain.ainvoke({
-                    "issue": issue_title,
-                    "stock": stock,
-                    "context": issue_context_str,
-                    "sources": issue_source_urls
-                })
+                with get_openai_callback() as cb:
+                    views = await views_chain.ainvoke({
+                        "issue": issue_title,
+                        "stock": stock,
+                        "context": issue_context_str,
+                        "sources": issue_source_urls
+                    })
+                    log_token_usage(
+                        model_name=llm.model_name,
+                        input_tokens=cb.prompt_tokens,
+                        output_tokens=cb.completion_tokens,
+                        total_tokens=cb.total_tokens,
+                        purpose=f"portfolio_key_issue_summary_for_{stock}_{issue_title.replace(' ', '_')}"
+                    )
                 stock_key_issues.append({
                     "issue_title": issue_title,
                     "bullish_view": views.get("bullish_view"),
@@ -372,7 +398,7 @@ class PortfolioLLMGenerator(LLMGenerator):
             except Exception as e:
                 print(f"Error generating views for '{issue_title}': {e}")
                 continue
-        
+
         return stock_key_issues
 
     async def _generate_key_issues(self, all_context_docs, portfolio):

@@ -10,8 +10,10 @@ from langchain_openai import ChatOpenAI
 from langchain.prompts import PromptTemplate
 from langchain_core.output_parsers import JsonOutputParser
 from config import GPT4o_mini
+from langchain_community.callbacks import get_openai_callback
+from token_logger import log_token_usage
 import aiohttp
-import sys # ADD THIS IMPORT
+import sys
 
 # Load environment variables from .env file
 load_dotenv()
@@ -121,7 +123,15 @@ class BraveDashboard:
         chain = prompt | GPT4o_mini | parser
 
         try:
-            response = await chain.ainvoke({"stock_name": stock_name, "snippets": all_text})
+            with get_openai_callback() as cb:
+                response = await chain.ainvoke({"stock_name": stock_name, "snippets": all_text})
+                log_token_usage(
+                    model_name=GPT4o_mini.model_name,
+                    input_tokens=cb.prompt_tokens,
+                    output_tokens=cb.completion_tokens,
+                    total_tokens=cb.total_tokens,
+                    purpose=f"trending_stock_reason_generation_for_{stock_name.replace(' ', '_')}"
+                )
             response['source_url'] = source_url
             return response
         except Exception as e:

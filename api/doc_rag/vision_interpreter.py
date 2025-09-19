@@ -2,6 +2,8 @@ import base64
 from langchain_openai import ChatOpenAI
 from langchain.prompts import ChatPromptTemplate
 from langchain_core.output_parsers import JsonOutputParser
+from langchain_community.callbacks import get_openai_callback
+from token_logger import log_token_usage
 
 llm = ChatOpenAI(temperature=0.2, model="gpt-4o")
 
@@ -17,5 +19,13 @@ async def describe_image(image_path: str) -> str:
     ])
     
     chain = prompt | llm 
-    response = await chain.ainvoke({})
+    with get_openai_callback() as cb:
+        response = await chain.ainvoke({})
+        log_token_usage(
+            model_name=llm.model_name,
+            input_tokens=cb.prompt_tokens,
+            output_tokens=cb.completion_tokens,
+            total_tokens=cb.total_tokens,
+            purpose="document_image_description"
+        )
     return response.content

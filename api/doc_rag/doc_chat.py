@@ -14,6 +14,8 @@ import tempfile
 import json
 import time
 from typing import List
+from langchain_community.callbacks import get_openai_callback
+from token_logger import log_token_usage
 
 router = APIRouter()
 
@@ -41,7 +43,16 @@ async def _is_query_image_related(query: str, image_metadata: list) -> dict:
         partial_variables={"format_instructions": parser.get_format_instructions()},
     )
     chain = prompt | GPT4o_mini | parser
-    return await chain.ainvoke({"query": query, "image_context": image_context})
+    with get_openai_callback() as cb:
+        result = await chain.ainvoke({"query": query, "image_context": image_context})
+        log_token_usage(
+            model_name=GPT4o_mini.model_name,
+            input_tokens=cb.prompt_tokens,
+            output_tokens=cb.completion_tokens,
+            total_tokens=cb.total_tokens,
+            purpose="doc_chat_image_query_check"
+        )
+    return result
 
 @router.post("/doc_chat")
 async def upload_document(
@@ -143,8 +154,17 @@ async def query_document(
     chain = prompt | llm_stream
 
     async def stream_generator():
-        async for chunk in chain.astream({"context": full_context, "question": query}):
-            if chunk.content:
-                yield chunk.content.encode("utf-8")
+        with get_openai_callback() as cb:
+            async for chunk in chain.astream({"context": full_context, "question": query}):
+                if chunk.content:
+                    yield chunk.content.encode("utf-8")
+
+            log_token_usage(
+                model_name=llm_stream.model_name,
+                input_tokens=cb.prompt_tokens,
+                output_tokens=cb.completion_tokens,
+                total_tokens=cb.total_tokens,
+                purpose="doc_chat_final_answer"
+            )
 
     return StreamingResponse(stream_generator(), media_type="text/plain")

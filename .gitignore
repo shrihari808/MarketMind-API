@@ -235,3 +235,4 @@ response.txt
 api/dashboard/outputs/
 .vscode/
 timeline.json
+/logs/
