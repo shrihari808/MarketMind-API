@@ -218,3 +218,4 @@ playwright
 PyMuPDF
 camelot-py[cv]
 python-multipart
+neo4j
