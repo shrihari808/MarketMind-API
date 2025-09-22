@@ -1,12 +1,10 @@
 # run_pipeline.py
-
 import asyncio
 import os
 import json
-from itertools import combinations
 from dotenv import load_dotenv
 from api.graph.data_ingestion import get_relevant_text
-from api.graph.extraction import extract_entities, classify_relations
+from api.graph.extraction import extract_graph_from_texts_gemini # Updated import
 
 load_dotenv()
 
@@ -53,50 +51,41 @@ def filter_and_clean_relations(relationships: list) -> list:
     print(f"Deduplicated and finalized {len(unique_relations)} relationships.")
     return unique_relations
 
-
 # --- Main Orchestration Function ---
 async def run_full_pipeline(company_name: str):
     print(f"--- Starting Knowledge Graph Pipeline for: {company_name} ---")
 
-    # Step 1: Data Ingestion
+    # Step 1: Data Ingestion (No changes needed here)
     print("\n[Step 1/3] Fetching and filtering relevant articles...")
     relevant_texts = await get_relevant_text(company_name)
     if not relevant_texts:
         print("No relevant articles found. Exiting.")
         return
 
-    # Step 2: Extraction
-    print("\n[Step 2/3] Extracting entities and relationships from text...")
-    all_entities = extract_entities(relevant_texts)
+    # Step 2: Optimized Extraction with Gemini
+    print("\n[Step 2/3] Extracting entities and relationships using Gemini...")
+    graph_data = await extract_graph_from_texts_gemini(relevant_texts)
     
-    # --- NEW: Pre-filter entities before pairing ---
+    all_entities = graph_data.get("entities", [])
+    relationships = graph_data.get("relations", [])
+    
+    # --- Filter and clean the extracted data ---
     meaningful_entities = [
         e for e in all_entities 
-        if len(e['word']) > 1 and normalize_entity_name(e['word']) not in STOP_WORDS
+        if len(e['name']) > 1 and normalize_entity_name(e['name']) not in STOP_WORDS
     ]
     print(f"Filtered {len(all_entities)} total entities down to {len(meaningful_entities)} meaningful entities.")
-
-    # Create pairs only from the cleaned entities
-    org_entities = [e for e in meaningful_entities if e['entity_group'] == 'ORG']
-    other_entities = [e for e in meaningful_entities if e['entity_group'] != 'ORG']
     
-    entity_pairs = list(combinations(org_entities, 2)) + [(org, other) for org in org_entities for other in other_entities]
-    
-    print(f"Generated {len(entity_pairs)} high-quality entity pairs for relation classification.")
-    relationships = classify_relations(entity_pairs, relevant_texts)
-    
-    # Apply the final cleaning and deduplication
     meaningful_relationships = filter_and_clean_relations(relationships)
-    
     print(f"Extracted {len(meaningful_relationships)} final relationships.")
 
     # Step 3: Structuring
     print("\n[Step 3/3] Structuring data as a graph...")
     nodes = {}
-    for entity in meaningful_entities: # Use the cleaned list for nodes
-        normalized_name = normalize_entity_name(entity['word'])
+    for entity in meaningful_entities:
+        normalized_name = normalize_entity_name(entity['name'])
         if normalized_name not in nodes:
-            nodes[normalized_name] = {"id": normalized_name, "type": entity['entity_group'], "mentions": 1}
+            nodes[normalized_name] = {"id": normalized_name, "type": entity['type'], "mentions": 1}
         else:
             nodes[normalized_name]["mentions"] += 1
     
@@ -104,7 +93,6 @@ async def run_full_pipeline(company_name: str):
         "source": normalize_entity_name(rel["entity1"]),
         "target": normalize_entity_name(rel["entity2"]),
         "label": rel["relationship"],
-        "score": rel["score"]
     } for rel in meaningful_relationships]
 
     output_data = {"company": company_name, "graph": {"nodes": list(nodes.values()), "edges": edges}}

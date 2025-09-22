@@ -80,7 +80,7 @@ langchain==0.2.7
 langchain-chroma==0.1.1
 langchain-community==0.2.7
 langchain-core==0.2.38
-langchain-google-genai==1.0.10
+langchain-google-genai
 langchain-groq==0.1.9
 langchain-openai==0.1.10
 langchain-pinecone==0.1.1

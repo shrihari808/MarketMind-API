@@ -1,106 +1,75 @@
 # api/graph/extraction.py
-from transformers import pipeline, AutoTokenizer
-from itertools import combinations
+import asyncio
 import json
-import torch
-from tqdm import tqdm
+from itertools import combinations
+from langchain_google_genai import ChatGoogleGenerativeAI
+from langchain_core.prompts import ChatPromptTemplate
+from langchain_core.output_parsers import JsonOutputParser
+from token_logger import log_token_usage
+from langchain_community.callbacks import get_openai_callback
 
-def extract_entities(texts: list[str]) -> list:
+# Initialize the Gemini 2.0 Flash model
+llm = ChatGoogleGenerativeAI(model="gemini-2.0-flash", temperature=0.1)
+
+async def extract_graph_from_texts_gemini(texts: list[str]) -> dict:
     """
-    Extracts named entities from a list of texts using a fine-tuned BERT model.
+    Extracts entities and relationships from a list of texts using the Gemini 2.0 Flash model.
+    This optimized function performs both tasks in a single, efficient API call.
     """
-    device = 0 if torch.cuda.is_available() else -1
-    print(f"NER pipeline using device: {'cuda' if device == 0 else 'cpu'}")
+    if not texts:
+        return {"entities": [], "relations": []}
 
-    ner_pipeline = pipeline("ner", model="dslim/bert-base-NER", aggregation_strategy="simple", device=device)
-    all_entities = []
-    # Use tqdm for a progress bar during entity extraction
-    for text in tqdm(texts, desc="Extracting Entities"):
-        if not text or not text.strip():
-            continue
-        try:
-            entities = ner_pipeline(text)
-            for entity in entities:
-                entity['source_text'] = text
-            all_entities.extend(entities)
-        except Exception as e:
-            print(f"Skipping text due to NER pipeline error: {e}")
-    return all_entities
+    # Create a batch of texts to process to minimize API calls
+    batched_text = "\n\n---\n\n".join(texts)
 
-def classify_relations(entity_pairs: list, texts: list[str]) -> list:
-    """
-    Classifies the relationship between pairs of entities using a finance-tuned model.
-    This version is optimized for speed with GPU usage, batch processing, and pre-filtering.
-    """
-    device = 0
-    print(f"Relation classification pipeline using device: {'cuda' if device == 0 else 'cpu'}")
+    parser = JsonOutputParser()
 
-    model_name = "yseop/distilbert-base-financial-relation-extraction"
-    relation_classifier = pipeline("text-classification", model=model_name, return_all_scores=False, device=device)
-    tokenizer = AutoTokenizer.from_pretrained(model_name)
-    max_model_len = tokenizer.model_max_length
+    prompt = ChatPromptTemplate.from_messages([
+        ("system", "You are an expert at extracting financial entities and their relationships from text. Your goal is to identify organizations, people, and other entities and describe how they are connected."),
+        ("human", 
+            """
+            From the following text, extract all financial entities and their relationships.
+            Format the output as a single JSON object with two keys: "entities" and "relations".
+            - "entities" should be a list of objects, each with "name", "type" (e.g., ORG, PERSON, GPE, PRODUCT, EVENT, etc.), and the "source_text".
+            - "relations" should be a list of objects, each with "entity1", "relationship", and "entity2".
 
-    inputs_to_process = []
-    original_pairs = []
+            Example:
+            Text: "Apple announced a new partnership with Goldman Sachs to launch a credit card. The deal, valued at $100 million, will see the two companies collaborate on a new financial product."
+            Output:
+            {{
+                "entities": [
+                    {{"name": "Apple", "type": "ORG", "source_text": "Apple announced a new partnership with Goldman Sachs to launch a credit card."}},
+                    {{"name": "Goldman Sachs", "type": "ORG", "source_text": "Apple announced a new partnership with Goldman Sachs to launch a credit card."}},
+                    {{"name": "credit card", "type": "PRODUCT", "source_text": "Apple announced a new partnership with Goldman Sachs to launch a credit card."}}
+                ],
+                "relations": [
+                    {{"entity1": "Apple", "relationship": "partnership", "entity2": "Goldman Sachs"}},
+                    {{"entity1": "Apple", "relationship": "launches", "entity2": "credit card"}},
+                    {{"entity1": "Goldman Sachs", "relationship": "launches", "entity2": "credit card"}}
+                ]
+            }}
 
-    print(f"Pre-filtering {len(entity_pairs)} pairs...")
-    for entity1, entity2 in entity_pairs:
-        if 'source_text' not in entity1 or 'source_text' not in entity2 or entity1['source_text'] != entity2['source_text']:
-            continue
-        
-        source_text = entity1['source_text']
-        ent1_text = entity1['word']
-        ent2_text = entity2['word']
+            Text to process:
+            {text}
 
-        try:
-            start_pos1 = source_text.index(ent1_text)
-            start_pos2 = source_text.index(ent2_text)
-            context_start = min(start_pos1, start_pos2)
-            context_end = max(start_pos1 + len(ent1_text), start_pos2 + len(ent2_text))
-            
-            remaining_space = max_model_len - (len(tokenizer.tokenize(ent1_text)) + len(tokenizer.tokenize(ent2_text)) + 4)
-            if remaining_space < 0: continue
+            {format_instructions}
+            """
+        )
+    ])
 
-            padding = remaining_space // 2
-            window_start = max(0, context_start - padding)
-            window_end = min(len(source_text), context_end + padding)
-            snippet = source_text[window_start:window_end]
+    chain = prompt | llm | parser
 
-            input_text = f"{ent1_text} [SEP] {ent2_text} [SEP] {snippet}"
-            inputs_to_process.append(input_text)
-            original_pairs.append((entity1, entity2))
-
-        except ValueError:
-            continue
-    
-    print(f"Processing {len(inputs_to_process)} valid pairs in mini-batches...")
-
-    relations = []
-    if inputs_to_process:
-        # Use a batch_size for more efficient processing and add a tqdm progress bar
-        batch_size = 32 
-        for result, (entity1, entity2) in tqdm(zip(relation_classifier(inputs_to_process, truncation=True, max_length=max_model_len, batch_size=batch_size), original_pairs), total=len(inputs_to_process), desc="Classifying Relations"):
-            if result['score'] > 0.6 and result['label'] != 'no_relation':
-                relations.append({
-                    "entity1": entity1['word'],
-                    "relationship": result['label'],
-                    "entity2": entity2['word'],
-                    "score": result['score']
-                })
-
-    return relations
-
-if __name__ == '__main__':
-    sample_texts = [
-        "Reliance Industries has partnered with TechCorp to streamline their logistics, a deal valued at over $50 million.",
-        "Microsoft reports $56B revenue in Q2, while their competitor Apple also saw strong growth."
-    ]
-    
-    print("--- Step 1: Extracting Entities ---")
-    entities = extract_entities(sample_texts)
-    print("Entities:", json.dumps(entities, indent=2))
-
-    print("\n--- Step 2: Classifying Relationships ---")
-    entity_pairs = list(combinations(entities, 2))
-    relations = classify_relations(entity_pairs, sample_texts)
-    print("Relations:", json.dumps(relations, indent=2))
+    try:
+        with get_openai_callback() as cb:
+            response = await chain.ainvoke({"text": batched_text, "format_instructions": parser.get_format_instructions()})
+            log_token_usage(
+                model_name="gemini-2.0-flash",
+                input_tokens=cb.prompt_tokens,
+                output_tokens=cb.completion_tokens,
+                total_tokens=cb.total_tokens,
+                purpose="knowledge_graph_extraction"
+            )
+        return response
+    except Exception as e:
+        print(f"An error occurred during Gemini graph extraction: {e}")
+        return {"entities": [], "relations": []}
