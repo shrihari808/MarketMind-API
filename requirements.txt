@@ -170,7 +170,7 @@ SQLAlchemy==2.0.34
 srsly==2.4.8
 starlette==0.38.5
 streamlit==1.38.0
-sympy==1.13.2
+sympy
 tenacity==8.5.0
 thinc==8.2.5
 threadpoolctl==3.5.0
@@ -178,7 +178,9 @@ tiktoken==0.7.0
 tokenizers==0.19.1
 toml==0.10.2
 tomli==2.0.1
-torch==2.4.1
+torch
+torchvision
+--index-url https://download.pytorch.org/whl/cu128
 tornado==6.4.1
 tqdm==4.66.5
 transformers

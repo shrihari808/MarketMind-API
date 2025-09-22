@@ -20,6 +20,34 @@ def normalize_entity_name(name):
         name = name.replace(suffix, '')
     return name.strip()
 
+# --- NEW: Function to filter out low-quality relationships ---
+def filter_meaningful_relations(relationships: list) -> list:
+    """
+    Filters out nonsensical relationships based on common stop words and irrelevant labels.
+    """
+    # A list of common words that are often misidentified as entities
+    stop_words = {
+        'hi', 'are', 'is', 'the', 'a', 'an', 'company', 'and', 'or', 'of', 'in', 'for', 'on', 'with', 'as',
+        'at', 'by', 'from', 'about', 'to', 'its', 'it', 'he', 'she', 'they', 'them', 'that', 'this',
+        'what', 'which', 'who', 'when', 'where', 'why', 'how', 'new', 'delhi', 'china'
+    }
+    
+    # The relation extraction model sometimes produces invalid labels; we filter them out.
+    invalid_labels = {'are', 'is', 'was', 'were'}
+
+    meaningful_relations = []
+    for rel in relationships:
+        source_is_stopword = rel["entity1"].lower() in stop_words
+        target_is_stopword = rel["entity2"].lower() in stop_words
+        label_is_invalid = rel["relationship"].lower() in invalid_labels
+        
+        # Keep the relationship only if neither entity is a stop word and the label is valid
+        if not source_is_stopword and not target_is_stopword and not label_is_invalid:
+            meaningful_relations.append(rel)
+            
+    print(f"Filtered relationships from {len(relationships)} to {len(meaningful_relations)} meaningful ones.")
+    return meaningful_relations
+
 # --- Main Orchestration Function ---
 async def run_full_pipeline(company_name: str):
     """
@@ -42,19 +70,14 @@ async def run_full_pipeline(company_name: str):
     # --- Step 2: Two-Step Entity and Relation Extraction ---
     print("\n[Step 2/3] Extracting entities and relationships from text...")
     try:
-        # Step 2a: Extract all entities from the texts
         entities = extract_entities(relevant_texts)
         print(f"Extracted {len(entities)} initial entities.")
 
-        # Step 2b: Create pairs of entities (focusing on ORG) and classify their relationships
-        # We create pairs where at least one entity is an organization to focus on corporate relationships.
         org_entities = [e for e in entities if e['entity_group'] == 'ORG']
         other_entities = [e for e in entities if e['entity_group'] != 'ORG']
         
         entity_pairs = []
-        # Pairs of two organizations
         entity_pairs.extend(list(combinations(org_entities, 2)))
-        # Pairs of an organization and another entity type
         for org in org_entities:
             for other in other_entities:
                 entity_pairs.append((org, other))
@@ -62,7 +85,10 @@ async def run_full_pipeline(company_name: str):
         print(f"Generated {len(entity_pairs)} entity pairs for relation classification.")
         relationships = classify_relations(entity_pairs, relevant_texts)
         
-        print(f"Extracted {len(relationships)} high-confidence relationships.")
+        # --- NEW: Apply the filter to clean the relationships ---
+        meaningful_relationships = filter_meaningful_relations(relationships)
+        
+        print(f"Extracted {len(meaningful_relationships)} high-confidence, meaningful relationships.")
 
     except Exception as e:
         print(f"Error during data extraction: {e}")
@@ -74,7 +100,6 @@ async def run_full_pipeline(company_name: str):
     nodes = {}
     edges = []
 
-    # Process entities to create nodes
     for entity in entities:
         normalized_name = normalize_entity_name(entity['word'])
         if normalized_name not in nodes:
@@ -82,8 +107,8 @@ async def run_full_pipeline(company_name: str):
         else:
             nodes[normalized_name]["mentions"] += 1
             
-    # Process relationships to create edges
-    for rel in relationships:
+    # Use the cleaned-up relationships to create the edges
+    for rel in meaningful_relationships:
         source = normalize_entity_name(rel["entity1"])
         target = normalize_entity_name(rel["entity2"])
         
@@ -107,7 +132,6 @@ async def run_full_pipeline(company_name: str):
         }
     }
     
-    # We will return the JSON data to be used by the API endpoint
     print("\n--- Pipeline Finished ---")
     return output_data
 
@@ -118,7 +142,5 @@ if __name__ == "__main__":
     if os.name == 'nt':
         asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
         
-    # In a real application, you would call this from your API endpoint.
-    # For testing, we can run it here and print the result.
     result = asyncio.run(run_full_pipeline(target_company))
     print(json.dumps(result, indent=4))
