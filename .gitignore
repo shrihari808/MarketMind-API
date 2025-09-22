@@ -236,3 +236,4 @@ api/dashboard/outputs/
 .vscode/
 timeline.json
 /logs/
+graph_output.json

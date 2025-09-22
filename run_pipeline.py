@@ -20,127 +20,111 @@ def normalize_entity_name(name):
         name = name.replace(suffix, '')
     return name.strip()
 
-# --- NEW: Function to filter out low-quality relationships ---
-def filter_meaningful_relations(relationships: list) -> list:
-    """
-    Filters out nonsensical relationships based on common stop words and irrelevant labels.
-    """
-    # A list of common words that are often misidentified as entities
-    stop_words = {
-        'hi', 'are', 'is', 'the', 'a', 'an', 'company', 'and', 'or', 'of', 'in', 'for', 'on', 'with', 'as',
-        'at', 'by', 'from', 'about', 'to', 'its', 'it', 'he', 'she', 'they', 'them', 'that', 'this',
-        'what', 'which', 'who', 'when', 'where', 'why', 'how', 'new', 'delhi', 'china'
-    }
-    
-    # The relation extraction model sometimes produces invalid labels; we filter them out.
-    invalid_labels = {'are', 'is', 'was', 'were'}
+# Words that are often misidentified as entities
+STOP_WORDS = {
+    'r', 'n', 'has', 'is', 'x', 'in', 'are', 'the', 'a', 'an', 'company', 'and', 'or', 'of', 'for', 'on',
+    'with', 'as', 'at', 'by', 'from', 'about', 'to', 'its', 'it', 'he', 'she', 'they', 'them', 'that', 'this',
+    'what', 'which', 'who', 'when', 'where', 'why', 'how', 'new', 'delhi', 'china', 'uk', 'india', 'pradesh',
+    'enterprise', 'labour', 'steel', 'tata', 'gmb', 'unite', 'group', 'power', 'energy', 'products', 'materials'
+}
 
-    meaningful_relations = []
+def filter_and_clean_relations(relationships: list) -> list:
+    """
+    Applies a final filter to remove any remaining nonsensical relationships and duplicates.
+    """
+    invalid_labels = {'has', 'is', 'was', 'were', 'are', 'is in', 'x'}
+    
+    cleaned_relations = []
     for rel in relationships:
-        source_is_stopword = rel["entity1"].lower() in stop_words
-        target_is_stopword = rel["entity2"].lower() in stop_words
-        label_is_invalid = rel["relationship"].lower() in invalid_labels
-        
-        # Keep the relationship only if neither entity is a stop word and the label is valid
-        if not source_is_stopword and not target_is_stopword and not label_is_invalid:
-            meaningful_relations.append(rel)
+        # Final check for invalid labels or self-references
+        if rel["relationship"].lower() in invalid_labels or normalize_entity_name(rel["entity1"]) == normalize_entity_name(rel["entity2"]):
+            continue
+        cleaned_relations.append(rel)
+    
+    # Deduplicate the final list
+    unique_relations = []
+    seen_relations = set()
+    for rel in cleaned_relations:
+        rel_key = tuple(sorted((normalize_entity_name(rel['entity1']), normalize_entity_name(rel['entity2'])))) + (rel['relationship'],)
+        if rel_key not in seen_relations:
+            unique_relations.append(rel)
+            seen_relations.add(rel_key)
             
-    print(f"Filtered relationships from {len(relationships)} to {len(meaningful_relations)} meaningful ones.")
-    return meaningful_relations
+    print(f"Deduplicated and finalized {len(unique_relations)} relationships.")
+    return unique_relations
+
 
 # --- Main Orchestration Function ---
 async def run_full_pipeline(company_name: str):
-    """
-    Orchestrates the entire data ingestion and graph population pipeline using a two-step extraction process.
-    """
     print(f"--- Starting Knowledge Graph Pipeline for: {company_name} ---")
 
-    # --- Step 1: Data Ingestion and Pre-Filtering ---
+    # Step 1: Data Ingestion
     print("\n[Step 1/3] Fetching and filtering relevant articles...")
-    try:
-        relevant_texts = await get_relevant_text(company_name)
-        if not relevant_texts:
-            print("No relevant articles found after filtering. Exiting.")
-            return
-        print(f"Found {len(relevant_texts)} relevant articles to process.")
-    except Exception as e:
-        print(f"Error during data ingestion: {e}")
+    relevant_texts = await get_relevant_text(company_name)
+    if not relevant_texts:
+        print("No relevant articles found. Exiting.")
         return
 
-    # --- Step 2: Two-Step Entity and Relation Extraction ---
+    # Step 2: Extraction
     print("\n[Step 2/3] Extracting entities and relationships from text...")
-    try:
-        entities = extract_entities(relevant_texts)
-        print(f"Extracted {len(entities)} initial entities.")
-
-        org_entities = [e for e in entities if e['entity_group'] == 'ORG']
-        other_entities = [e for e in entities if e['entity_group'] != 'ORG']
-        
-        entity_pairs = []
-        entity_pairs.extend(list(combinations(org_entities, 2)))
-        for org in org_entities:
-            for other in other_entities:
-                entity_pairs.append((org, other))
-
-        print(f"Generated {len(entity_pairs)} entity pairs for relation classification.")
-        relationships = classify_relations(entity_pairs, relevant_texts)
-        
-        # --- NEW: Apply the filter to clean the relationships ---
-        meaningful_relationships = filter_meaningful_relations(relationships)
-        
-        print(f"Extracted {len(meaningful_relationships)} high-confidence, meaningful relationships.")
-
-    except Exception as e:
-        print(f"Error during data extraction: {e}")
-        return
-
-    # --- Step 3: Entity Resolution and Graph-like JSON Structuring ---
-    print("\n[Step 3/3] Resolving entities and structuring data as a graph...")
+    all_entities = extract_entities(relevant_texts)
     
-    nodes = {}
-    edges = []
+    # --- NEW: Pre-filter entities before pairing ---
+    meaningful_entities = [
+        e for e in all_entities 
+        if len(e['word']) > 1 and normalize_entity_name(e['word']) not in STOP_WORDS
+    ]
+    print(f"Filtered {len(all_entities)} total entities down to {len(meaningful_entities)} meaningful entities.")
 
-    for entity in entities:
+    # Create pairs only from the cleaned entities
+    org_entities = [e for e in meaningful_entities if e['entity_group'] == 'ORG']
+    other_entities = [e for e in meaningful_entities if e['entity_group'] != 'ORG']
+    
+    entity_pairs = list(combinations(org_entities, 2)) + [(org, other) for org in org_entities for other in other_entities]
+    
+    print(f"Generated {len(entity_pairs)} high-quality entity pairs for relation classification.")
+    relationships = classify_relations(entity_pairs, relevant_texts)
+    
+    # Apply the final cleaning and deduplication
+    meaningful_relationships = filter_and_clean_relations(relationships)
+    
+    print(f"Extracted {len(meaningful_relationships)} final relationships.")
+
+    # Step 3: Structuring
+    print("\n[Step 3/3] Structuring data as a graph...")
+    nodes = {}
+    for entity in meaningful_entities: # Use the cleaned list for nodes
         normalized_name = normalize_entity_name(entity['word'])
         if normalized_name not in nodes:
             nodes[normalized_name] = {"id": normalized_name, "type": entity['entity_group'], "mentions": 1}
         else:
             nodes[normalized_name]["mentions"] += 1
-            
-    # Use the cleaned-up relationships to create the edges
-    for rel in meaningful_relationships:
-        source = normalize_entity_name(rel["entity1"])
-        target = normalize_entity_name(rel["entity2"])
-        
-        if source not in nodes:
-            nodes[source] = {"id": source, "type": "Unknown", "mentions": 1}
-        if target not in nodes:
-            nodes[target] = {"id": target, "type": "Unknown", "mentions": 1}
-            
-        edges.append({
-            "source": source,
-            "target": target,
-            "label": rel["relationship"],
-            "score": rel["score"]
-        })
+    
+    edges = [{
+        "source": normalize_entity_name(rel["entity1"]),
+        "target": normalize_entity_name(rel["entity2"]),
+        "label": rel["relationship"],
+        "score": rel["score"]
+    } for rel in meaningful_relationships]
 
-    output_data = {
-        "company": company_name,
-        "graph": {
-            "nodes": list(nodes.values()),
-            "edges": edges
-        }
-    }
+    output_data = {"company": company_name, "graph": {"nodes": list(nodes.values()), "edges": edges}}
     
     print("\n--- Pipeline Finished ---")
     return output_data
 
 # --- Run the Pipeline ---
 if __name__ == "__main__":
-    target_company = "Tata steel"
-    
+    target_company = "Tata Motors"
     if os.name == 'nt':
         asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
         
     result = asyncio.run(run_full_pipeline(target_company))
-    print(json.dumps(result, indent=4))
+    
+    # Save the final, clean output to a file
+    output_filename = "graph_output.json"
+    if result:
+        with open(output_filename, 'w', encoding='utf-8') as f:
+            json.dump(result, f, ensure_ascii=False, indent=4)
+        print(f"✅ Successfully saved the knowledge graph to {output_filename}")
+    else:
+        print("Pipeline did not produce a result. Nothing to save.")
