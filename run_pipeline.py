@@ -24,8 +24,8 @@ def normalize_entity_name(name):
 STOP_WORDS = {
     'r', 'n', 'has', 'is', 'x', 'in', 'are', 'the', 'a', 'an', 'company', 'and', 'or', 'of', 'for', 'on',
     'with', 'as', 'at', 'by', 'from', 'about', 'to', 'its', 'it', 'he', 'she', 'they', 'them', 'that', 'this',
-    'what', 'which', 'who', 'when', 'where', 'why', 'how', 'new', 'delhi', 'china', 'uk', 'india', 'pradesh',
-    'enterprise', 'labour', 'steel', 'tata', 'gmb', 'unite', 'group', 'power', 'energy', 'products', 'materials'
+    'what', 'which', 'who', 'when', 'where', 'why', 'how', 'new', 'pradesh',
+    'enterprise', 'labour', 'gmb', 'unite', 'group', 'power', 'energy', 'products', 'materials'
 }
 
 def filter_and_clean_relations(relationships: list) -> list:

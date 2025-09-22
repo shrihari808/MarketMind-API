@@ -80,7 +80,7 @@ def classify_relations(entity_pairs: list, texts: list[str]) -> list:
         # Use a batch_size for more efficient processing and add a tqdm progress bar
         batch_size = 32 
         for result, (entity1, entity2) in tqdm(zip(relation_classifier(inputs_to_process, truncation=True, max_length=max_model_len, batch_size=batch_size), original_pairs), total=len(inputs_to_process), desc="Classifying Relations"):
-            if result['score'] > 0.9 and result['label'] != 'no_relation':
+            if result['score'] > 0.6 and result['label'] != 'no_relation':
                 relations.append({
                     "entity1": entity1['word'],
                     "relationship": result['label'],
