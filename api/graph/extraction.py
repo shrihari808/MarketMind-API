@@ -1,65 +1,78 @@
 # api/graph/extraction.py
 from transformers import pipeline
-from config import GPT4o_mini as llm
-from langchain_core.prompts import ChatPromptTemplate
-from langchain_core.output_parsers import JsonOutputParser
+from itertools import combinations
+import json
 
-def extract_entities_and_relations(texts: list[str]) -> tuple[list, list]:
+def extract_entities(texts: list[str]) -> list:
     """
-    Extracts entities and relations from a list of texts.
+    Extracts named entities from a list of texts using a fine-tuned BERT model.
     """
-    # 1. Entity Extraction with RoBERTa NER
-    ner_pipeline = pipeline("ner", model="Jean-Baptiste/roberta-large-ner-english")
-    entities = []
+    ner_pipeline = pipeline("ner", model="dslim/bert-base-NER", grouped_entities=True)
+    all_entities = []
     for text in texts:
-        entities.extend(ner_pipeline(text))
+        # The grouped_entities=True option aggregates word pieces (like ##corp) into a single entity.
+        entities = ner_pipeline(text)
+        # We add the source text to each entity for context in the next step.
+        for entity in entities:
+            entity['source_text'] = text
+        all_entities.extend(entities)
+    return all_entities
 
-    # 2. Relation Extraction with a Fine-tuned BERT
-    # NOTE: A pre-trained relation extraction model might not be readily available for your specific use case.
-    # You might need to fine-tune one yourself. For this example, we will simulate this step.
-    # In a real-world scenario, you would use a model from the Hugging Face Hub.
-    relations = [] # This would be populated by your relation extraction model.
-
-    return entities, relations
-
-def extract_complex_events(texts: list[str]) -> list[dict]:
+def classify_relations(entity_pairs: list, texts: list[str]) -> list:
     """
-    Uses an LLM to extract complex supply chain events from texts.
+    Classifies the relationship between pairs of entities using a finance-tuned model.
     """
-    complex_events = []
-    parser = JsonOutputParser()
-    prompt = ChatPromptTemplate.from_template(
-        """
-        Analyze the following text and identify any complex supply chain events or relationships.
-        The output should be a JSON object with "event_type" and "involved_companies".
-
-        Text: {text}
-
-        {format_instructions}
-        """,
-        partial_variables={"format_instructions": parser.get_format_instructions()},
-    )
-    chain = prompt | llm | parser
-
-    for text in texts:
-        try:
-            response = chain.invoke({"text": text})
-            complex_events.append(response)
-        except Exception as e:
-            print(f"LLM extraction failed: {e}")
+    relation_classifier = pipeline("text-classification", model="yseop/distilbert-base-financial-relation-extraction", return_all_scores=False)
+    
+    relations = []
+    for entity1, entity2 in entity_pairs:
+        # The model expects input in the format: "entity1 [SEP] entity2 [SEP] text"
+        # We find the common source text for the entity pair.
+        source_text = ""
+        if 'source_text' in entity1 and 'source_text' in entity2 and entity1['source_text'] == entity2['source_text']:
+            source_text = entity1['source_text']
+        else:
+            # Fallback: find a text that contains both entities if they came from different chunks
+            for text in texts:
+                if entity1['word'] in text and entity2['word'] in text:
+                    source_text = text
+                    break
+        
+        if not source_text:
             continue
 
-    return complex_events
+        input_text = f"{entity1['word']} [SEP] {entity2['word']} [SEP] {source_text}"
+        
+        # Get the relationship with the highest score
+        result = relation_classifier(input_text)
+        
+        # The model returns a list, we take the first element.
+        if result:
+            top_result = result[0]
+            # We only consider relationships with a confidence score above a certain threshold
+            if top_result['score'] > 0.8 and top_result['label'] != 'no_relation':
+                relations.append({
+                    "entity1": entity1['word'],
+                    "relationship": top_result['label'],
+                    "entity2": entity2['word'],
+                    "score": top_result['score']
+                })
+                
+    return relations
 
 if __name__ == '__main__':
     # Example usage
     sample_texts = [
         "Reliance Industries has partnered with TechCorp to streamline their logistics.",
-        "A fire at a key supplier's factory has disrupted the supply chain for Auto Inc."
+        "Microsoft reports $56B revenue in Q2."
     ]
-    entities, relations = extract_entities_and_relations(sample_texts)
-    print("Entities:", entities)
-    print("Relations:", relations)
+    
+    print("--- Step 1: Extracting Entities ---")
+    entities = extract_entities(sample_texts)
+    print("Entities:", json.dumps(entities, indent=2))
 
-    complex_events = extract_complex_events(sample_texts)
-    print("Complex Events:", complex_events)
+    print("\n--- Step 2: Classifying Relationships ---")
+    # Create pairs of entities found in the text
+    entity_pairs = list(combinations(entities, 2))
+    relations = classify_relations(entity_pairs, sample_texts)
+    print("Relations:", json.dumps(relations, indent=2))

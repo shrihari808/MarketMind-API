@@ -14,11 +14,36 @@ load_dotenv()
 def generate_search_queries(company_name: str) -> list[str]:
     """Generates a list of targeted search queries for a given company."""
     return [
-        f"{company_name} suppliers",
-        f"companies working with {company_name}",
-        f"{company_name} logistics partners",
-        f"{company_name} raw material providers",
-        f"{company_name} annual report partnerships",
+        # Company–Event Relations
+        f'"{company_name}" acquisition OR merger',
+        f'"{company_name}" partnership OR collaboration',
+        f'"{company_name}" lawsuit OR legal action',
+        f'"{company_name}" management changes OR CEO appointment',
+
+        # Company–Financial Relations
+        f'"{company_name}" earnings OR revenue OR profit',
+        f'"{company_name}" stock movement OR shares rose OR shares fell',
+        f'"{company_name}" analyst forecast OR price target',
+        f'"{company_name}" dividend announcement',
+
+        # Company–Market/Industry Relations
+        f'"{company_name}" competitor OR challenges',
+        f'"{company_name}" market trend OR sector news',
+        f'"{company_name}" regulation OR policy impact',
+
+        # Company–Geopolitical/External Factors
+        f'"{company_name}" expands operations in OR exits from',
+        f'"{company_name}" sanctions OR trade restrictions',
+        f'"{company_name}" supply chain disruption OR natural disaster impact',
+
+        # Company–Sentiment / Opinion Relations
+        f'"{company_name}" analyst rating OR analyst opinion',
+        f'"{company_name}" media sentiment OR public reaction',
+
+        # Supply Chain / Operational Relations
+        f'"{company_name}" supplier OR raw material provider',
+        f'"{company_name}" distributor OR retail partner',
+        f'"{company_name}" production halt OR factory closure',
     ]
 
 async def get_relevant_text(company_name: str) -> list[str]:

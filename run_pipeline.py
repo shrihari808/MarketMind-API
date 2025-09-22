@@ -2,17 +2,28 @@
 
 import asyncio
 import os
+import json
+from itertools import combinations
 from dotenv import load_dotenv
 from api.graph.data_ingestion import get_relevant_text
-from api.graph.extraction import extract_entities_and_relations, extract_complex_events
-from api.graph.graph_db import KnowledgeGraph
+from api.graph.extraction import extract_entities, classify_relations
 
 load_dotenv()
+
+def normalize_entity_name(name):
+    """
+    A simple function to normalize entity names for resolution.
+    """
+    name = name.lower()
+    suffixes = ['inc.', 'ltd.', 'corp.', 'corporation', 'limited', 'llc', 'pvt ltd']
+    for suffix in suffixes:
+        name = name.replace(suffix, '')
+    return name.strip()
 
 # --- Main Orchestration Function ---
 async def run_full_pipeline(company_name: str):
     """
-    Orchestrates the entire data ingestion and graph population pipeline.
+    Orchestrates the entire data ingestion and graph population pipeline using a two-step extraction process.
     """
     print(f"--- Starting Knowledge Graph Pipeline for: {company_name} ---")
 
@@ -28,84 +39,86 @@ async def run_full_pipeline(company_name: str):
         print(f"Error during data ingestion: {e}")
         return
 
-    # --- Step 2: Entity and Relation Extraction ---
+    # --- Step 2: Two-Step Entity and Relation Extraction ---
     print("\n[Step 2/3] Extracting entities and relationships from text...")
     try:
-        # --- SIMULATED DATA FOR TESTING ---
-        entities = [
-            {'entity_group': 'ORG', 'word': 'Reliance Industries'},
-            {'entity_group': 'ORG', 'word': 'TechCorp Logistics'},
-            {'entity_group': 'ORG', 'word': 'Global Petrochem'}
-        ]
-        simple_relations = [
-            {'from': 'TechCorp Logistics', 'to': 'Reliance Industries', 'type': 'PARTNERS_WITH'},
-            {'from': 'Global Petrochem', 'to': 'Reliance Industries', 'type': 'SUPPLIES'}
-        ]
+        # Step 2a: Extract all entities from the texts
+        entities = extract_entities(relevant_texts)
+        print(f"Extracted {len(entities)} initial entities.")
+
+        # Step 2b: Create pairs of entities (focusing on ORG) and classify their relationships
+        # We create pairs where at least one entity is an organization to focus on corporate relationships.
+        org_entities = [e for e in entities if e['entity_group'] == 'ORG']
+        other_entities = [e for e in entities if e['entity_group'] != 'ORG']
         
-        print(f"Extracted {len(entities)} entities and {len(simple_relations)} relationships.")
+        entity_pairs = []
+        # Pairs of two organizations
+        entity_pairs.extend(list(combinations(org_entities, 2)))
+        # Pairs of an organization and another entity type
+        for org in org_entities:
+            for other in other_entities:
+                entity_pairs.append((org, other))
+
+        print(f"Generated {len(entity_pairs)} entity pairs for relation classification.")
+        relationships = classify_relations(entity_pairs, relevant_texts)
+        
+        print(f"Extracted {len(relationships)} high-confidence relationships.")
 
     except Exception as e:
         print(f"Error during data extraction: {e}")
         return
 
-    # --- Step 3: Populate the Knowledge Graph ---
-    print("\n[Step 3/3] Populating the Neo4j database...")
-    NEO4J_URI = os.getenv("NEO4J_URI")
-    NEO4J_USER = os.getenv("NEO4J_USER")
-    NEO4J_PASSWORD = os.getenv("NEO4J_PASSWORD")
+    # --- Step 3: Entity Resolution and Graph-like JSON Structuring ---
+    print("\n[Step 3/3] Resolving entities and structuring data as a graph...")
+    
+    nodes = {}
+    edges = []
 
-    if not all([NEO4J_URI, NEO4J_USER, NEO4J_PASSWORD]):
-        print("Neo4j credentials not found in .env file. Exiting.")
-        return
-
-    kg = KnowledgeGraph(NEO4J_URI, NEO4J_USER, NEO4J_PASSWORD)
-    try:
-        # Add entities (nodes)
-        for entity in entities:
-            if 'word' in entity and isinstance(entity['word'], str):
-                entity_name = entity['word'].strip()
-                
-                # --- THIS IS THE FIX ---
-                # Use a consistent "Company" label if the entity is an ORG
-                entity_type = "Company" if entity.get('entity_group') == 'ORG' else entity.get('entity_group', 'Unknown')
-                
-                print(f"  - Adding Entity: {entity_name} (Type: {entity_type})")
-                kg.add_entity(entity_name, entity_type)
-
-        # Add relationships (edges)
-        for relation in simple_relations:
-            print(f"  - Adding Relation: {relation['from']} -> {relation['type']} -> {relation['to']}")
-            kg.add_relation(relation['from'], relation['to'], relation['type'])
+    # Process entities to create nodes
+    for entity in entities:
+        normalized_name = normalize_entity_name(entity['word'])
+        if normalized_name not in nodes:
+            nodes[normalized_name] = {"id": normalized_name, "type": entity['entity_group'], "mentions": 1}
+        else:
+            nodes[normalized_name]["mentions"] += 1
+            
+    # Process relationships to create edges
+    for rel in relationships:
+        source = normalize_entity_name(rel["entity1"])
+        target = normalize_entity_name(rel["entity2"])
         
-        print("Successfully populated the graph.")
-    except Exception as e:
-        print(f"Error during graph population: {e}")
-    finally:
-        kg.close()
+        if source not in nodes:
+            nodes[source] = {"id": source, "type": "Unknown", "mentions": 1}
+        if target not in nodes:
+            nodes[target] = {"id": target, "type": "Unknown", "mentions": 1}
+            
+        edges.append({
+            "source": source,
+            "target": target,
+            "label": rel["relationship"],
+            "score": rel["score"]
+        })
 
+    output_data = {
+        "company": company_name,
+        "graph": {
+            "nodes": list(nodes.values()),
+            "edges": edges
+        }
+    }
+    
+    # We will return the JSON data to be used by the API endpoint
     print("\n--- Pipeline Finished ---")
+    return output_data
 
 # --- Run the Pipeline ---
 if __name__ == "__main__":
-    # The company you want to build the graph for
     target_company = "Tata steel"
     
-    # --- THIS IS THE FIX for the "Event loop is closed" error on Windows ---
-    # Clear the database before running to ensure a fresh start
-    print("--- Clearing existing data from the graph ---")
-    try:
-        # Use the correct environment variables for the KG connection
-        kg = KnowledgeGraph(os.getenv("NEO4J_URI"), os.getenv("NEO4J_USER"), os.getenv("NEO4J_PASSWORD"))
-        with kg.driver.session() as session:
-            session.run("MATCH (n) DETACH DELETE n")
-        print("Database cleared.")
-        kg.close()
-    except Exception as e:
-        print(f"Could not clear database: {e}")
-        
-    # Set the policy for Windows and run the event loop manually
-    if os.name == 'nt': # Check if the OS is Windows
+    if os.name == 'nt':
         asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
         
-    # Run the main async function
-    asyncio.run(run_full_pipeline(target_company))
+    # In a real application, you would call this from your API endpoint.
+    # For testing, we can run it here and print the result.
+    result = asyncio.run(run_full_pipeline(target_company))
+    print(json.dumps(result, indent=4))

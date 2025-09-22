@@ -1,5 +1,6 @@
 import asyncio
 import aiohttp
+import ssl
 import trafilatura
 from concurrent.futures import ThreadPoolExecutor
 
@@ -15,7 +16,8 @@ async def fetch_and_extract(session, article, executor):
 
     print(f"Scraping URL: {url}")
     try:
-        async with session.get(url, timeout=10) as response:
+        # The ssl=False parameter bypasses SSL certificate verification.
+        async with session.get(url, timeout=10, ssl=False) as response:
             if response.status == 200:
                 html = await response.text()
                 # Run trafilatura in the executor to avoid blocking the event loop
@@ -37,11 +39,15 @@ async def fetch_and_extract(session, article, executor):
 async def scrape_urls(articles):
     """
     Scrapes a list of URLs from article objects concurrently, managing the
-    ThreadPoolExecutor's lifecycle properly.
+    ThreadPoolExecutor's lifecycle properly and using a common browser User-Agent.
     """
-    # Create and manage the executor within the async function
+    # Adding a realistic User-Agent header to mimic a web browser
+    headers = {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+    }
+    
     with ThreadPoolExecutor() as executor:
-        async with aiohttp.ClientSession() as session:
+        async with aiohttp.ClientSession(headers=headers) as session:
             tasks = [fetch_and_extract(session, article, executor) for article in articles]
             results = await asyncio.gather(*tasks)
             return results
