@@ -25,36 +25,43 @@ async def extract_graph_from_texts_gemini(texts: list[str]) -> dict:
     parser = JsonOutputParser()
 
     prompt = ChatPromptTemplate.from_messages([
-        ("system", "You are an expert at extracting financial entities and their relationships from text. Your goal is to identify organizations, people, and other entities and describe how they are connected."),
-        ("human", 
-            """
-            From the following text, extract all financial entities and their relationships.
-            Format the output as a single JSON object with two keys: "entities" and "relations".
-            - "entities" should be a list of objects, each with "name", "type" (e.g., ORG, PERSON, GPE, PRODUCT, EVENT, etc.), and the "source_text".
-            - "relations" should be a list of objects, each with "entity1", "relationship", and "entity2".
+    ("system", "You are an expert at extracting a knowledge graph from financial texts. Your task is to identify entities and the specific, meaningful relationships between them."),
+    ("human",
+        """
+        From the following text, extract all financial entities and their relationships.
+        Format the output as a single JSON object with "entities" and "relations".
 
-            Example:
-            Text: "Apple announced a new partnership with Goldman Sachs to launch a credit card. The deal, valued at $100 million, will see the two companies collaborate on a new financial product."
-            Output:
-            {{
-                "entities": [
-                    {{"name": "Apple", "type": "ORG", "source_text": "Apple announced a new partnership with Goldman Sachs to launch a credit card."}},
-                    {{"name": "Goldman Sachs", "type": "ORG", "source_text": "Apple announced a new partnership with Goldman Sachs to launch a credit card."}},
-                    {{"name": "credit card", "type": "PRODUCT", "source_text": "Apple announced a new partnership with Goldman Sachs to launch a credit card."}}
-                ],
-                "relations": [
-                    {{"entity1": "Apple", "relationship": "partnership", "entity2": "Goldman Sachs"}},
-                    {{"entity1": "Apple", "relationship": "launches", "entity2": "credit card"}},
-                    {{"entity1": "Goldman Sachs", "relationship": "launches", "entity2": "credit card"}}
-                ]
-            }}
+        - "entities" should be a list of objects, each with "name" and "type" (e.g., ORG, PERSON, PRODUCT, MONEY, LAW).
+        - "relations" should be a list of objects, each with "entity1", "relationship", and "entity2".
 
-            Text to process:
-            {text}
+        **CRITICAL INSTRUCTIONS FOR RELATIONSHIPS:**
+        1.  The "relationship" MUST be a single, descriptive word in `ALL_CAPS_SNAKE_CASE`.
+        2.  Examples of good relationships: `ACQUIRED`, `PARTNERED_WITH`, `LAUNCHED`, `INVESTED_IN`, `HAS_CEO`.
+        3.  DO NOT use generic verbs like "is", "has", or "are".
 
-            {format_instructions}
-            """
-        )
+        **Example:**
+        Text: "Apple announced a new partnership with Goldman Sachs to launch a credit card. The deal is valued at $100 million."
+        Output:
+        {{
+            "entities": [
+                {{"name": "Apple", "type": "ORG"}},
+                {{"name": "Goldman Sachs", "type": "ORG"}},
+                {{"name": "credit card", "type": "PRODUCT"}},
+                {{"name": "$100 million", "type": "MONEY"}}
+            ],
+            "relations": [
+                {{"entity1": "Apple", "relationship": "PARTNERED_WITH", "entity2": "Goldman Sachs"}},
+                {{"entity1": "Apple", "relationship": "LAUNCHED", "entity2": "credit card"}},
+                {{"entity1": "partnership", "relationship": "VALUED_AT", "entity2": "$100 million"}}
+            ]
+        }}
+
+        Text to process:
+        {text}
+
+        {format_instructions}
+        """
+    )
     ])
 
     chain = prompt | llm | parser

@@ -30,7 +30,7 @@ def filter_and_clean_relations(relationships: list) -> list:
     """
     Applies a final filter to remove any remaining nonsensical relationships and duplicates.
     """
-    invalid_labels = {'has', 'is', 'was', 'were', 'are', 'is in', 'x'}
+    invalid_labels = {'x'}
     
     cleaned_relations = []
     for rel in relationships:
@@ -85,7 +85,7 @@ async def run_full_pipeline(company_name: str):
     for entity in meaningful_entities:
         normalized_name = normalize_entity_name(entity['name'])
         if normalized_name not in nodes:
-            nodes[normalized_name] = {"id": normalized_name, "type": entity['type'], "mentions": 1}
+            nodes[normalized_name] = {"id": normalized_name, "type": entity.get('type', 'Unknown'), "mentions": 1}
         else:
             nodes[normalized_name]["mentions"] += 1
     
