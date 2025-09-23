@@ -9,7 +9,7 @@ from token_logger import log_token_usage
 from langchain_community.callbacks import get_openai_callback
 
 # Initialize the Gemini 2.0 Flash model
-llm = ChatGoogleGenerativeAI(model="gemini-2.0-flash", temperature=0.1)
+llm = ChatGoogleGenerativeAI(model="gemini-2.5-flash", temperature=0.1)
 
 async def extract_graph_from_texts_gemini(texts: list[str]) -> dict:
     """
@@ -20,55 +20,83 @@ async def extract_graph_from_texts_gemini(texts: list[str]) -> dict:
         return {"entities": [], "relations": []}
 
     # Create a batch of texts to process to minimize API calls
-    batched_text = "\n\n---\n\n".join(texts)
+    batched_text = "\n\n---\n\n".join(texts[:5])  # Limit to first 5 texts to avoid token limits
 
     parser = JsonOutputParser()
 
     prompt = ChatPromptTemplate.from_messages([
-    ("system", "You are an expert at extracting a knowledge graph from financial texts. Your task is to identify entities and the specific, meaningful relationships between them."),
-    ("human",
-        """
-        From the following text, extract all financial entities and their relationships.
-        Format the output as a single JSON object with "entities" and "relations".
+        ("system", """You are an expert at extracting knowledge graphs from financial texts. 
+        Your task is to identify entities and meaningful relationships between them.
+        Always return valid JSON with both "entities" and "relations" arrays, even if they're empty."""),
+        ("human",
+            """
+            From the following financial text, extract entities and their relationships.
+            Return a JSON object with "entities" and "relations" arrays.
 
-        - "entities" should be a list of objects, each with "name" and "type" (e.g., ORG, PERSON, PRODUCT, MONEY, LAW).
-        - "relations" should be a list of objects, each with "entity1", "relationship", and "entity2".
+            **ENTITY RULES:**
+            - Extract companies, people, products, locations, money amounts, dates, laws/regulations
+            - Each entity needs "name" and "type" fields
+            - Types: ORG, PERSON, PRODUCT, MONEY, DATE, LAW, GPE (location), PERCENT
 
-        **CRITICAL INSTRUCTIONS FOR RELATIONSHIPS:**
-        1.  The "relationship" MUST be a single, descriptive word in `ALL_CAPS_SNAKE_CASE`.
-        2.  Examples of good relationships: `ACQUIRED`, `PARTNERED_WITH`, `LAUNCHED`, `INVESTED_IN`, `HAS_CEO`.
-        3.  DO NOT use generic verbs like "is", "has", or "are".
+            **RELATIONSHIP RULES:**
+            - Each relationship needs "entity1", "relationship", and "entity2"
+            - Relationships should be specific action verbs in CAPS: ACQUIRED, PARTNERED_WITH, LAUNCHED, INVESTED_IN, APPOINTED_AS, SUPPLIES, COMPETES_WITH
+            - Don't use generic verbs like "has", "is", "are"
+            - Only include relationships explicitly mentioned in the text
 
-        **Example:**
-        Text: "Apple announced a new partnership with Goldman Sachs to launch a credit card. The deal is valued at $100 million."
-        Output:
-        {{
-            "entities": [
-                {{"name": "Apple", "type": "ORG"}},
-                {{"name": "Goldman Sachs", "type": "ORG"}},
-                {{"name": "credit card", "type": "PRODUCT"}},
-                {{"name": "$100 million", "type": "MONEY"}}
-            ],
-            "relations": [
-                {{"entity1": "Apple", "relationship": "PARTNERED_WITH", "entity2": "Goldman Sachs"}},
-                {{"entity1": "Apple", "relationship": "LAUNCHED", "entity2": "credit card"}},
-                {{"entity1": "partnership", "relationship": "VALUED_AT", "entity2": "$100 million"}}
-            ]
-        }}
+            **EXAMPLE:**
+            Text: "Apple acquired StartupX for $100 million. Tim Cook announced the deal."
+            
+            Output:
+            {{
+                "entities": [
+                    {{"name": "Apple", "type": "ORG"}},
+                    {{"name": "StartupX", "type": "ORG"}},
+                    {{"name": "$100 million", "type": "MONEY"}},
+                    {{"name": "Tim Cook", "type": "PERSON"}}
+                ],
+                "relations": [
+                    {{"entity1": "Apple", "relationship": "ACQUIRED", "entity2": "StartupX"}},
+                    {{"entity1": "Apple", "relationship": "PAID", "entity2": "$100 million"}},
+                    {{"entity1": "Tim Cook", "relationship": "ANNOUNCED", "entity2": "deal"}}
+                ]
+            }}
 
-        Text to process:
-        {text}
+            Now process this text:
+            {text}
 
-        {format_instructions}
-        """
-    )
+            Return only valid JSON:
+            """
+        )
     ])
 
     chain = prompt | llm | parser
 
     try:
         with get_openai_callback() as cb:
-            response = await chain.ainvoke({"text": batched_text, "format_instructions": parser.get_format_instructions()})
+            response = await chain.ainvoke({"text": batched_text})
+            
+            # Validate the response structure
+            if not isinstance(response, dict):
+                print(f"Invalid response type: {type(response)}")
+                return {"entities": [], "relations": []}
+                
+            if "entities" not in response:
+                response["entities"] = []
+            if "relations" not in response:
+                response["relations"] = []
+                
+            print(f"Gemini extracted {len(response.get('entities', []))} entities and {len(response.get('relations', []))} relations")
+            
+            # Debug: Print sample relationships
+            relations = response.get('relations', [])
+            if relations:
+                print("Sample relationships from Gemini:")
+                for i, rel in enumerate(relations[:3]):
+                    print(f"  {i+1}: {rel}")
+            else:
+                print("No relationships extracted by Gemini")
+                
             log_token_usage(
                 model_name="gemini-2.0-flash",
                 input_tokens=cb.prompt_tokens,
