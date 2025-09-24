@@ -59,21 +59,21 @@ Event Categories (map each event to exactly one type):
 Output Format:
 Return valid JSON. If multiple events, return an array of objects.
 
-{
+{{
   "event_type": "One of the categories above",
   "event_name": "Concise 2–6 word title",
-  "entities": {
+  "entities": {{
     "companies": ["list of companies involved"],
     "people": ["executives, politicians, individuals"],
     "organizations": ["regulators, ministries, global orgs"]
-  },
+  }},
   "date": "Explicit date if present, else null",
   "location": "Country/region/state if available, else null",
   "amount": "Numeric or currency values (funding, deal size, GDP %, fine, etc.), else null",
   "sector": "Industry/sector (IT, banking, energy, FMCG, auto, agri, etc.)",
   "summary": "1–3 sentence plain-English explanation of the event",
   "confidence_score": "0–1 probability estimate of extraction accuracy"
-}
+}}
 
 ---
 Rules:
@@ -87,21 +87,21 @@ Example Input:
 "RBI hikes repo rate by 25 bps to 6.75 percent citing inflationary pressures."
 
 Example Output:
-{
+{{
   "event_type": "RBI Policy",
   "event_name": "RBI Repo Rate Hike",
-  "entities": {
+  "entities": {{
     "companies": [],
     "people": [],
     "organizations": ["RBI"]
-  },
+  }},
   "date": null,
   "location": "India",
   "amount": "25 bps; 6.75%",
   "sector": "Macroeconomy / Banking",
   "summary": "The Reserve Bank of India increased the repo rate by 25 basis points to 6.75%, citing rising inflation pressures.",
   "confidence_score": 0.96
-}
+}}
 """
 
     prompt = ChatPromptTemplate.from_messages([
@@ -113,11 +113,18 @@ Example Output:
 
     try:
         response = await chain.ainvoke({"text": text})
-        return response.get("events", [])
+        # Ensure the response is a dictionary and contains the 'events' key
+        if isinstance(response, dict) and 'events' in response:
+            return response.get("events", [])
+        # If the response is a list (as it might be if the LLM returns a list of events directly)
+        elif isinstance(response, list):
+            return response
+        else:
+            return []
     except Exception as e:
         print(f"Error extracting events: {e}")
         return []
-
+    
 def generate_brave_query(event: dict) -> str:
     """
     Generates a targeted Brave search query from an event object.

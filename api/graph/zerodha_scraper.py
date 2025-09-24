@@ -5,40 +5,48 @@ from bs4 import BeautifulSoup
 
 async def scrape_zerodha_pulse():
     """
-    Fetches the latest news articles directly from the Zerodha Pulse WordPress API.
-    This is the most reliable method as it avoids HTML scraping and browser automation.
+    Fetches the latest news articles by scraping the Zerodha Pulse HTML page.
+    This method is updated to handle HTML parsing instead of expecting a JSON API response.
     """
     articles = []
-    # This is the official API endpoint the website uses to load its articles.
-    api_url = "https://pulse.zerodha.com/"
+    # The target URL is the main page, which renders the news articles.
+    page_url = "https://pulse.zerodha.com/"
     headers = {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
     }
 
-    print("\n--- [DEBUG] Starting Direct API Scraper ---")
-    print(f"[DEBUG] Target API URL: {api_url}")
+    print("\n--- [DEBUG] Starting HTML Scraper for Zerodha Pulse ---")
+    print(f"[DEBUG] Target Page URL: {page_url}")
 
     try:
         async with aiohttp.ClientSession(headers=headers) as session:
-            async with session.get(api_url, timeout=15) as response:
+            async with session.get(page_url, timeout=15) as response:
                 response.raise_for_status()
-                # The response is in JSON format, so we parse it directly
-                posts = await response.json()
-                print(f"[DEBUG] Successfully fetched {len(posts)} articles from the API.")
+                # The response is HTML, so we read the text content.
+                html_content = await response.text()
+                
+                # Use BeautifulSoup to parse the HTML.
+                soup = BeautifulSoup(html_content, "html.parser")
+                
+                # Find the main container for the news articles.
+                news_list = soup.find('ul', id='news')
+                if not news_list:
+                    print("[DEBUG] Could not find the news list container ('ul' with id='news').")
+                    return []
 
-                for post in posts:
-                    # Extract the headline from the 'title' object
-                    headline = post.get('title', {}).get('rendered', '')
+                # Find all individual news items.
+                news_items = news_list.find_all('li', class_='item')
+                print(f"[DEBUG] Found {len(news_items)} news items on the page.")
+
+                for item in news_items:
+                    title_element = item.find('h2', class_='title')
+                    desc_element = item.find('div', class_='desc')
                     
-                    # The summary is in the 'excerpt' object and contains HTML tags, 
-                    # so we use BeautifulSoup to clean them out.
-                    raw_summary = post.get('excerpt', {}).get('rendered', '')
-                    summary = BeautifulSoup(raw_summary, "html.parser").get_text(strip=True)
+                    if title_element and title_element.a:
+                        headline = title_element.a.get_text(strip=True)
+                        url = title_element.a['href']
+                        summary = desc_element.get_text(strip=True) if desc_element else ""
 
-                    # Extract the direct URL to the article
-                    url = post.get('link', '')
-
-                    if headline and url:
                         articles.append({
                             "headline": headline,
                             "summary": summary,
@@ -46,7 +54,7 @@ async def scrape_zerodha_pulse():
                         })
 
     except aiohttp.ClientError as e:
-        print(f"FATAL ERROR [aiohttp]: Network request to API failed. Details: {e}")
+        print(f"FATAL ERROR [aiohttp]: Network request to the page failed. Details: {e}")
     except Exception as e:
         print(f"FATAL ERROR [General]: An unexpected error occurred. Details: {e}")
 
