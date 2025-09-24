@@ -122,6 +122,6 @@ if __name__ == '__main__':
             print("-" * 40)
     
     if os.name == 'nt':
-        asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
+        asyncio.set_event_loop_policy(asyncio.WindowsProactorEventLoopPolicy())
         
     asyncio.run(main())

@@ -146,7 +146,7 @@ class BraveDashboard:
         """
         # --- ADD THIS SNIPPET ---
         if sys.platform == "win32":
-            asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
+            asyncio.set_event_loop_policy(asyncio.WindowsProactorEventLoopPolicy())
         # --- END OF SNIPPET ---
         if country_code == "IN":
             return await self._scrape_trending_stocks_in()

@@ -1,6 +1,4 @@
 from fastapi import APIRouter
-# --- Import all the individual router objects from your application ---
-# Imports from subdirectories of 'api'
 from . import chatbot
 from . import tracker
 from .market_content import chatwithfiles, youtube_sum
@@ -10,9 +8,10 @@ from .dashboard import dashboard
 from .dashboard.portfolio import portfolio_snapshot
 from .dashboard.stock import stock_snapshot
 from .dashboard import trending
-from .timeline import timeline # Import the new timeline router
+from .timeline import timeline
 from .doc_rag import doc_chat
 from .graph import main as graph_main
+from .graph import main as event_graph_main
 
 from streaming import streaming
 
@@ -36,6 +35,7 @@ api_router.include_router(portfolio_snapshot.router, tags=["Dashboard"])
 api_router.include_router(stock_snapshot.router, tags=["Dashboard"])
 api_router.include_router(trending.router, tags=["Dashboard"])
 api_router.include_router(tracker.router, tags=["Tracker"])
-api_router.include_router(timeline.router, tags=["Timeline"]) # Add the timeline router
+api_router.include_router(timeline.router, tags=["Timeline"])
 api_router.include_router(doc_chat.router, tags=["Document RAG"])
 api_router.include_router(graph_main.router, prefix="/graph", tags=["Knowledge Graph"])
+api_router.include_router(event_graph_main.router, prefix="/graph", tags=["Financial Event Graph"])

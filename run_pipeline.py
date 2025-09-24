@@ -180,7 +180,7 @@ async def run_full_pipeline(company_name: str):
 if __name__ == "__main__":
     target_company = "Reliance Industries"
     if os.name == 'nt':
-        asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
+        asyncio.set_event_loop_policy(asyncio.WindowsProactorEventLoopPolicy())
         
     result = asyncio.run(run_full_pipeline(target_company))
     

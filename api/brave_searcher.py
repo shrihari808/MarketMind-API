@@ -689,7 +689,7 @@ async def scrape_google_finance(ticker: str):
     print(f"Scraping Google Finance URL: {url}")
 
     if sys.platform == "win32":
-        asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
+        asyncio.set_event_loop_policy(asyncio.WindowsProactorEventLoopPolicy())
 
     # Map of human-readable names to their CSS selectors
     selector_map = {
