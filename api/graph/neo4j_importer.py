@@ -30,24 +30,45 @@ class KnowledgeGraphImporter:
         summary = event.get("summary")
         amount = event.get("amount")
         sector = event.get("sector")
-        confidence = event.get("confidence")
-        entities = event.get("entities", [])
+        confidence = event.get("confidence_score") # Corrected key
+        entities = event.get("entities", {})
 
         # 1. Create or merge the Event node
         event_query = """
         MERGE (e:Event {name: $event_name})
         ON CREATE SET e.type = $event_type, e.date = $event_date, e.summary = $summary, e.amount = $amount, e.sector = $sector, e.confidence = $confidence
+        ON MATCH SET e.type = $event_type, e.date = $event_date, e.summary = $summary, e.amount = $amount, e.sector = $sector, e.confidence = $confidence
         """
         tx.run(event_query, event_name=event_name, event_type=event_type, event_date=event_date, summary=summary, amount=amount, sector=sector, confidence=confidence)
 
-        # 2. Create or merge entity nodes and relationships
-        for entity_name in entities:
-            # For simplicity, we'll model all entities as 'Company' for now.
-            # A more advanced implementation would determine the entity type.
-            entity_query = """
-            MERGE (c:Company {name: $entity_name})
-            WITH c
-            MATCH (e:Event {name: $event_name})
-            MERGE (c)-[:INVOLVED_IN]->(e)
-            """
-            tx.run(entity_query, entity_name=entity_name, event_name=event_name)
+        # 2. Create or merge specific entity nodes and relationships
+        if isinstance(entities, dict):
+            # Loop through the list of companies
+            for company_name in entities.get("companies", []):
+                company_query = """
+                MERGE (c:Company {name: $company_name})
+                WITH c
+                MATCH (e:Event {name: $event_name})
+                MERGE (c)-[:INVOLVED_IN]->(e)
+                """
+                tx.run(company_query, company_name=company_name, event_name=event_name)
+
+            # Loop through the list of people
+            for person_name in entities.get("people", []):
+                person_query = """
+                MERGE (p:Person {name: $person_name})
+                WITH p
+                MATCH (e:Event {name: $event_name})
+                MERGE (p)-[:INVOLVED_IN]->(e)
+                """
+                tx.run(person_query, person_name=person_name, event_name=event_name)
+
+            # Loop through the list of organizations
+            for org_name in entities.get("organizations", []):
+                org_query = """
+                MERGE (o:Organization {name: $org_name})
+                WITH o
+                MATCH (e:Event {name: $event_name})
+                MERGE (o)-[:INVOLVED_IN]->(e)
+                """
+                tx.run(org_query, org_name=org_name, event_name=event_name)
