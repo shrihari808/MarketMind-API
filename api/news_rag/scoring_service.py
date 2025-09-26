@@ -27,6 +27,39 @@ from config import (
 # Set seed for langdetect to ensure consistent results
 DetectorFactory.seed = 0
 
+# Below function is for graph endpoint ONLY
+def calculate_impact_score(event: dict, source_credibility: float = 0.5) -> float:
+    """
+    Calculates an impact score for a given event based on keywords and source credibility.
+    
+    Args:
+        event (dict): The event object extracted from text.
+        source_credibility (float): A score from 0.0 to 1.0 representing the source's credibility.
+        
+    Returns:
+        float: The calculated impact score.
+    """
+    if not isinstance(event, dict):
+        return 0.0
+
+    text_to_analyze = f"{event.get('event_name', '')} {event.get('summary', '')}".lower()
+    
+    # Keyword-based scoring
+    keyword_score = 0
+    for keyword in IMPACT_KEYWORDS:
+        if keyword.lower() in text_to_analyze:
+            keyword_score += 1
+            
+    # Normalize keyword score (e.g., cap at 5 to prevent single articles from dominating)
+    normalized_keyword_score = min(keyword_score / 5.0, 1.0)
+    
+    # Combine scores with weights
+    # Example weighting: 70% for keywords, 30% for source credibility
+    impact_score = (normalized_keyword_score * 0.7) + (source_credibility * 0.3)
+    
+    return impact_score
+
+
 class NewsRagScoringService:
     """Advanced scoring service for news RAG with sentiment, time decay, and impact analysis."""
     

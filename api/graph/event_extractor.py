@@ -120,19 +120,38 @@ Example Output:
         elif isinstance(response, list):
             return response
         else:
+            # Handle cases where the LLM might return a single dictionary instead of a list
+            if isinstance(response, dict):
+                return [response]
             return []
     except Exception as e:
         print(f"Error extracting events: {e}")
         return []
-    
-def generate_brave_query(event: dict) -> str:
+
+def generate_brave_query(event: dict) -> list[str]:
     """
-    Generates a targeted Brave search query from an event object.
+    Generates a list of targeted Brave search queries from an event object,
+    including one for direct information and one for broader impact.
     """
     event_name = event.get("event_name", "")
-    entities = " ".join([f'"{entity}"' for entity in event.get("entities", [])])
+    entities = event.get("entities", {})
+    all_entities = []
+    
+    # Correctly extract entities from the dictionary structure
+    if isinstance(entities, dict):
+        all_entities.extend(entities.get("companies", []))
+        all_entities.extend(entities.get("people", []))
+        all_entities.extend(entities.get("organizations", []))
+
+    entities_str = " ".join([f'"{entity}"' for entity in all_entities])
     sector = event.get("sector", "")
 
-    query = f'"{event_name}" {entities} {sector} financial markets OR business OR news'
-    print(f"Generated Brave query: {query}")
-    return query
+    # Query 1: Direct information about the event
+    direct_query = f'"{event_name}" {entities_str} {sector} financial news OR business analysis OR official filing'
+    
+    # Query 2: Broader impact on other sectors and stocks
+    impact_query = f'impact of "{event_name}" on {sector} sector and other related stocks'
+
+    print(f"Generated Brave queries:\n1. {direct_query}\n2. {impact_query}")
+    return [direct_query, impact_query]
+

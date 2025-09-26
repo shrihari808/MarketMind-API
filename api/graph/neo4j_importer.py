@@ -22,6 +22,13 @@ class KnowledgeGraphImporter:
         with self.driver.session() as session:
             session.execute_write(self._upsert_event_transaction, event)
 
+    def get_impacted_sectors(self, event_name):
+        """
+        Finds all sectors impacted by a specific event.
+        """
+        with self.driver.session() as session:
+            return session.execute_read(self._get_impacted_sectors_transaction, event_name)
+
     @staticmethod
     def _upsert_event_transaction(tx, event):
         event_name = event.get("event_name")
@@ -38,10 +45,20 @@ class KnowledgeGraphImporter:
         MERGE (e:Event {name: $event_name})
         ON CREATE SET e.type = $event_type, e.date = $event_date, e.summary = $summary, e.amount = $amount, e.sector = $sector, e.confidence = $confidence
         ON MATCH SET e.type = $event_type, e.date = $event_date, e.summary = $summary, e.amount = $amount, e.sector = $sector, e.confidence = $confidence
+        RETURN e
         """
         tx.run(event_query, event_name=event_name, event_type=event_type, event_date=event_date, summary=summary, amount=amount, sector=sector, confidence=confidence)
 
-        # 2. Create or merge specific entity nodes and relationships
+        # 2. Create Sector node and relationship if a sector is specified
+        if sector:
+            sector_query = """
+            MATCH (e:Event {name: $event_name})
+            MERGE (s:Sector {name: $sector})
+            MERGE (e)-[:AFFECTS_SECTOR]->(s)
+            """
+            tx.run(sector_query, event_name=event_name, sector=sector)
+
+        # 3. Create or merge specific entity nodes and relationships
         if isinstance(entities, dict):
             # Loop through the list of companies
             for company_name in entities.get("companies", []):
@@ -72,3 +89,16 @@ class KnowledgeGraphImporter:
                 MERGE (o)-[:INVOLVED_IN]->(e)
                 """
                 tx.run(org_query, org_name=org_name, event_name=event_name)
+
+    @staticmethod
+    def _get_impacted_sectors_transaction(tx, event_name):
+        """
+        Cypher query to find sectors connected to an event.
+        """
+        query = """
+        MATCH (e:Event {name: $event_name})-[:AFFECTS_SECTOR]->(s:Sector)
+        RETURN s.name AS sector
+        """
+        result = tx.run(query, event_name=event_name)
+        return [record["sector"] for record in result]
+
