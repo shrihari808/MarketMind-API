@@ -134,4 +134,5 @@ def generate_brave_query(event: dict) -> str:
     sector = event.get("sector", "")
 
     query = f'"{event_name}" {entities} {sector} financial markets OR business OR news'
+    print(f"Generated Brave query: {query}")
     return query
