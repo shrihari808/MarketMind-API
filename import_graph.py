@@ -1,3 +1,4 @@
+# aigptssh/import_graph.py
 import json
 import os
 from neo4j import GraphDatabase
@@ -45,11 +46,11 @@ class KnowledgeGraphImporter:
     @staticmethod
     def _create_relationships(tx, edges):
         # --- THIS IS THE CORRECTED QUERY ---
-        # It now uses toLower() to match nodes regardless of case.
+        # It now uses the 'id' property for matching nodes.
         query = """
         UNWIND $edges AS edge
-        MATCH (source:Entity) WHERE toLower(source.id) = toLower(edge.source)
-        MATCH (target:Entity) WHERE toLower(target.id) = toLower(edge.target)
+        MATCH (source:Entity {id: edge.source})
+        MATCH (target:Entity {id: edge.target})
         CALL apoc.create.relationship(source, edge.label, {}, target) YIELD rel
         RETURN count(rel)
         """

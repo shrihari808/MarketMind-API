@@ -101,4 +101,3 @@ class KnowledgeGraphImporter:
         """
         result = tx.run(query, event_name=event_name)
         return [record["sector"] for record in result]
-

@@ -8,6 +8,7 @@ from api.brave_searcher import BraveNews
 from api.dashboard.web_scraper import scrape_urls
 from api.graph.neo4j_importer import KnowledgeGraphImporter, NEO4J_URI, NEO4J_USER, NEO4J_PASSWORD
 import aiohttp
+from run_pipeline import run_full_pipeline # Import the original pipeline
 
 async def run_financial_event_pipeline():
     """
@@ -15,66 +16,67 @@ async def run_financial_event_pipeline():
     from data ingestion to knowledge graph population, including event prioritization
     and data enhancement via secondary web searches.
     """
-    # --- Phase 1: Data Ingestion and Initial Processing ---
-    print("--- Phase 1: Data Ingestion and Initial Processing ---")
-    
-    # 1. Scrape Zerodha Pulse for initial articles
-    print("\n[Step 1.1] Scraping initial articles from Zerodha Pulse...")
-    initial_articles = await scrape_zerodha_pulse()
-    if not initial_articles:
-        print("No articles found from Zerodha Pulse. Exiting pipeline.")
-        return
-
-    print(f"Scraped {len(initial_articles)} initial articles.")
-
-    # 2. Extract all events from the initial articles
-    print("\n[Step 1.2] Extracting all potential events from scraped articles...")
-    combined_text = "\n\n---\n\n".join([f"{article['headline']}\n{article['summary']}" for article in initial_articles])
-    all_events = await extract_events(combined_text)
-
-    if not all_events:
-        print("No events could be extracted. Exiting pipeline.")
-        return
-    print(f"Extracted {len(all_events)} total potential events.")
-
-    # --- Phase 2: Event Prioritization and Enhancement ---
-    print("\n--- Phase 2: Event Prioritization and Enhancement ---")
-
-    # 1. Identify most important events by scoring them
-    print("\n[Step 2.1] Scoring and prioritizing events...")
-    for event in all_events:
-        event['impact_score'] = calculate_impact_score(event, source_credibility=0.8) # Zerodha Pulse is a credible source
-
-    # Sort events by impact score in descending order
-    prioritized_events = sorted(all_events, key=lambda x: x.get('impact_score', 0), reverse=True)
-    
-    # Select the top N events to enhance (e.g., top 5)
-    top_events = prioritized_events[:5]
-    print(f"Prioritized the top {len(top_events)} events for enhancement.")
-
-    # 2. Generate and execute Brave search queries for top events
-    print("\n[Step 2.2] Generating and executing Brave Search queries for top events...")
     brave_api_key = os.getenv("BRAVE_API_KEY")
     if not brave_api_key:
         print("Brave API key not found. Skipping enhancement.")
-        enhanced_events_data = top_events # Proceed with un-enhanced top events
-    else:
-        searcher = BraveNews(brave_api_key)
+        return
+
+    searcher = BraveNews(brave_api_key)
+
+    async with aiohttp.ClientSession(**searcher.session_config) as session:
+        # --- Phase 1: Data Ingestion and Initial Processing ---
+        print("--- Phase 1: Data Ingestion and Initial Processing ---")
+        
+        # 1. Scrape Zerodha Pulse for initial articles
+        print("\n[Step 1.1] Scraping initial articles from Zerodha Pulse...")
+        initial_articles = await scrape_zerodha_pulse()
+        if not initial_articles:
+            print("No articles found from Zerodha Pulse. Exiting pipeline.")
+            return
+
+        print(f"Scraped {len(initial_articles)} initial articles.")
+
+        # 2. Extract all events from the initial articles
+        print("\n[Step 1.2] Extracting all potential events from scraped articles...")
+        combined_text = "\n\n---\n\n".join([f"{article['headline']}\n{article['summary']}" for article in initial_articles])
+        all_events = await extract_events(combined_text)
+
+        if not all_events:
+            print("No events could be extracted. Exiting pipeline.")
+            return
+        print(f"Extracted {len(all_events)} total potential events.")
+
+        # --- Phase 2: Event Prioritization and Enhancement ---
+        print("\n--- Phase 2: Event Prioritization and Enhancement ---")
+
+        # 1. Identify most important events by scoring them
+        print("\n[Step 2.1] Scoring and prioritizing events...")
+        for event in all_events:
+            event['impact_score'] = calculate_impact_score(event, source_credibility=0.8) # Zerodha Pulse is a credible source
+
+        # Sort events by impact score in descending order
+        prioritized_events = sorted(all_events, key=lambda x: x.get('impact_score', 0), reverse=True)
+        
+        # Select the top N events to enhance (e.g., top 5)
+        top_events = prioritized_events[:5]
+        print(f"Prioritized the top {len(top_events)} events for enhancement.")
+
+        # 2. Generate and execute Brave search queries for top events
+        print("\n[Step 2.2] Generating and executing Brave Search queries for top events...")
         urls_to_scrape_for_enhancement = []
-        async with aiohttp.ClientSession(**searcher.session_config) as session:
-            for event in top_events:
-                # Generate multiple queries for broader context
-                queries = generate_brave_query(event)
-                event['enhancement_urls'] = []
-                for query in queries:
-                    # Search for a few highly relevant sources for each query type
-                    search_results = await searcher.search_and_scrape(session, query, max_pages=1, max_sources=2) # 2 sources per query
-                    if search_results:
-                        # Associate the found URLs with the event for later processing
-                        urls_for_query = [res['link'] for res in search_results if 'link' in res]
-                        event['enhancement_urls'].extend(urls_for_query)
-                
-                urls_to_scrape_for_enhancement.extend(event.get('enhancement_urls', []))
+        for event in top_events:
+            # Generate multiple queries for broader context
+            queries = generate_brave_query(event)
+            event['enhancement_urls'] = []
+            for query in queries:
+                # Search for a few highly relevant sources for each query type
+                search_results = await searcher.search_and_scrape(session, query, max_pages=1, max_sources=2) # 2 sources per query
+                if search_results:
+                    # Associate the found URLs with the event for later processing
+                    urls_for_query = [res['link'] for res in search_results if 'link' in res]
+                    event['enhancement_urls'].extend(urls_for_query)
+            
+            urls_to_scrape_for_enhancement.extend(event.get('enhancement_urls', []))
         
         print(f"Found {len(urls_to_scrape_for_enhancement)} URLs for deep data extraction across all queries.")
 
@@ -118,20 +120,70 @@ async def run_financial_event_pipeline():
 
             enhanced_events_data.append(event)
 
-    # 3. Upsert into Knowledge Graph
-    print("\n[Step 3.3] Upserting enhanced event data into Neo4j Knowledge Graph...")
-    if not all([NEO4J_URI, NEO4J_USER, NEO4J_PASSWORD]):
-        print("Neo4j credentials not configured. Skipping graph population.")
-        return
+        # 3. Upsert into Knowledge Graph
+        print("\n[Step 3.3] Upserting enhanced event data into Neo4j Knowledge Graph...")
+        if not all([NEO4J_URI, NEO4J_USER, NEO4J_PASSWORD]):
+            print("Neo4j credentials not configured. Skipping graph population.")
+        else:
+            importer = KnowledgeGraphImporter(NEO4J_URI, NEO4J_USER, NEO4J_PASSWORD)
+            # Upsert the top, enhanced events. You could also upsert the remaining prioritized_events.
+            for event in enhanced_events_data:
+                if isinstance(event, dict):
+                    importer.upsert_event(event)
+            
+            importer.close()
+            print(f"Upserted {len(enhanced_events_data)} enhanced events into Neo4j.")
 
-    importer = KnowledgeGraphImporter(NEO4J_URI, NEO4J_USER, NEO4J_PASSWORD)
-    # Upsert the top, enhanced events. You could also upsert the remaining prioritized_events.
-    for event in enhanced_events_data:
-        if isinstance(event, dict):
-            importer.upsert_event(event)
-    
-    importer.close()
-    print(f"Upserted {len(enhanced_events_data)} enhanced events into Neo4j.")
+        # --- Phase 4: Expanded Pipeline ---
+        print("\n--- Phase 4: Expanded Pipeline ---")
+        
+        # 1. Identify impacted sectors from the knowledge graph
+        print("\n[Step 4.1] Identifying impacted sectors from the knowledge graph...")
+        importer = KnowledgeGraphImporter(NEO4J_URI, NEO4J_USER, NEO4J_PASSWORD)
+        impacted_sectors = []
+        for event in top_events:
+            sectors = importer.get_impacted_sectors(event['event_name'])
+            impacted_sectors.extend(sectors)
+        
+        impacted_sectors = list(set(impacted_sectors))
+        print(f"Identified impacted sectors: {impacted_sectors}")
+        importer.close()
+        
+        # 2. Ingest more news about the impacted sectors
+        print("\n[Step 4.2] Ingesting more news about the impacted sectors...")
+        sector_urls_to_scrape = []
+        for sector in impacted_sectors:
+            query = f"{sector} sector news India"
+            search_results = await searcher.search_and_scrape(session, query, max_pages=1, max_sources=5)
+            if search_results:
+                sector_urls_to_scrape.extend([res['link'] for res in search_results if 'link' in res])
+
+        print(f"Found {len(sector_urls_to_scrape)} URLs for sector-specific news.")
+        
+        # 3. Conduct a broad search to find impacted stocks
+        print("\n[Step 4.3] Conducting a broad search to find impacted stocks...")
+        impacted_companies = []
+        for event in top_events:
+            for sector in impacted_sectors:
+                query = f"Stocks in {sector} sector impacted by {event['event_name']}"
+                search_results = await searcher.search_and_scrape(session, query, max_pages=1, max_sources=5)
+                if search_results:
+                    # Extract company names from search results (this could be improved with a more sophisticated NLP model)
+                    for result in search_results:
+                        # A simple heuristic to extract company names from titles
+                        # This can be improved
+                        if "Ltd" in result.get('title', '') or "Limited" in result.get('title', ''):
+                            company_name = result['title'].split("Ltd")[0].strip().split("Limited")[0].strip()
+                            impacted_companies.append(company_name)
+
+        impacted_companies = list(set(impacted_companies))
+        print(f"Identified impacted companies: {impacted_companies}")
+        
+        # 4. Run the general knowledge graph pipeline for each identified company
+        print("\n[Step 4.4] Running the general knowledge graph pipeline for each identified company...")
+        for company in impacted_companies:
+            await run_full_pipeline(company)
+
     print("\n--- Financial Event Pipeline Completed Successfully ---")
 
 
@@ -139,4 +191,3 @@ if __name__ == '__main__':
     if os.name == 'nt':
         asyncio.set_event_loop_policy(asyncio.WindowsProactorEventLoopPolicy())
     asyncio.run(run_financial_event_pipeline())
-

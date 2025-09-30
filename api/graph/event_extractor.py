@@ -147,11 +147,13 @@ def generate_brave_query(event: dict) -> list[str]:
     sector = event.get("sector", "")
 
     # Query 1: Direct information about the event
-    direct_query = f'"{event_name}" {entities_str} {sector} financial news OR business analysis OR official filing'
+    direct_query = f'"{event_name}" {entities_str} financial news'
     
     # Query 2: Broader impact on other sectors and stocks
-    impact_query = f'impact of "{event_name}" on {sector} sector and other related stocks'
+    impact_query = f'impact of "{event_name}" on {sector} sector'
+    
+    # Query 3: Analyst opinions
+    analysis_query = f'analyst opinion on "{event_name}"'
 
-    print(f"Generated Brave queries:\n1. {direct_query}\n2. {impact_query}")
-    return [direct_query, impact_query]
-
+    print(f"Generated Brave queries:\n1. {direct_query}\n2. {impact_query}\n3. {analysis_query}")
+    return [direct_query, impact_query, analysis_query]

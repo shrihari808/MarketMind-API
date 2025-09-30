@@ -1,10 +1,11 @@
-# run_pipeline.py
+# aigptssh/run_pipeline.py
 import asyncio
 import os
 import json
 from dotenv import load_dotenv
 from api.graph.data_ingestion import get_relevant_text
 from api.graph.extraction import extract_graph_from_texts_gemini # Updated import
+from fuzzywuzzy import process
 
 load_dotenv()
 
@@ -101,6 +102,32 @@ def filter_and_clean_relations(relationships: list) -> list:
     print(f"After deduplication: {len(unique_relations)} relationships.")
     return unique_relations
 
+def resolve_entities(entities: list, threshold=85) -> dict:
+    """
+    Resolves similar entities using fuzzy matching.
+    Returns a dictionary mapping original entity names to a canonical name.
+    """
+    if not entities:
+        return {}
+
+    entity_names = [entity['name'] for entity in entities]
+    resolved_entities = {}
+    
+    for name in entity_names:
+        if name in resolved_entities:
+            continue
+
+        # Find matches with a score above the threshold
+        matches = process.extract(name, entity_names, limit=10)
+        canonical_name = name
+        
+        for match, score in matches:
+            if score >= threshold:
+                if match not in resolved_entities:
+                    resolved_entities[match] = canonical_name
+    
+    return resolved_entities
+
 # --- Main Orchestration Function ---
 async def run_full_pipeline(company_name: str):
     print(f"--- Starting Knowledge Graph Pipeline for: {company_name} ---")
@@ -133,26 +160,51 @@ async def run_full_pipeline(company_name: str):
     
     meaningful_relationships = filter_and_clean_relations(relationships)
     print(f"Extracted {len(meaningful_relationships)} final relationships.")
+    
+    # --- Entity Resolution ---
+    resolved_entity_map = resolve_entities(meaningful_entities)
 
     # Step 3: Structuring
     print("\n[Step 3/3] Structuring data as a graph...")
     nodes = {}
-    for entity in meaningful_entities:
-        entity_name = str(entity['name'])
-        normalized_name = normalize_entity_name(entity_name)
+    
+    # First, add all unique entities from relationships to ensure they exist as nodes
+    all_entities_in_relations = set()
+    for rel in meaningful_relationships:
+        all_entities_in_relations.add(rel['entity1'])
+        all_entities_in_relations.add(rel['entity2'])
+        
+    for entity_name in all_entities_in_relations:
+        canonical_name = resolved_entity_map.get(entity_name, entity_name)
+        normalized_name = normalize_entity_name(canonical_name)
         if normalized_name and normalized_name not in nodes:
             nodes[normalized_name] = {
-                "id": entity_name,  # Keep original name for display
-                "type": entity.get('type', 'Unknown'), 
-                "mentions": 1
+                "id": canonical_name,
+                "type": "Unknown",  # Default type
+                "mentions": 0
             }
-        elif normalized_name in nodes:
+
+    for entity in meaningful_entities:
+        entity_name = str(entity['name'])
+        
+        # Use the resolved canonical name
+        canonical_name = resolved_entity_map.get(entity_name, entity_name)
+        
+        normalized_name = normalize_entity_name(canonical_name)
+        if normalized_name and normalized_name in nodes:
             nodes[normalized_name]["mentions"] += 1
-    
+            # Update type if it was 'Unknown'
+            if nodes[normalized_name]["type"] == 'Unknown':
+                nodes[normalized_name]["type"] = entity.get('type', 'Unknown')
+
     edges = []
     for rel in meaningful_relationships:
-        source_normalized = normalize_entity_name(rel["entity1"])
-        target_normalized = normalize_entity_name(rel["entity2"])
+        # Resolve entities in relationships
+        entity1_canonical = resolved_entity_map.get(rel["entity1"], rel["entity1"])
+        entity2_canonical = resolved_entity_map.get(rel["entity2"], rel["entity2"])
+
+        source_normalized = normalize_entity_name(entity1_canonical)
+        target_normalized = normalize_entity_name(entity2_canonical)
         
         # Only add edge if both entities exist in nodes
         if source_normalized in nodes and target_normalized in nodes:
