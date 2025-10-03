@@ -140,14 +140,15 @@ class BraveNews:
     async def _fetch_and_parse_url_async(self, session: aiohttp.ClientSession, url: str) -> tuple[str, str, str | None]:
         """
         Optimized fetch and parse with a domain blacklist and better error handling.
-        It now returns the URL, extracted text, and the Last-Modified header.
         """
         try:
-            parsed_url = urlparse(url)
-            if parsed_url.netloc.replace('www.', '') in BLACKLISTED_DOMAINS:
+            # More robust domain checking
+            domain = urlparse(url).netloc.replace('www.', '')
+            if domain in BLACKLISTED_DOMAINS:
                 print(f"DEBUG: Skipping blacklisted domain: {url}")
                 return url, "", None
-            async with session.get(url, timeout=aiohttp.ClientTimeout(total=3)) as response:
+
+            async with session.get(url, timeout=aiohttp.ClientTimeout(total=5)) as response: # Reduced timeout
                 if response.status != 200:
                     print(f"WARNING: HTTP {response.status} for URL: {url}")
                     return url, "", None

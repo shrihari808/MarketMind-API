@@ -9,9 +9,10 @@ async def fetch_and_extract(session, article, executor):
     Asynchronously fetches a URL from an article object and extracts the main content.
     The article's metadata is preserved.
     """
-    url = article.get("url")
+    # Use .get("url") and fall back to .get("link")
+    url = article.get("url") or article.get("link")
     if not url:
-        print("Skipping article with no URL.")
+        print("Skipping article with no URL or link.")
         return article  # Return original article if no URL
 
     print(f"Scraping URL: {url}")
@@ -69,7 +70,7 @@ async def scrape_urls(articles):
 if __name__ == '__main__':
     test_articles = [
         {
-            "url": "https://www.moneycontrol.com/news/business/markets/stock-market-live-sensex-nifty-50-share-price-gift-nifty-latest-updates-08-08-2024-12753231.html",
+            "link": "https://www.moneycontrol.com/news/business/markets/stock-market-live-sensex-nifty-50-share-price-gift-nifty-latest-updates-08-08-2024-12753231.html",
             "page_age": "2025-08-18T10:00:00Z"
         },
         {
@@ -82,6 +83,6 @@ if __name__ == '__main__':
     scraped_data = asyncio.run(scrape_urls(test_articles))
     
     for item in scraped_data:
-        print(f"\n--- URL: {item['url']} (Age: {item['page_age']}) ---")
+        print(f"\n--- URL: {item.get('url') or item.get('link')} (Age: {item.get('page_age')}) ---")
         # Print first 300 characters of the content
         print(item.get('content', '')[:300] + "...")
