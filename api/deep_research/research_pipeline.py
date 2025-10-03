@@ -8,6 +8,7 @@ from api.dashboard.web_scraper import scrape_urls
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain.prompts import ChatPromptTemplate
 from langchain_core.output_parsers import StrOutputParser
+from datetime import datetime
 
 # --- Import ReportLab ---
 from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer
@@ -56,9 +57,10 @@ class DeepResearchPipeline:
 
     async def generate_report_text(self, context: str) -> str:
         """Uses an LLM to generate a structured research report."""
+        today = datetime.now().strftime("%Y-%m-%d")
         template = """
         You are a professional financial research analyst. Based on the provided context, write a comprehensive, well-structured research report on the following topic: "{query}"
-
+        Todays date is {today}.
         The report should include:
         1.  **Executive Summary:** A brief overview of the key findings.
         2.  **Introduction:** Background on the topic.
@@ -72,7 +74,7 @@ class DeepResearchPipeline:
         prompt = ChatPromptTemplate.from_template(template)
         chain = prompt | llm | StrOutputParser()
 
-        response = await chain.ainvoke({"query": self.query, "context": context})
+        response = await chain.ainvoke({"query": self.query, "context": context, "today": today})
         return response
 
     def create_pdf_from_text(self, text: str) -> bytes:
