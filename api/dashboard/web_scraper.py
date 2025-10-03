@@ -19,7 +19,20 @@ async def fetch_and_extract(session, article, executor):
         # The ssl=False parameter bypasses SSL certificate verification.
         async with session.get(url, timeout=10, ssl=False) as response:
             if response.status == 200:
-                html = await response.text()
+                # Check content type to avoid processing binary files
+                content_type = response.headers.get('Content-Type', '').lower()
+                if 'text/html' not in content_type and 'application/xhtml+xml' not in content_type:
+                    print(f"Skipping non-HTML content at {url}")
+                    article["content"] = ""
+                    return article
+                
+                try:
+                    html = await response.text()
+                except UnicodeDecodeError:
+                    print(f"UnicodeDecodeError at {url}, attempting to read as bytes.")
+                    html_bytes = await response.read()
+                    html = html_bytes.decode('utf-8', errors='ignore')
+
                 # Run trafilatura in the executor to avoid blocking the event loop
                 loop = asyncio.get_running_loop()
                 extracted_text = await loop.run_in_executor(

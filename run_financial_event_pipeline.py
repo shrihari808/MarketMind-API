@@ -6,9 +6,60 @@ from api.graph.event_extractor import extract_events, generate_brave_query
 from api.news_rag.scoring_service import calculate_impact_score
 from api.brave_searcher import BraveNews
 from api.dashboard.web_scraper import scrape_urls
-from api.graph.neo4j_importer import KnowledgeGraphImporter, NEO4J_URI, NEO4J_USER, NEO4J_PASSWORD
-import aiohttp
+from api.graph.neo4j_importer import KnowledgeGraphImporter as EventKnowledgeGraphImporter, NEO4J_URI, NEO4J_USER, NEO4J_PASSWORD
 from run_pipeline import run_full_pipeline # Import the original pipeline
+from import_graph import KnowledgeGraphImporter
+import aiohttp
+import json
+import re
+from langchain_google_genai import ChatGoogleGenerativeAI
+from langchain_core.prompts import ChatPromptTemplate
+from langchain_core.output_parsers import JsonOutputParser
+
+# Initialize the Gemini Flash model for company extraction
+llm = ChatGoogleGenerativeAI(model="gemini-2.5-flash", temperature=0.1)
+
+async def get_impacted_companies_from_llm(search_results: list[dict]) -> list[str]:
+    """
+    Uses an LLM to extract impacted company names from a list of search result snippets.
+    """
+    if not search_results:
+        return []
+
+    # Combine titles and snippets into a single context string
+    context = "\n".join([f"Title: {result.get('title', '')}\nSnippet: {result.get('snippet', '')}" for result in search_results])
+    
+    parser = JsonOutputParser()
+    prompt = ChatPromptTemplate.from_template(
+        """
+        You are an expert financial analyst. From the following news snippets, identify up to 3 unique and relevant Indian companies that are mentioned as being impacted.
+        
+        **CRITICAL INSTRUCTIONS:**
+        - Only extract the names of the companies.
+        - Do not extract sectors, indices, or general market terms.
+        - Return a JSON object with a single key "companies" which is a list of the company names.
+        - If no specific companies are mentioned, return an empty list.
+
+        **Snippets:**
+        {context}
+
+        {format_instructions}
+        """,
+        partial_variables={"format_instructions": parser.get_format_instructions()},
+    )
+    
+    chain = prompt | llm | parser
+    
+    try:
+        response = await chain.ainvoke({"context": context})
+        if isinstance(response, dict) and "companies" in response and isinstance(response["companies"], list):
+            # Clean up names to remove extra descriptions
+            cleaned_companies = [re.sub(r'\s+\(.*?\)|\'s.*', '', company).strip() for company in response["companies"]]
+            return list(set(cleaned_companies))[:3] # Return unique names, capped at 3
+        return []
+    except Exception as e:
+        print(f"Error during LLM-based company extraction: {e}")
+        return []
 
 async def run_financial_event_pipeline():
     """
@@ -125,7 +176,7 @@ async def run_financial_event_pipeline():
         if not all([NEO4J_URI, NEO4J_USER, NEO4J_PASSWORD]):
             print("Neo4j credentials not configured. Skipping graph population.")
         else:
-            importer = KnowledgeGraphImporter(NEO4J_URI, NEO4J_USER, NEO4J_PASSWORD)
+            importer = EventKnowledgeGraphImporter(NEO4J_URI, NEO4J_USER, NEO4J_PASSWORD)
             # Upsert the top, enhanced events. You could also upsert the remaining prioritized_events.
             for event in enhanced_events_data:
                 if isinstance(event, dict):
@@ -139,7 +190,7 @@ async def run_financial_event_pipeline():
         
         # 1. Identify impacted sectors from the knowledge graph
         print("\n[Step 4.1] Identifying impacted sectors from the knowledge graph...")
-        importer = KnowledgeGraphImporter(NEO4J_URI, NEO4J_USER, NEO4J_PASSWORD)
+        importer = EventKnowledgeGraphImporter(NEO4J_URI, NEO4J_USER, NEO4J_PASSWORD)
         impacted_sectors = []
         for event in top_events:
             sectors = importer.get_impacted_sectors(event['event_name'])
@@ -147,42 +198,32 @@ async def run_financial_event_pipeline():
         
         impacted_sectors = list(set(impacted_sectors))
         print(f"Identified impacted sectors: {impacted_sectors}")
-        importer.close()
         
         # 2. Ingest more news about the impacted sectors
         print("\n[Step 4.2] Ingesting more news about the impacted sectors...")
-        sector_urls_to_scrape = []
+        sector_search_results = []
         for sector in impacted_sectors:
             query = f"{sector} sector news India"
             search_results = await searcher.search_and_scrape(session, query, max_pages=1, max_sources=5)
             if search_results:
-                sector_urls_to_scrape.extend([res['link'] for res in search_results if 'link' in res])
+                sector_search_results.extend(search_results)
 
-        print(f"Found {len(sector_urls_to_scrape)} URLs for sector-specific news.")
+        print(f"Found {len(sector_search_results)} articles for sector-specific news.")
         
-        # 3. Conduct a broad search to find impacted stocks
-        print("\n[Step 4.3] Conducting a broad search to find impacted stocks...")
-        impacted_companies = []
-        for event in top_events:
-            for sector in impacted_sectors:
-                query = f"Stocks in {sector} sector impacted by {event['event_name']}"
-                search_results = await searcher.search_and_scrape(session, query, max_pages=1, max_sources=5)
-                if search_results:
-                    # Extract company names from search results (this could be improved with a more sophisticated NLP model)
-                    for result in search_results:
-                        # A simple heuristic to extract company names from titles
-                        # This can be improved
-                        if "Ltd" in result.get('title', '') or "Limited" in result.get('title', ''):
-                            company_name = result['title'].split("Ltd")[0].strip().split("Limited")[0].strip()
-                            impacted_companies.append(company_name)
-
-        impacted_companies = list(set(impacted_companies))
+        # 3. Conduct a broad search and use LLM to find impacted stocks
+        print("\n[Step 4.3] Identifying impacted stocks using LLM...")
+        impacted_companies = await get_impacted_companies_from_llm(sector_search_results)
         print(f"Identified impacted companies: {impacted_companies}")
         
         # 4. Run the general knowledge graph pipeline for each identified company
         print("\n[Step 4.4] Running the general knowledge graph pipeline for each identified company...")
+        graph_importer = KnowledgeGraphImporter(NEO4J_URI, NEO4J_USER, NEO4J_PASSWORD)
         for company in impacted_companies:
-            await run_full_pipeline(company)
+            output_data = await run_full_pipeline(company)
+            if output_data:
+                graph_importer.import_graph(output_data)
+                print(f"Successfully upserted data for {company} into the knowledge graph.")
+        graph_importer.close()
 
     print("\n--- Financial Event Pipeline Completed Successfully ---")
 

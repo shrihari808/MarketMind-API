@@ -9,7 +9,7 @@ from token_logger import log_token_usage
 from langchain_community.callbacks import get_openai_callback
 
 # Initialize the Gemini 2.0 Flash model
-llm = ChatGoogleGenerativeAI(model="gemini-2.5-flash", temperature=0.1)
+llm = ChatGoogleGenerativeAI(model="gemini-2.5-pro", temperature=0.1)
 
 async def extract_graph_from_texts_gemini(texts: list[str]) -> dict:
     """
@@ -74,7 +74,7 @@ async def extract_graph_from_texts_gemini(texts: list[str]) -> dict:
 
     try:
         with get_openai_callback() as cb:
-            response = await chain.ainvoke({"text": batched_text})
+            response = await asyncio.wait_for(chain.ainvoke({"text": batched_text}), timeout=600.0)
             
             # Validate the response structure
             if not isinstance(response, dict):
@@ -105,6 +105,9 @@ async def extract_graph_from_texts_gemini(texts: list[str]) -> dict:
                 purpose="knowledge_graph_extraction"
             )
         return response
+    except asyncio.TimeoutError:
+        print("LLM call timed out after 60 seconds.")
+        return {"entities": [], "relations": []}
     except Exception as e:
         print(f"An error occurred during Gemini graph extraction: {e}")
         return {"entities": [], "relations": []}
