@@ -12,6 +12,7 @@ from .timeline import timeline
 from .doc_rag import doc_chat
 from .graph import main as graph_main
 from .graph import main as event_graph_main
+from .deep_research import views as deep_research_views  # Updated import
 
 from streaming import streaming
 
@@ -19,7 +20,6 @@ from streaming import streaming
 api_router = APIRouter()
 
 # --- Include all the individual routers into the master router ---
-# This provides a clean, single point of registration in main.py
 api_router.include_router(chatbot.router, tags=["Chatbot"])
 api_router.include_router(chatwithfiles.router, tags=["Market Content"])
 api_router.include_router(youtube_sum.router, tags=["Market Content"])
@@ -39,3 +39,10 @@ api_router.include_router(timeline.router, tags=["Timeline"])
 api_router.include_router(doc_chat.router, tags=["Document RAG"])
 api_router.include_router(graph_main.router, prefix="/graph", tags=["Knowledge Graph"])
 api_router.include_router(event_graph_main.router, prefix="/graph", tags=["Financial Event Graph"])
+
+# Correctly include the router from the 'views' module
+api_router.include_router(
+    deep_research_views.router, 
+    prefix="/deep_research", 
+    tags=["Deep Research"]
+)
