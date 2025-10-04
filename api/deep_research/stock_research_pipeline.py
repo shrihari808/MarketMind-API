@@ -10,7 +10,7 @@ import time
 import aiohttp
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.lib.units import inch
-from reportlab.platypus import Paragraph, SimpleDocTemplate, Spacer, PageBreak, Table, TableStyle
+from reportlab.platypus import Paragraph, SimpleDocTemplate, Spacer, PageBreak
 from reportlab.lib import colors
 from langchain_openai import ChatOpenAI
 from dotenv import load_dotenv
@@ -121,7 +121,7 @@ class StockResearchPipeline:
             For the company "{company_name}", generate a JSON list of 15 highly specific Brave search queries to gather data for a comprehensive financial research report. The queries should cover:
             1.  **Fundamentals**: P/E, EV/EBITDA, Debt/Equity, ROE, Revenue Growth, EPS.
             2.  **Technicals**: RSI, MACD, 50-day SMA, Support & Resistance levels.
-            3.  **News & Events**: Latest earnings calls, M&A, partnerships.
+            3.  **News & Events**: Latest earnings calls, M&A, partnerships, regulations.
             4.  **Analyst Views**: Consensus rating, price target upgrades/downgrades.
             5.  **Peer Comparison**: Top competitors, sector performance.
             6.  **Risks & Macro Factors**: Geopolitical risks, supply chain issues, regulatory changes.
@@ -201,12 +201,14 @@ class StockResearchPipeline:
         """Generates the content for a single report section using gpt-4o-mini with a long timeout."""
         if not context:
             return f"## {section_name}\n\nData not available in the provided sources for this section."
-            
+        today = datetime.now().strftime("%Y-%m-%d")
         system_prompt = f"""
         You are a financial analyst AI writing the "{section_name}" section of a research report for {self.company_name} on {self.today}.
+        Today's date is {today}, make sure your answers use today as reference.    
         Your analysis must be based ONLY on the provided context.
         If the context is insufficient, state that data was not available.
         Use markdown for formatting. Be structured, evidence-based, and investment-grade.
+        **CRITICAL INSTRUCTION: Do NOT use markdown tables. Present any tabular data using bullet points or a simple text layout.**
         """
         
         human_prompt = """
@@ -228,7 +230,7 @@ class StockResearchPipeline:
             "Technical Analysis": "- Recent price action, trend, support/resistance.\n- SMA, EMA, RSI, MACD, Bollinger Bands.\n- Volume, momentum, volatility.",
             "Price Movements & Event Impact": "- Compare recent events vs. stock price reaction.\n- Note volatility and volume spikes.",
             "Brokerage & Analyst Views": "- Summarize consensus rating (Buy/Hold/Sell %).\n- Track upgrades/downgrades, price target changes.",
-            "Sector & Peer Comparison": "- Compare valuation & performance vs. 3–5 key peers.\n- Compare profitability, growth, leverage, and risk in a table.",
+            "Sector & Peer Comparison": "- Compare valuation & performance vs. 3–5 key peers.\n- Compare profitability, growth, leverage, and risk.",
             "News & Developments": "- Summarize top news results (30–90 days).\n- Classify by category: earnings, regulation, macro, competition.\n- Provide sentiment analysis (positive/neutral/negative).",
             "Macroeconomic & Geopolitical Factors": "- Exposure to FX, commodity prices, tariffs, regulation.\n- Impact of rates, inflation, consumer demand trends.",
             "Risks & Red Flags": "- Operational, financial, regulatory, competitive risks.\n- Tail risks (low-probability, high-impact).",
@@ -284,32 +286,25 @@ class StockResearchPipeline:
         story.append(PageBreak())
 
         for line in text.split('\n'):
+            line = line.strip()
             if line.startswith("## "):
+                story.append(PageBreak())
                 story.append(Spacer(1, 0.2 * inch))
                 story.append(Paragraph(line.replace("## ", ""), styles['h2']))
             elif line.startswith("**"):
                 story.append(Paragraph(line.replace("**", ""), styles['h3']))
             elif line.strip().startswith("- "):
                 story.append(Paragraph(line, styles['Bullet']))
-            elif '|' in line:
-                parts = [p.strip() for p in line.split('|') if p.strip()]
-                if len(parts) > 1:
-                    data = [parts]
-                    table = Table(data)
-                    table.setStyle(TableStyle([
-                        ('BACKGROUND', (0, 0), (-1, 0), colors.grey),
-                        ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
-                        ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
-                        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
-                        ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
-                        ('BACKGROUND', (0, 1), (-1, -1), colors.beige),
-                        ('GRID', (0, 0), (-1, -1), 1, colors.black)
-                    ]))
-                    story.append(table)
             elif line.strip():
                 story.append(Paragraph(line, styles['BodyText']))
 
-        doc.build(story)
-        pdf_bytes = buffer.getvalue()
-        buffer.close()
+        try:
+            doc.build(story)
+            pdf_bytes = buffer.getvalue()
+        except Exception as e:
+            print(f"CRITICAL ERROR: Failed to build PDF: {e}")
+            return f"Error generating PDF: {e}\n\nReport Content:\n\n{text}".encode('utf-8')
+        finally:
+            buffer.close()
+
         return pdf_bytes

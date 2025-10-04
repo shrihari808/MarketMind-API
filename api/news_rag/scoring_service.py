@@ -138,7 +138,7 @@ class NewsRagScoringService:
 
         Args:
             query (str): The user's query.
-            sources (list[dict]): The list of source dictionaries with 'full_webpage_content'.
+            sources (list[dict]): The list of source dictionaries with 'content'.
             top_n (int): The number of top text chunks to return.
 
         Returns:
@@ -152,7 +152,8 @@ class NewsRagScoringService:
 
         # 1. Chunk the content from all sources
         for source in sources:
-            content = source.get('full_webpage_content')
+            # CORRECTED: Changed 'full_webpage_content' to 'content' to match the scraper's output
+            content = source.get('content')
             if content and len(content) > 100:  # Process only if content is substantial
                 chunks = text_splitter.split_text(content)
                 for i, chunk_text in enumerate(chunks):
@@ -205,9 +206,9 @@ class NewsRagScoringService:
         print(f"DEBUG: Top {min(5, len(reranked_chunks))} passages after reranking:")
         for i, passage in enumerate(reranked_chunks[:5]):
             print(f"  {i+1}. Score: {passage['final_combined_score']:.4f} | "
-                  f"Rel: {passage['relevance_score']:.2f}, "
-                  f"Time: {passage['time_decay_score']:.2f}, Impact: {passage['impact_score']:.2f} | "
-                  f"{passage.get('metadata', {}).get('link', 'No link')}")
+                f"Rel: {passage['relevance_score']:.2f}, "
+                f"Time: {passage['time_decay_score']:.2f}, Impact: {passage['impact_score']:.2f} | "
+                f"{passage.get('metadata', {}).get('link', 'No link')}")
 
         return reranked_chunks[:top_n]
 
@@ -712,6 +713,8 @@ class NewsRagScoringService:
         Returns:
             Enhanced context string with source links
         """
+        if not reranked_passages:
+            return ""
         max_passages = max_passages or MAX_RERANKED_CONTEXT_ITEMS
         top_passages = reranked_passages[:max_passages]
         

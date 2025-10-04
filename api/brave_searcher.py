@@ -60,7 +60,9 @@ BLACKLISTED_DOMAINS = {
     'instagram.com',
     'indmoney.com',
     'en.wikipedia.org',
-    'wikipedia.org'
+    'wikipedia.org',
+    'yahoo.com',
+    'finance.yahoo.com'
 }
 
 class BraveNews:
