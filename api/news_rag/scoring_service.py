@@ -202,7 +202,6 @@ class NewsRagScoringService:
         # 4. Sort all chunks by the final combined score
         reranked_chunks = sorted(all_chunks, key=lambda x: x['final_combined_score'], reverse=True)
 
-        # --- THIS IS THE DEBUG LOG YOU REQUESTED ---
         print(f"DEBUG: Top {min(5, len(reranked_chunks))} passages after reranking:")
         for i, passage in enumerate(reranked_chunks[:5]):
             print(f"  {i+1}. Score: {passage['final_combined_score']:.4f} | "
