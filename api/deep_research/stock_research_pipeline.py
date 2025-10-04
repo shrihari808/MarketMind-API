@@ -11,44 +11,42 @@ import aiohttp
 from reportlab.lib.styles import getSampleStyleSheet
 from reportlab.lib.units import inch
 from reportlab.platypus import Paragraph, SimpleDocTemplate, Spacer, PageBreak
-from langchain_google_genai import ChatGoogleGenerativeAI
-import google.generativeai as genai
+from langchain_openai import ChatOpenAI
+from dotenv import load_dotenv
 
 from api.brave_searcher import BraveNews
 from api.dashboard.web_scraper import scrape_urls
 from langchain_core.output_parsers import StrOutputParser, JsonOutputParser
 from langchain_core.prompts import ChatPromptTemplate
 
+# --- Load Environment Variables ---
+load_dotenv()
+
 # --- Enhanced Debugging Start ---
 print("[DEBUG] stock_research_pipeline.py: Module loading started.")
 
-# Configure the Gemini API key from environment variables
+# Configure the OpenAI API key from environment variables
 try:
-    print("[DEBUG] Attempting to configure Gemini API key...")
-    GEMINI_API_KEY = os.getenv("GOOGLE_API_KEY") or os.getenv("GEMINI_API_KEY")
-    
-    if GEMINI_API_KEY:
-        genai.configure(api_key=GEMINI_API_KEY)
-        print("INFO: Gemini API key configured successfully.")
-    else:
-        raise ValueError("GOOGLE_API_KEY or GEMINI_API_KEY environment variable not found.")
+    print("[DEBUG] Attempting to configure OpenAI API key...")
+    OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
+    if not OPENAI_API_KEY:
+        raise ValueError("OPENAI_API_KEY environment variable not found.")
+    print("INFO: OpenAI API key configured successfully.")
 
 except Exception as e:
-    print(f"CRITICAL ERROR: Failed to configure Gemini API: {e}")
+    print(f"CRITICAL ERROR: Failed to configure OpenAI API: {e}")
     raise
 
-print("[DEBUG] Initializing Gemini models...")
-# Using the original model names from your project, in case you have access to specific versions
-llm_pro = ChatGoogleGenerativeAI(model="gemini-2.5-pro", temperature=0.1)
-llm_flash = ChatGoogleGenerativeAI(model="gemini-2.5-flash", temperature=0.0)
-print("[DEBUG] Gemini models initialized.")
+print("[DEBUG] Initializing gpt-4o-mini model...")
+llm = ChatOpenAI(model="gpt-4o-mini", temperature=0.1, api_key=OPENAI_API_KEY)
+print("[DEBUG] gpt-4o-mini model initialized.")
 # --- Enhanced Debugging End ---
 
 
 class StockResearchPipeline:
     """
-    A multi-step, parallel pipeline to generate a comprehensive stock research report.
-    This version uses Gemini Flash for lighter tasks and Gemini Pro for content generation.
+    A multi-step, sequential pipeline to generate a comprehensive stock research report.
+    This version uses gpt-4o-mini for all language model tasks.
     """
 
     def __init__(self, company_name: str):
@@ -66,7 +64,7 @@ class StockResearchPipeline:
 
     async def run(self):
         """
-        Orchestrates the entire process of data gathering, analysis, and report generation.
+        Orchestrates the entire process of data gathering, analysis, and report generation sequentially.
         """
         start_time = time.time()
         print(f"[{datetime.now()}] --- Starting Advanced Stock Analysis for: {self.company_name} ---")
@@ -77,29 +75,28 @@ class StockResearchPipeline:
             print("[DEBUG] aiohttp.ClientSession created.")
             
             # 1. Dynamically generate search queries
-            print(f"\n[{datetime.now()}] [Step 1/5] Generating targeted search queries using Gemini Flash...")
+            print(f"\n[{datetime.now()}] [Step 1/5] Generating targeted search queries using gpt-4o-mini...")
             queries = await self._generate_search_queries()
             if not queries:
                  print("[ERROR] Query generation failed or returned empty. Halting.")
                  return None
             print(f"[{datetime.now()}] Generated {len(queries)} queries.")
             
-            # 2. Gather all data concurrently
-            print(f"\n[{datetime.now()}] [Step 2/5] Gathering data from {len(queries)} web sources...")
+            # 2. Gather all data sequentially
+            print(f"\n[{datetime.now()}] [Step 2/5] Gathering data from {len(queries)} web sources sequentially...")
             scraped_content = await self._gather_data(session, queries)
             print(f"[{datetime.now()}] Gathered and scraped content: {len(scraped_content)} characters.")
             
             # 3. Route content to relevant sections
-            print(f"\n[{datetime.now()}] [Step 3/5] Routing context to analysis sections using Gemini Flash...")
+            print(f"\n[{datetime.now()}] [Step 3/5] Routing context to analysis sections using gpt-4o-mini...")
             routed_context = await self._route_content(scraped_content)
             
-            # 4. Generate each report section in parallel
-            print(f"\n[{datetime.now()}] [Step 4/5] Generating all 12 report sections in parallel using Gemini Pro...")
-            generation_tasks = [
-                self._generate_section(section, routed_context.get(section, ""))
-                for section in self.report_sections
-            ]
-            report_parts = await asyncio.gather(*generation_tasks)
+            # 4. Generate each report section sequentially
+            print(f"\n[{datetime.now()}] [Step 4/5] Generating all 12 report sections sequentially using gpt-4o-mini...")
+            report_parts = []
+            for section in self.report_sections:
+                section_content = await self._generate_section(section, routed_context.get(section, ""))
+                report_parts.append(section_content)
             
             final_report_text = "\n\n".join(report_parts)
             if not final_report_text.strip():
@@ -116,7 +113,7 @@ class StockResearchPipeline:
         return pdf_buffer
 
     async def _generate_search_queries(self) -> list:
-        """Uses Gemini Flash to create a list of specific search queries."""
+        """Uses gpt-4o-mini to create a list of specific search queries."""
         print("[DEBUG] _generate_search_queries: Awaiting LLM response...")
         parser = JsonOutputParser()
         prompt = ChatPromptTemplate.from_template(
@@ -134,7 +131,7 @@ class StockResearchPipeline:
             """,
             partial_variables={"format_instructions": parser.get_format_instructions()},
         )
-        chain = prompt | llm_flash | parser
+        chain = prompt | llm | parser
         try:
             result = await chain.ainvoke({"company_name": self.company_name})
             print("[DEBUG] _generate_search_queries: LLM response received.")
@@ -143,29 +140,23 @@ class StockResearchPipeline:
             print(f"[ERROR] _generate_search_queries: LLM call failed: {e}")
             return []
 
-
     async def _gather_data(self, session: aiohttp.ClientSession, queries: list) -> str:
-        """Executes search queries with rate limiting and retries, scrapes URLs, and returns all content."""
-        semaphore = asyncio.Semaphore(1)
-        tasks = []
-
-        async def fetch_with_semaphore(query):
-            async with semaphore:
-                for attempt in range(3):
-                    try:
-                        result = await self.brave_searcher.search_and_scrape(session, query, max_sources=2)
-                        await asyncio.sleep(1.1)
-                        return result
-                    except Exception as e:
-                        print(f"Brave search failed for query '{query}' (attempt {attempt + 1}): {e}. Retrying...")
-                        await asyncio.sleep(2 ** attempt)
-                return []
-
+        """Executes search queries sequentially with a delay, scrapes URLs, and returns all content."""
+        all_articles = []
         for query in queries:
-            tasks.append(fetch_with_semaphore(query))
-        
-        results = await asyncio.gather(*tasks)
-        all_articles = [article for result in results for article in result]
+            for attempt in range(3):
+                try:
+                    result = await self.brave_searcher.search_and_scrape(session, query, max_sources=2)
+                    all_articles.extend(result)
+                    print(f"Successfully scraped for query: {query}")
+                    await asyncio.sleep(1.1)  # Wait 1.1 seconds between each successful search
+                    break  # Move to the next query
+                except Exception as e:
+                    print(f"Brave search failed for query '{query}' (attempt {attempt + 1}): {e}. Retrying...")
+                    await asyncio.sleep(2 ** attempt)
+            else: # No break
+                 print(f"All retries failed for query '{query}'.")
+
         unique_urls = {article["link"]: article for article in all_articles if article.get("link")}.values()
         
         if not unique_urls:
@@ -178,7 +169,7 @@ class StockResearchPipeline:
         ])
 
     async def _route_content(self, scraped_content_json: str) -> dict:
-        """Uses Gemini Flash to route scraped content to the appropriate report sections."""
+        """Uses gpt-4o-mini to route scraped content to the appropriate report sections."""
         parser = JsonOutputParser()
         prompt = ChatPromptTemplate.from_template(
             """
@@ -194,7 +185,7 @@ class StockResearchPipeline:
             """,
             partial_variables={"format_instructions": parser.get_format_instructions()},
         )
-        chain = prompt | llm_flash | parser
+        chain = prompt | llm | parser
         return await chain.ainvoke({
             "company_name": self.company_name,
             "sections": ", ".join(self.report_sections),
@@ -203,7 +194,7 @@ class StockResearchPipeline:
         })
         
     async def _generate_section(self, section_name: str, context: str) -> str:
-        """Generates the content for a single report section using Gemini Pro with a long timeout."""
+        """Generates the content for a single report section using gpt-4o-mini with a long timeout."""
         if not context:
             return f"## {section_name}\n\nData not available in the provided sources for this section."
             
@@ -246,7 +237,7 @@ class StockResearchPipeline:
             ("human", human_prompt)
         ])
         
-        chain = prompt | llm_pro | StrOutputParser()
+        chain = prompt | llm | StrOutputParser()
         
         try:
             section_content = await asyncio.wait_for(
@@ -266,7 +257,6 @@ class StockResearchPipeline:
         except Exception as e:
             print(f"[{datetime.now()}] ERROR: Exception generating section: {section_name} - {e}")
             return f"## {section_name}\n\nError: An exception occurred while generating this section."
-
 
     def _create_pdf_from_text(self, text: str) -> bytes:
         """Creates a PDF from a markdown-formatted string."""
