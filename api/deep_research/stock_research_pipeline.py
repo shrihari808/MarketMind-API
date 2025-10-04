@@ -8,9 +8,10 @@ import json
 import time
 
 import aiohttp
-from reportlab.lib.styles import getSampleStyleSheet
+from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.lib.units import inch
-from reportlab.platypus import Paragraph, SimpleDocTemplate, Spacer, PageBreak
+from reportlab.platypus import Paragraph, SimpleDocTemplate, Spacer, PageBreak, Table, TableStyle
+from reportlab.lib import colors
 from langchain_openai import ChatOpenAI
 from dotenv import load_dotenv
 
@@ -18,6 +19,7 @@ from api.brave_searcher import BraveNews
 from api.dashboard.web_scraper import scrape_urls
 from langchain_core.output_parsers import StrOutputParser, JsonOutputParser
 from langchain_core.prompts import ChatPromptTemplate
+from api.news_rag.scoring_service import NewsRagScoringService
 
 # --- Load Environment Variables ---
 load_dotenv()
@@ -53,12 +55,13 @@ class StockResearchPipeline:
         print(f"[DEBUG] StockResearchPipeline.__init__ called for {company_name}")
         self.company_name = company_name
         self.brave_searcher = BraveNews(os.getenv("BRAVE_API_KEY"))
+        self.scoring_service = NewsRagScoringService()
         self.today = datetime.now().strftime("%Y-%m-%d")
         self.report_sections = [
             "Executive Summary", "Key Highlights & Events", "Fundamental Analysis",
             "Technical Analysis", "Price Movements & Event Impact", "Brokerage & Analyst Views",
             "Sector & Peer Comparison", "News & Developments", "Macroeconomic & Geopolitical Factors",
-            "Risks & Red Flags", "Scenarios & Valuation Outlook", "Final Recommendation"
+            "Risks & Red Flags"
         ]
         print("[DEBUG] StockResearchPipeline instance created.")
 
@@ -68,46 +71,43 @@ class StockResearchPipeline:
         """
         start_time = time.time()
         print(f"[{datetime.now()}] --- Starting Advanced Stock Analysis for: {self.company_name} ---")
-        
-        timeout = aiohttp.ClientTimeout(total=300)
-        print("[DEBUG] Creating aiohttp.ClientSession...")
-        async with aiohttp.ClientSession(**self.brave_searcher.session_config, timeout=timeout) as session:
-            print("[DEBUG] aiohttp.ClientSession created.")
-            
-            # 1. Dynamically generate search queries
-            print(f"\n[{datetime.now()}] [Step 1/5] Generating targeted search queries using gpt-4o-mini...")
-            queries = await self._generate_search_queries()
-            if not queries:
-                 print("[ERROR] Query generation failed or returned empty. Halting.")
-                 return None
-            print(f"[{datetime.now()}] Generated {len(queries)} queries.")
-            
-            # 2. Gather all data sequentially
-            print(f"\n[{datetime.now()}] [Step 2/5] Gathering data from {len(queries)} web sources sequentially...")
-            scraped_content = await self._gather_data(session, queries)
-            print(f"[{datetime.now()}] Gathered and scraped content: {len(scraped_content)} characters.")
-            
-            # 3. Route content to relevant sections
-            print(f"\n[{datetime.now()}] [Step 3/5] Routing context to analysis sections using gpt-4o-mini...")
-            routed_context = await self._route_content(scraped_content)
-            
-            # 4. Generate each report section sequentially
-            print(f"\n[{datetime.now()}] [Step 4/5] Generating all 12 report sections sequentially using gpt-4o-mini...")
-            report_parts = []
-            for section in self.report_sections:
-                section_content = await self._generate_section(section, routed_context.get(section, ""))
-                report_parts.append(section_content)
-            
-            final_report_text = "\n\n".join(report_parts)
-            if not final_report_text.strip():
-                print("Error: LLM failed to generate report sections.")
-                return None
-            print(f"[{datetime.now()}] All sections generated. Total report length: {len(final_report_text)} characters.")
-        
+
+        # 1. Dynamically generate search queries
+        print(f"\n[{datetime.now()}] [Step 1/5] Generating targeted search queries using gpt-4o-mini...")
+        queries = await self._generate_search_queries()
+        if not queries:
+            print("[ERROR] Query generation failed or returned empty. Halting.")
+            return None
+        print(f"[{datetime.now()}] Generated {len(queries)} queries.")
+
+        # 2. Gather all data sequentially
+        print(f"\n[{datetime.now()}] [Step 2/5] Gathering data from {len(queries)} web sources sequentially...")
+        scraped_articles = await self._gather_data(queries)
+        print(f"[{datetime.now()}] Gathered and scraped {len(scraped_articles)} articles.")
+
+        # 3. Get relevant context for each section
+        print(f"\n[{datetime.now()}] [Step 3/5] Getting relevant context for each analysis section...")
+        section_contexts = {}
+        for section in self.report_sections:
+            section_contexts[section] = await self._get_relevant_context(section, scraped_articles)
+
+        # 4. Generate each report section sequentially
+        print(f"\n[{datetime.now()}] [Step 4/5] Generating all 10 report sections sequentially using gpt-4o-mini...")
+        report_parts = []
+        for section in self.report_sections:
+            section_content = await self._generate_section(section, section_contexts.get(section, ""))
+            report_parts.append(section_content)
+
+        final_report_text = "\n\n".join(report_parts)
+        if not final_report_text.strip():
+            print("Error: LLM failed to generate report sections.")
+            return None
+        print(f"[{datetime.now()}] All sections generated. Total report length: {len(final_report_text)} characters.")
+
         # 5. Create the PDF
         print(f"\n[{datetime.now()}] [Step 5/5] Assembling and creating the final PDF report...")
         pdf_buffer = self._create_pdf_from_text(final_report_text)
-        
+
         end_time = time.time()
         print(f"\n[{datetime.now()}] --- Stock Research Pipeline Completed Successfully in {end_time - start_time:.2f} seconds ---")
         return pdf_buffer
@@ -140,33 +140,37 @@ class StockResearchPipeline:
             print(f"[ERROR] _generate_search_queries: LLM call failed: {e}")
             return []
 
-    async def _gather_data(self, session: aiohttp.ClientSession, queries: list) -> str:
+    async def _gather_data(self, queries: list) -> list:
         """Executes search queries sequentially with a delay, scrapes URLs, and returns all content."""
         all_articles = []
-        for query in queries:
-            for attempt in range(3):
-                try:
-                    result = await self.brave_searcher.search_and_scrape(session, query, max_sources=2)
-                    all_articles.extend(result)
-                    print(f"Successfully scraped for query: {query}")
-                    await asyncio.sleep(1.1)  # Wait 1.1 seconds between each successful search
-                    break  # Move to the next query
-                except Exception as e:
-                    print(f"Brave search failed for query '{query}' (attempt {attempt + 1}): {e}. Retrying...")
-                    await asyncio.sleep(2 ** attempt)
-            else: # No break
-                 print(f"All retries failed for query '{query}'.")
+        async with aiohttp.ClientSession(**self.brave_searcher.session_config) as session:
+            for query in queries:
+                for attempt in range(3):
+                    try:
+                        result = await self.brave_searcher.search_and_scrape(session, query, max_sources=20)
+                        all_articles.extend(result)
+                        print(f"Successfully scraped for query: {query}")
+                        await asyncio.sleep(1.1)  # Wait 1.1 seconds between each successful search
+                        break  # Move to the next query
+                    except Exception as e:
+                        print(f"Brave search failed for query '{query}' (attempt {attempt + 1}): {e}. Retrying...")
+                        await asyncio.sleep(2 ** attempt)
+                else: # No break
+                    print(f"All retries failed for query '{query}'.")
 
         unique_urls = {article["link"]: article for article in all_articles if article.get("link")}.values()
         
         if not unique_urls:
-            return ""
+            return []
             
         scraped_articles = await scrape_urls(list(unique_urls))
-        return json.dumps([
-            {"url": article.get('url', ''), "title": article.get('title', ''), "content": article.get('content', '')}
-            for article in scraped_articles if article.get("content")
-        ])
+        return scraped_articles
+    
+    async def _get_relevant_context(self, section_name: str, scraped_articles: list) -> str:
+        """Reranks content chunks and creates an enhanced context for a specific section."""
+        query = f"Information for {section_name} of {self.company_name} stock report"
+        reranked_chunks = await self.scoring_service.rerank_content_chunks(query, scraped_articles, top_n=5)
+        return self.scoring_service.create_enhanced_context(reranked_chunks)
 
     async def _route_content(self, scraped_content_json: str) -> dict:
         """Uses gpt-4o-mini to route scraped content to the appropriate report sections."""
@@ -228,8 +232,6 @@ class StockResearchPipeline:
             "News & Developments": "- Summarize top news results (30–90 days).\n- Classify by category: earnings, regulation, macro, competition.\n- Provide sentiment analysis (positive/neutral/negative).",
             "Macroeconomic & Geopolitical Factors": "- Exposure to FX, commodity prices, tariffs, regulation.\n- Impact of rates, inflation, consumer demand trends.",
             "Risks & Red Flags": "- Operational, financial, regulatory, competitive risks.\n- Tail risks (low-probability, high-impact).",
-            "Scenarios & Valuation Outlook": "- Base, Bull, Bear cases with assumptions.\n- Target price range and timeframe.\n- Key triggers to watch.",
-            "Final Recommendation": "- Clear action: Buy / Hold / Sell.\n- Conviction level: High / Medium / Low.\n- Short-term vs. long-term view."
         }
 
         prompt = ChatPromptTemplate.from_messages([
@@ -268,6 +270,10 @@ class StockResearchPipeline:
             author="AI Financial Analyst"
         )
         styles = getSampleStyleSheet()
+        styles.add(ParagraphStyle(name='h1', fontSize=24, leading=28, spaceAfter=20, alignment=1))
+        styles.add(ParagraphStyle(name='h2', fontSize=18, leading=22, spaceBefore=10, spaceAfter=10))
+        styles.add(ParagraphStyle(name='h3', fontSize=14, leading=18, spaceBefore=8, spaceAfter=8))
+        styles.add(ParagraphStyle(name='Bullet', parent=styles['BodyText'], firstLineIndent=0, spaceBefore=3, leftIndent=18))
         story = []
 
         # Title Page
@@ -285,6 +291,21 @@ class StockResearchPipeline:
                 story.append(Paragraph(line.replace("**", ""), styles['h3']))
             elif line.strip().startswith("- "):
                 story.append(Paragraph(line, styles['Bullet']))
+            elif '|' in line:
+                parts = [p.strip() for p in line.split('|') if p.strip()]
+                if len(parts) > 1:
+                    data = [parts]
+                    table = Table(data)
+                    table.setStyle(TableStyle([
+                        ('BACKGROUND', (0, 0), (-1, 0), colors.grey),
+                        ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+                        ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+                        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+                        ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
+                        ('BACKGROUND', (0, 1), (-1, -1), colors.beige),
+                        ('GRID', (0, 0), (-1, -1), 1, colors.black)
+                    ]))
+                    story.append(table)
             elif line.strip():
                 story.append(Paragraph(line, styles['BodyText']))
 
