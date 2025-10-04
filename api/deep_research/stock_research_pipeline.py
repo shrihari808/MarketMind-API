@@ -12,15 +12,37 @@ from reportlab.lib.styles import getSampleStyleSheet
 from reportlab.lib.units import inch
 from reportlab.platypus import Paragraph, SimpleDocTemplate, Spacer, PageBreak
 from langchain_google_genai import ChatGoogleGenerativeAI
+import google.generativeai as genai
 
 from api.brave_searcher import BraveNews
 from api.dashboard.web_scraper import scrape_urls
 from langchain_core.output_parsers import StrOutputParser, JsonOutputParser
 from langchain_core.prompts import ChatPromptTemplate
 
-# Initialize both Gemini models for specialized tasks
+# --- Enhanced Debugging Start ---
+print("[DEBUG] stock_research_pipeline.py: Module loading started.")
+
+# Configure the Gemini API key from environment variables
+try:
+    print("[DEBUG] Attempting to configure Gemini API key...")
+    GEMINI_API_KEY = os.getenv("GOOGLE_API_KEY") or os.getenv("GEMINI_API_KEY")
+    
+    if GEMINI_API_KEY:
+        genai.configure(api_key=GEMINI_API_KEY)
+        print("INFO: Gemini API key configured successfully.")
+    else:
+        raise ValueError("GOOGLE_API_KEY or GEMINI_API_KEY environment variable not found.")
+
+except Exception as e:
+    print(f"CRITICAL ERROR: Failed to configure Gemini API: {e}")
+    raise
+
+print("[DEBUG] Initializing Gemini models...")
+# Using the original model names from your project, in case you have access to specific versions
 llm_pro = ChatGoogleGenerativeAI(model="gemini-2.5-pro", temperature=0.1)
 llm_flash = ChatGoogleGenerativeAI(model="gemini-2.5-flash", temperature=0.0)
+print("[DEBUG] Gemini models initialized.")
+# --- Enhanced Debugging End ---
 
 
 class StockResearchPipeline:
@@ -30,6 +52,7 @@ class StockResearchPipeline:
     """
 
     def __init__(self, company_name: str):
+        print(f"[DEBUG] StockResearchPipeline.__init__ called for {company_name}")
         self.company_name = company_name
         self.brave_searcher = BraveNews(os.getenv("BRAVE_API_KEY"))
         self.today = datetime.now().strftime("%Y-%m-%d")
@@ -39,6 +62,7 @@ class StockResearchPipeline:
             "Sector & Peer Comparison", "News & Developments", "Macroeconomic & Geopolitical Factors",
             "Risks & Red Flags", "Scenarios & Valuation Outlook", "Final Recommendation"
         ]
+        print("[DEBUG] StockResearchPipeline instance created.")
 
     async def run(self):
         """
@@ -47,16 +71,20 @@ class StockResearchPipeline:
         start_time = time.time()
         print(f"[{datetime.now()}] --- Starting Advanced Stock Analysis for: {self.company_name} ---")
         
-        # Use a single session with a very long timeout
-        timeout = aiohttp.ClientTimeout(total=300) # 5-minute timeout for network requests
+        timeout = aiohttp.ClientTimeout(total=300)
+        print("[DEBUG] Creating aiohttp.ClientSession...")
         async with aiohttp.ClientSession(**self.brave_searcher.session_config, timeout=timeout) as session:
+            print("[DEBUG] aiohttp.ClientSession created.")
             
-            # 1. Dynamically generate search queries for each report section
+            # 1. Dynamically generate search queries
             print(f"\n[{datetime.now()}] [Step 1/5] Generating targeted search queries using Gemini Flash...")
             queries = await self._generate_search_queries()
+            if not queries:
+                 print("[ERROR] Query generation failed or returned empty. Halting.")
+                 return None
             print(f"[{datetime.now()}] Generated {len(queries)} queries.")
             
-            # 2. Gather all data concurrently with rate limiting
+            # 2. Gather all data concurrently
             print(f"\n[{datetime.now()}] [Step 2/5] Gathering data from {len(queries)} web sources...")
             scraped_content = await self._gather_data(session, queries)
             print(f"[{datetime.now()}] Gathered and scraped content: {len(scraped_content)} characters.")
@@ -89,6 +117,7 @@ class StockResearchPipeline:
 
     async def _generate_search_queries(self) -> list:
         """Uses Gemini Flash to create a list of specific search queries."""
+        print("[DEBUG] _generate_search_queries: Awaiting LLM response...")
         parser = JsonOutputParser()
         prompt = ChatPromptTemplate.from_template(
             """
@@ -106,24 +135,30 @@ class StockResearchPipeline:
             partial_variables={"format_instructions": parser.get_format_instructions()},
         )
         chain = prompt | llm_flash | parser
-        result = await chain.ainvoke({"company_name": self.company_name})
-        return result.get("queries", [])
+        try:
+            result = await chain.ainvoke({"company_name": self.company_name})
+            print("[DEBUG] _generate_search_queries: LLM response received.")
+            return result.get("queries", [])
+        except Exception as e:
+            print(f"[ERROR] _generate_search_queries: LLM call failed: {e}")
+            return []
+
 
     async def _gather_data(self, session: aiohttp.ClientSession, queries: list) -> str:
         """Executes search queries with rate limiting and retries, scrapes URLs, and returns all content."""
-        semaphore = asyncio.Semaphore(1)  # Limit to 1 concurrent request per second
+        semaphore = asyncio.Semaphore(1)
         tasks = []
 
         async def fetch_with_semaphore(query):
             async with semaphore:
-                for attempt in range(3): # Retry up to 3 times
+                for attempt in range(3):
                     try:
                         result = await self.brave_searcher.search_and_scrape(session, query, max_sources=2)
-                        await asyncio.sleep(1.1)  # Wait 1.1 seconds between requests
+                        await asyncio.sleep(1.1)
                         return result
                     except Exception as e:
                         print(f"Brave search failed for query '{query}' (attempt {attempt + 1}): {e}. Retrying...")
-                        await asyncio.sleep(2 ** attempt) # Exponential backoff
+                        await asyncio.sleep(2 ** attempt)
                 return []
 
         for query in queries:
@@ -221,7 +256,7 @@ class StockResearchPipeline:
                     "framework": frameworks.get(section_name, "Provide a general analysis for this section."),
                     "char_count": len(context)
                 }),
-                timeout=300.0  # 5-minute timeout for each section generation
+                timeout=300.0
             )
             print(f"[{datetime.now()}] Successfully generated section: {section_name}")
             return f"## {section_name}\n\n{section_content}"
