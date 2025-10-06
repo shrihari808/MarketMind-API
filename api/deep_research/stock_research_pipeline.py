@@ -2,10 +2,11 @@
 
 import asyncio
 import os
-from datetime import datetime
+from datetime import datetime, timedelta
 from io import BytesIO
 import json
 import time
+import re
 
 import aiohttp
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
@@ -15,7 +16,7 @@ from reportlab.lib import colors
 from langchain_openai import ChatOpenAI
 from dotenv import load_dotenv
 
-from api.serper_searcher import SerperNews  # Updated import
+from api.serper_searcher import SerperNews
 from api.dashboard.web_scraper import scrape_urls
 from langchain_core.output_parsers import StrOutputParser, JsonOutputParser
 from langchain_core.prompts import ChatPromptTemplate
@@ -27,7 +28,6 @@ load_dotenv()
 # --- Enhanced Debugging Start ---
 print("[DEBUG] stock_research_pipeline.py: Module loading started.")
 
-# Configure the OpenAI API key from environment variables
 try:
     print("[DEBUG] Attempting to configure OpenAI API key...")
     OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
@@ -45,6 +45,61 @@ print("[DEBUG] gpt-4o-mini model initialized.")
 # --- Enhanced Debugging End ---
 
 
+def parse_flexible_date(date_string: str) -> str:
+    """
+    Parse various date formats from Serper API and return ISO format.
+    Handles: "2 days ago", "Dec 19, 2024", "24 Sept 2025", etc.
+    """
+    if not date_string:
+        return datetime.now().strftime("%Y-%m-%d")
+    
+    date_string = date_string.strip()
+    
+    # Handle relative dates like "2 days ago", "1 hour ago", etc.
+    relative_pattern = r'(\d+)\s+(day|hour|minute|week|month)s?\s+ago'
+    match = re.match(relative_pattern, date_string, re.IGNORECASE)
+    if match:
+        amount = int(match.group(1))
+        unit = match.group(2).lower()
+        
+        if unit == 'minute':
+            delta = timedelta(minutes=amount)
+        elif unit == 'hour':
+            delta = timedelta(hours=amount)
+        elif unit == 'day':
+            delta = timedelta(days=amount)
+        elif unit == 'week':
+            delta = timedelta(weeks=amount)
+        elif unit == 'month':
+            delta = timedelta(days=amount * 30)  # Approximate
+        else:
+            delta = timedelta(days=0)
+        
+        return (datetime.now() - delta).strftime("%Y-%m-%d")
+    
+    # Try various date formats
+    date_formats = [
+        "%b %d, %Y",      # Dec 19, 2024
+        "%d %b %Y",       # 24 Sept 2025
+        "%B %d, %Y",      # December 19, 2024
+        "%d %B %Y",       # 24 September 2025
+        "%Y-%m-%d",       # 2024-12-19
+        "%m/%d/%Y",       # 12/19/2024
+        "%d/%m/%Y",       # 19/12/2024
+    ]
+    
+    for fmt in date_formats:
+        try:
+            parsed_date = datetime.strptime(date_string, fmt)
+            return parsed_date.strftime("%Y-%m-%d")
+        except ValueError:
+            continue
+    
+    # If all parsing fails, return current date
+    print(f"WARNING: Could not parse date string: '{date_string}', using current date")
+    return datetime.now().strftime("%Y-%m-%d")
+
+
 class StockResearchPipeline:
     """
     A multi-step, sequential pipeline to generate a comprehensive stock research report.
@@ -54,7 +109,7 @@ class StockResearchPipeline:
     def __init__(self, company_name: str):
         print(f"[DEBUG] StockResearchPipeline.__init__ called for {company_name}")
         self.company_name = company_name
-        self.brave_searcher = SerperNews(os.getenv("SERPER_API_KEY"))  # Updated to SerperNews
+        self.brave_searcher = SerperNews(os.getenv("SERPER_API_KEY"))
         self.scoring_service = NewsRagScoringService()
         self.today = datetime.now().strftime("%Y-%m-%d")
         self.report_sections = [
@@ -106,7 +161,14 @@ class StockResearchPipeline:
 
         # 5. Create the PDF
         print(f"\n[{datetime.now()}] [Step 5/5] Assembling and creating the final PDF report...")
-        pdf_buffer = self._create_pdf_from_text(final_report_text)
+        try:
+            pdf_buffer = await asyncio.get_event_loop().run_in_executor(
+                None, self._create_pdf_from_text, final_report_text
+            )
+            print(f"[{datetime.now()}] PDF created successfully. Size: {len(pdf_buffer)} bytes")
+        except Exception as e:
+            print(f"[{datetime.now()}] ERROR creating PDF: {e}")
+            return None
 
         end_time = time.time()
         print(f"\n[{datetime.now()}] --- Stock Research Pipeline Completed Successfully in {end_time - start_time:.2f} seconds ---")
@@ -148,12 +210,16 @@ class StockResearchPipeline:
                 success = False
                 for attempt in range(3):
                     try:
-                        result = await self.brave_searcher.search_and_scrape(session, query, max_sources=20)
+                        result = await self.brave_searcher.search_and_scrape(session, query, max_sources=10)
+                        # Normalize dates in the articles
+                        for article in result:
+                            if 'publication_date' in article:
+                                article['publication_date'] = parse_flexible_date(article['publication_date'])
                         all_articles.extend(result)
                         print(f"Successfully scraped for query: {query}")
-                        await asyncio.sleep(1.1)  # Wait 1.1 seconds between each successful search
+                        await asyncio.sleep(1.1)
                         success = True
-                        break  # Move to the next query
+                        break
                     except Exception as e:
                         print(f"Brave search failed for query '{query}' (attempt {attempt + 1}): {e}. Retrying...")
                         await asyncio.sleep(2 ** attempt)
@@ -174,31 +240,6 @@ class StockResearchPipeline:
         reranked_chunks = await self.scoring_service.rerank_content_chunks(query, scraped_articles, top_n=5)
         return self.scoring_service.create_enhanced_context(reranked_chunks)
 
-    async def _route_content(self, scraped_content_json: str) -> dict:
-        """Uses gpt-4o-mini to route scraped content to the appropriate report sections."""
-        parser = JsonOutputParser()
-        prompt = ChatPromptTemplate.from_template(
-            """
-            You are a content routing expert. Your job is to categorize scraped web content into the most relevant sections of a financial report for "{company_name}".
-            
-            The report sections are: {sections}
-            
-            Here is the scraped content (character count: {char_count}):
-            {scraped_content}
-            
-            Return a JSON object where each key is a report section, and the value is a string concatenating the content relevant to that section.
-            {format_instructions}
-            """,
-            partial_variables={"format_instructions": parser.get_format_instructions()},
-        )
-        chain = prompt | llm | parser
-        return await chain.ainvoke({
-            "company_name": self.company_name,
-            "sections": ", ".join(self.report_sections),
-            "scraped_content": scraped_content_json,
-            "char_count": len(scraped_content_json)
-        })
-        
     async def _generate_section(self, section_name: str, context: str) -> str:
         """Generates the content for a single report section using gpt-4o-mini with a long timeout."""
         if not context:
@@ -264,8 +305,31 @@ class StockResearchPipeline:
             print(f"[{datetime.now()}] ERROR: Exception generating section: {section_name} - {e}")
             return f"## {section_name}\n\nError: An exception occurred while generating this section."
 
+    def _sanitize_text_for_pdf(self, text: str) -> str:
+        """
+        Sanitize text to avoid reportlab issues with special characters.
+        """
+        # Replace problematic characters
+        text = text.replace('\u2019', "'")  # Right single quotation mark
+        text = text.replace('\u2018', "'")  # Left single quotation mark
+        text = text.replace('\u201c', '"')  # Left double quotation mark
+        text = text.replace('\u201d', '"')  # Right double quotation mark
+        text = text.replace('\u2013', '-')  # En dash
+        text = text.replace('\u2014', '-')  # Em dash
+        text = text.replace('\u2026', '...')  # Ellipsis
+        
+        # Remove or replace other non-ASCII characters that might cause issues
+        text = ''.join(char if ord(char) < 128 or char.isspace() else '?' for char in text)
+        
+        return text
+
     def _create_pdf_from_text(self, text: str) -> bytes:
         """Creates a PDF from a markdown-formatted string."""
+        print(f"[DEBUG] Starting PDF creation. Text length: {len(text)} characters")
+        
+        # Sanitize the text first
+        text = self._sanitize_text_for_pdf(text)
+        
         buffer = BytesIO()
         doc = SimpleDocTemplate(
             buffer,
@@ -274,14 +338,20 @@ class StockResearchPipeline:
             author="AI Financial Analyst"
         )
         styles = getSampleStyleSheet()
-        styles.add(ParagraphStyle(name='h1', fontSize=24, leading=28, spaceAfter=20, alignment=1))
-        styles.add(ParagraphStyle(name='h2', fontSize=18, leading=22, spaceBefore=10, spaceAfter=10))
-        styles.add(ParagraphStyle(name='h3', fontSize=14, leading=18, spaceBefore=8, spaceAfter=8))
-        styles.add(ParagraphStyle(name='Bullet', parent=styles['BodyText'], firstLineIndent=0, spaceBefore=3, leftIndent=18))
+        
+        # Only add styles if they don't already exist
+        if 'h1' not in styles:
+            styles.add(ParagraphStyle(name='h1', fontSize=24, leading=28, spaceAfter=20, alignment=1))
+        if 'h2' not in styles:
+            styles.add(ParagraphStyle(name='h2', fontSize=18, leading=22, spaceBefore=10, spaceAfter=10))
+        if 'h3' not in styles:
+            styles.add(ParagraphStyle(name='h3', fontSize=14, leading=18, spaceBefore=8, spaceAfter=8))
+        if 'Bullet' not in styles:
+            styles.add(ParagraphStyle(name='Bullet', parent=styles['BodyText'], firstLineIndent=0, spaceBefore=3, leftIndent=18))
 
-        # Add wordWrap attribute to handle long lines
         styles['Normal'].wordWrap = 'CJK'
-        styles['Bullet'].wordWrap = 'CJK'
+        if 'Bullet' in styles:
+            styles['Bullet'].wordWrap = 'CJK'
         
         story = []
 
@@ -292,25 +362,50 @@ class StockResearchPipeline:
         story.append(Paragraph("Generated by AI Financial Analyst", styles['Italic']))
         story.append(PageBreak())
 
-        for line in text.split('\n'):
-            line = line.strip()
-            if line.startswith("## "):
-                story.append(PageBreak())
-                story.append(Spacer(1, 0.2 * inch))
-                story.append(Paragraph(line.replace("## ", ""), styles['h2']))
-            elif line.startswith("**"):
-                story.append(Paragraph(line.replace("**", ""), styles['h3']))
-            elif line.strip().startswith("- "):
-                story.append(Paragraph(line, styles['Bullet']))
-            elif line.strip():
-                story.append(Paragraph(line, styles['Normal']))
+        print(f"[DEBUG] Processing {len(text.split(chr(10)))} lines for PDF")
+        
+        for i, line in enumerate(text.split('\n')):
+            try:
+                line = line.strip()
+                if not line:
+                    continue
+                    
+                if line.startswith("## "):
+                    story.append(PageBreak())
+                    story.append(Spacer(1, 0.2 * inch))
+                    clean_line = line.replace("## ", "")
+                    story.append(Paragraph(clean_line, styles['h2']))
+                elif line.startswith("**"):
+                    clean_line = line.replace("**", "")
+                    story.append(Paragraph(clean_line, styles['h3']))
+                elif line.strip().startswith("- "):
+                    story.append(Paragraph(line, styles['Bullet']))
+                else:
+                    # Split very long lines to avoid reportlab issues
+                    if len(line) > 500:
+                        chunks = [line[i:i+500] for i in range(0, len(line), 500)]
+                        for chunk in chunks:
+                            story.append(Paragraph(chunk, styles['Normal']))
+                    else:
+                        story.append(Paragraph(line, styles['Normal']))
+            except Exception as e:
+                print(f"[WARNING] Error processing line {i}: {e}")
+                print(f"[WARNING] Problematic line: {line[:100]}...")
+                continue
 
+        print(f"[DEBUG] Building PDF with {len(story)} elements")
+        
         try:
             doc.build(story)
             pdf_bytes = buffer.getvalue()
+            print(f"[DEBUG] PDF built successfully. Size: {len(pdf_bytes)} bytes")
         except Exception as e:
             print(f"CRITICAL ERROR: Failed to build PDF: {e}")
-            return f"Error generating PDF: {e}\n\nReport Content:\n\n{text}".encode('utf-8')
+            import traceback
+            traceback.print_exc()
+            # Return a simple error PDF instead of crashing
+            error_text = f"Error generating PDF: {e}\n\nPlease check the logs for details."
+            return error_text.encode('utf-8')
         finally:
             buffer.close()
 
