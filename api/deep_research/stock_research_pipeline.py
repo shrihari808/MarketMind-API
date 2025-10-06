@@ -15,7 +15,7 @@ from reportlab.lib import colors
 from langchain_openai import ChatOpenAI
 from dotenv import load_dotenv
 
-from api.brave_searcher import BraveNews
+from api.serper_searcher import SerperNews  # Updated import
 from api.dashboard.web_scraper import scrape_urls
 from langchain_core.output_parsers import StrOutputParser, JsonOutputParser
 from langchain_core.prompts import ChatPromptTemplate
@@ -54,7 +54,7 @@ class StockResearchPipeline:
     def __init__(self, company_name: str):
         print(f"[DEBUG] StockResearchPipeline.__init__ called for {company_name}")
         self.company_name = company_name
-        self.brave_searcher = BraveNews(os.getenv("BRAVE_API_KEY"))
+        self.brave_searcher = SerperNews(os.getenv("SERPER_API_KEY"))  # Updated to SerperNews
         self.scoring_service = NewsRagScoringService()
         self.today = datetime.now().strftime("%Y-%m-%d")
         self.report_sections = [
@@ -118,7 +118,7 @@ class StockResearchPipeline:
         parser = JsonOutputParser()
         prompt = ChatPromptTemplate.from_template(
             """
-            For the company "{company_name}", generate a JSON list of 15 highly specific Brave search queries to gather data for a comprehensive financial research report. The queries should cover:
+            For the company "{company_name}", generate a JSON list of 15 highly specific Serper search queries to gather data for a comprehensive financial research report. The queries should cover:
             1.  **Fundamentals**: P/E, EV/EBITDA, Debt/Equity, ROE, Revenue Growth, EPS.
             2.  **Technicals**: RSI, MACD, 50-day SMA, Support & Resistance levels.
             3.  **News & Events**: Latest earnings calls, M&A, partnerships, regulations.
@@ -145,17 +145,19 @@ class StockResearchPipeline:
         all_articles = []
         async with aiohttp.ClientSession(**self.brave_searcher.session_config) as session:
             for query in queries:
+                success = False
                 for attempt in range(3):
                     try:
                         result = await self.brave_searcher.search_and_scrape(session, query, max_sources=20)
                         all_articles.extend(result)
                         print(f"Successfully scraped for query: {query}")
                         await asyncio.sleep(1.1)  # Wait 1.1 seconds between each successful search
+                        success = True
                         break  # Move to the next query
                     except Exception as e:
                         print(f"Brave search failed for query '{query}' (attempt {attempt + 1}): {e}. Retrying...")
                         await asyncio.sleep(2 ** attempt)
-                else: # No break
+                if not success:
                     print(f"All retries failed for query '{query}'.")
 
         unique_urls = {article["link"]: article for article in all_articles if article.get("link")}.values()
@@ -276,6 +278,11 @@ class StockResearchPipeline:
         styles.add(ParagraphStyle(name='h2', fontSize=18, leading=22, spaceBefore=10, spaceAfter=10))
         styles.add(ParagraphStyle(name='h3', fontSize=14, leading=18, spaceBefore=8, spaceAfter=8))
         styles.add(ParagraphStyle(name='Bullet', parent=styles['BodyText'], firstLineIndent=0, spaceBefore=3, leftIndent=18))
+
+        # Add wordWrap attribute to handle long lines
+        styles['Normal'].wordWrap = 'CJK'
+        styles['Bullet'].wordWrap = 'CJK'
+        
         story = []
 
         # Title Page
@@ -296,7 +303,7 @@ class StockResearchPipeline:
             elif line.strip().startswith("- "):
                 story.append(Paragraph(line, styles['Bullet']))
             elif line.strip():
-                story.append(Paragraph(line, styles['BodyText']))
+                story.append(Paragraph(line, styles['Normal']))
 
         try:
             doc.build(story)
