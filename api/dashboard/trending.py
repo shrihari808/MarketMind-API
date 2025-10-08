@@ -5,7 +5,7 @@ import time
 from fastapi import APIRouter, HTTPException, Depends, Query
 from fastapi.responses import FileResponse
 from api.security import api_key_auth
-from api.dashboard.brave_search import BraveDashboard 
+from api.dashboard.serper_search import SerperDashboard
 
 router = APIRouter()
 
@@ -35,10 +35,8 @@ async def get_trending_stocks(
             return FileResponse(trending_output_path)
 
     # On-demand generation
-    brave_fetcher = BraveDashboard()
-    # --- MODIFY THIS LINE ---
-    trending_data = await brave_fetcher.scrape_trending_stocks(country_code) 
-    # --- END OF MODIFICATION ---
+    serper_fetcher = SerperDashboard()
+    trending_data = await serper_fetcher.scrape_trending_stocks(country_code)
 
     with open(trending_output_path, 'w', encoding='utf-8') as f:
         json.dump(trending_data, f, indent=4, ensure_ascii=False)

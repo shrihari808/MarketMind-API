@@ -5,7 +5,7 @@ import asyncio
 from fastapi import APIRouter, Query, Depends
 from typing import List
 from fastapi.responses import StreamingResponse
-from api.dashboard.brave_search import BraveDashboard
+from app_service.api.dashboard.serper_search import SerperDashboard
 from api.dashboard.web_scraper import scrape_urls
 from api.dashboard.vector_store import DashboardVectorStore
 from api.dashboard.scoring_service import DashboardScoringService
@@ -36,7 +36,7 @@ async def get_portfolio_snapshot(portfolio: List[str] = Query(..., description="
     async def stream_generator():
         # ... (steps 1 and 2 remain the same) ...
         yield create_progress_bar_string(5, f"Initializing for portfolio...").encode("utf-8")
-        brave_fetcher = BraveDashboard()
+        brave_fetcher = SerperDashboard()
         portfolio_data = brave_fetcher.get_portfolio_data(portfolio)
         news_articles = portfolio_data.get("latest_news", [])
 

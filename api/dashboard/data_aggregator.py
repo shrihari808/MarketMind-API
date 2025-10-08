@@ -5,7 +5,7 @@ import asyncio
 from datetime import datetime, timezone
 import re
 from langdetect import detect
-from api.dashboard.brave_search import BraveDashboard
+from api.dashboard.serper_search import SerperDashboard
 from api.dashboard.postgres_history import save_trending_stocks_output
 from api.dashboard.web_scraper import scrape_urls
 from api.dashboard.vector_store import DashboardVectorStore
@@ -119,9 +119,9 @@ async def aggregate_and_process_stock_data(stock_name: str):
     """
     print(f"--- Starting Stock Data Aggregation for: {stock_name} ---")
 
-    brave_fetcher = BraveDashboard()
+    serper_fetcher = SerperDashboard()
     # The get_portfolio_data method can handle a list with a single stock
-    stock_data = brave_fetcher.get_portfolio_data([stock_name])
+    stock_data = await serper_fetcher.get_portfolio_data([stock_name])
     news_articles = stock_data.get("latest_news", [])
     scraped_articles = await scrape_urls(news_articles) if news_articles else []
 
@@ -161,9 +161,8 @@ async def aggregate_and_process_portfolio_data(portfolio: list[str]):
     """
     print(f"--- Starting Portfolio Data Aggregation for: {portfolio} ---")
 
-    # ... (the fetching, scraping, and scoring logic remains the same) ...
-    brave_fetcher = BraveDashboard()
-    portfolio_data = brave_fetcher.get_portfolio_data(portfolio)
+    serper_fetcher = SerperDashboard()
+    portfolio_data = await serper_fetcher.get_portfolio_data(portfolio)
     news_articles = portfolio_data.get("latest_news", [])
     scraped_articles = await scrape_urls(news_articles) if news_articles else []
 
@@ -203,8 +202,8 @@ async def aggregate_and_process_data(country_code="IN", country_name="India"):
     """
     print(f"--- Starting Full Data Aggregation for {country_name} ---")
 
-    brave_fetcher = BraveDashboard()
-    qualitative_data = await brave_fetcher.get_dashboard_data(country_code, country_name)
+    serper_fetcher = SerperDashboard()
+    qualitative_data = await serper_fetcher.get_dashboard_data(country_code, country_name)
     news_articles = qualitative_data.get("latest_news", [])
     scraped_articles = await scrape_urls(news_articles) if news_articles else []
 
@@ -258,10 +257,10 @@ async def generate_trending_stocks_data(country_code: str = "IN"):
     This function will be called by the scheduler.
     """
     print(f"--- Starting Trending Stocks Generation for country: {country_code} ---")
-    brave_fetcher = BraveDashboard()
+    serper_fetcher = SerperDashboard()
     
     # Directly await the async function
-    trending_stocks = await brave_fetcher.scrape_trending_stocks(country_code)
+    trending_stocks = await serper_fetcher.scrape_trending_stocks(country_code)
     
     # Add the last_updated_utc timestamp
     trending_stocks['last_updated_utc'] = datetime.now(timezone.utc).isoformat()

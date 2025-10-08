@@ -12,7 +12,7 @@ PROJECT_ROOT = os.path.abspath(os.path.join(CURRENT_DIR, '..', '..'))
 if PROJECT_ROOT not in sys.path:
     sys.path.append(PROJECT_ROOT)
 
-from api.dashboard.brave_search import BraveDashboard
+from api.dashboard.serper_search import SerperDashboard
 from api.dashboard.data_aggregator import select_latest_news_articles
 
 # --- Define Paths ---
@@ -27,7 +27,7 @@ async def generate_timeline():
     print("--- Starting Timeline Generation ---")
 
     try:
-        brave_fetcher = BraveDashboard()
+        serper_fetcher = SerperDashboard()
 
         # Define queries to get a broad range of important news
         queries = {
@@ -39,7 +39,7 @@ async def generate_timeline():
         # Fetch articles for all queries concurrently
         print("Fetching news articles from Brave Search API...")
         search_tasks = [
-            brave_fetcher.get_latest_news(query, "IN", target_count=15)
+            serper_fetcher.get_latest_news(query, "IN", target_count=15)
             for query in queries.values()
         ]
         results_list = await asyncio.gather(*search_tasks)

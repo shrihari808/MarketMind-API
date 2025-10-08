@@ -1,4 +1,4 @@
-# aigptssh/api/dashboard/brave_search.py
+# aigptssh/api/dashboard/serper_search.py
 import requests
 import os
 from dotenv import load_dotenv
@@ -14,17 +14,16 @@ from langchain_community.callbacks import get_openai_callback
 from token_logger import log_token_usage
 import aiohttp
 import sys
+from api.serper_searcher import SerperNews
 
 # Load environment variables from .env file
 load_dotenv()
 
-class BraveDashboard:
+class SerperDashboard:
     """
-    A class to fetch financial data for the Indian market using the Brave News Search API,
+    A class to fetch financial data for the Indian market using the Serper News Search API,
     specifically tailored for a financial dashboard.
     """
-    BASE_URL = "https://api.search.brave.com/res/v1/news/search"  # Switched to News API endpoint
-
     # Define specific queries for each data type
     def get_queries(self, country_name="India"):
         if country_name == "India":
@@ -60,51 +59,25 @@ class BraveDashboard:
 
 
     def __init__(self, api_key=None):
-        self.api_key = api_key or os.getenv("BRAVE_API_KEY")
+        self.api_key = api_key or os.getenv("SERPER_API_KEY")
         if not self.api_key:
-            raise ValueError("Brave API key not provided or found in environment variables.")
-        self.headers = {
-            "Accept": "application/json",
-            "X-Subscription-Token": self.api_key
-        }
-
-    async def _perform_search_async(self, query, country="IN", count=20, freshness="pd"):
-        """
-        Performs an asynchronous search request to the Brave API using aiohttp.
-        """
-        params = {
-            "q": query,
-            "count": count,
-            "country": country,
-            "text_decorations": "false",
-            "freshness": freshness
-        }
-
-        try:
-            url = self.BASE_URL if "news" in query else "https://api.search.brave.com/res/v1/news/search"
-            async with aiohttp.ClientSession(headers=self.headers) as session:
-                async with session.get(url, params=params) as response:
-                    response.raise_for_status()
-                    return await response.json()
-        except aiohttp.ClientError as e:
-            print(f"An error occurred during the API request: {e}")
-            return None
+            raise ValueError("Serper API key not provided or found in environment variables.")
+        self.searcher = SerperNews(self.api_key)
 
     async def _get_reason_from_snippets_async(self, stock_name, search_results):
         """
         Uses an LLM to determine the reason for a stock's price movement from search result snippets.
         Now uses ainoke for non-blocking operation.
         """
-        if not search_results or not search_results.get("web", {}).get("results"):
+        if not search_results:
             return {"reason": "Could not determine the reason from search results.", "source_url": ""}
 
-        first_result = search_results["web"]["results"][0]
+        first_result = search_results[0]
         title = first_result.get("title", "")
-        description = first_result.get("description", "")
-        extra_snippets = first_result.get("extra_snippets", [])
-        source_url = first_result.get("url", "")
+        description = first_result.get("snippet", "")
+        source_url = first_result.get("link", "")
 
-        all_text = f"Title: {title}\nDescription: {description}\n" + "\n".join(extra_snippets)
+        all_text = f"Title: {title}\nDescription: {description}"
 
         prompt = PromptTemplate(
             template="""
@@ -144,10 +117,8 @@ class BraveDashboard:
         - For "IN", scrapes StockEdge.
         - For "US", scrapes Business Insider.
         """
-        # --- ADD THIS SNIPPET ---
         if sys.platform == "win32":
             asyncio.set_event_loop_policy(asyncio.WindowsProactorEventLoopPolicy())
-        # --- END OF SNIPPET ---
         if country_code == "IN":
             return await self._scrape_trending_stocks_in()
         elif country_code == "US":
@@ -169,12 +140,9 @@ class BraveDashboard:
             page = await browser.new_page()
             try:
                 await page.goto(url, timeout=60000)
-                # Wait for the tables to be present on the page
                 await page.wait_for_selector("section.MarketTop-fullWidthContainer", timeout=20000)
 
-                # --- Scrape Top Gainers ---
                 print("Scraping Top Gainers...")
-                # Locate the specific section for Top Gainers
                 gainers_section = page.locator("section.MarketTop-fullWidthContainer:has(h4:has-text('TOP GAINERS'))")
                 gainer_rows = await gainers_section.locator("table.MarketTop-topTable tbody tr").all()
 
@@ -192,7 +160,6 @@ class BraveDashboard:
                         "source": url
                     })
 
-                # --- Scrape Top Decliners (using the same robust method) ---
                 print("Scraping Top Decliners...")
                 losers_section = page.locator("section.MarketTop-fullWidthContainer:has(h4:has-text('TOP DECLINERS'))")
                 loser_rows = await losers_section.locator("table.MarketTop-topTable tbody tr").all()
@@ -259,7 +226,8 @@ class BraveDashboard:
                         chg_val = float(chg_clean)
                         if chg_val > 3:
                             reason_query = f"why is {stock_name} stock price {'increasing' if indicator == 'Gainer' else 'decreasing'} today"
-                            search_results = await self._perform_search_async(reason_query, count=3)
+                            async with aiohttp.ClientSession(**self.searcher.session_config) as session:
+                                search_results = await self.searcher.search(session, reason_query, max_sources=3)
                             await asyncio.sleep(1)
                             reason_data = await self._get_reason_from_snippets_async(stock_name, search_results)
 
@@ -275,83 +243,66 @@ class BraveDashboard:
             await browser.close()
 
         return {"trending_stocks": trending_stocks}
-    # --- END OF MODIFICATION ---
-
-    # The synchronous methods are kept for other parts of the app that might not be async yet.
-    def _perform_search(self, query, count=20, freshness="pd", country="IN"):
-        params = {
-            "q": query,
-            "count": count,
-            "country": country,
-            "text_decorations": False,
-            "freshness": freshness
-        }
-        try:
-            url = self.BASE_URL if "news" in query else "https://api.search.brave.com/res/v1/web/search"
-            response = requests.get(url, headers=self.headers, params=params)
-            response.raise_for_status()
-            return response.json()
-        except requests.exceptions.RequestException as e:
-            print(f"An error occurred during the API request: {e}")
-            return None
 
     async def get_latest_news(self, queries, country_code, target_count=10):
-        print(f"Fetching up to {target_count} latest news articles from News API for country {country_code}...")
+        print(f"Fetching up to {target_count} latest news articles from Serper API for country {country_code}...")
         all_news_items = []
         urls_seen = set()
         
-        for query in queries:
-            results = await self._perform_search_async(query, count=target_count, freshness="pd", country=country_code)
-            if not results or not results.get("results"):
-                print(f"No news results found for query: '{query}'")
-                continue
+        async with aiohttp.ClientSession(**self.searcher.session_config) as session:
+            for query in queries:
+                results = await self.searcher.search(session, query, search_type='news', max_sources=target_count, country=country_code, freshness='pd')
+                if not results:
+                    print(f"No news results found for query: '{query}'")
+                    continue
 
-            for item in results["results"]:
-                url = item.get("url")
-                if url and url not in urls_seen:
-                    urls_seen.add(url)
-                    all_news_items.append({
-                        "title": item.get("title"),
-                        "url": url,
-                        "description": item.get("description"),
-                        "page_age": item.get("page_age"),
-                        "age": item.get("age")
-                    })
+                for item in results:
+                    url = item.get("link")
+                    if url and url not in urls_seen:
+                        urls_seen.add(url)
+                        all_news_items.append({
+                            "title": item.get("title"),
+                            "url": url,
+                            "description": item.get("snippet"),
+                            "page_age": item.get("publication_date"),
+                            "age": item.get("date")
+                        })
         
         print(f"Successfully fetched {len(all_news_items)} unique news articles for {country_code}.")
         return all_news_items
 
-    def get_portfolio_data(self, portfolio: list[str]):
+    async def get_portfolio_data(self, portfolio: list[str]):
         print(f"Fetching data for portfolio: {portfolio}")
         all_news = []
         urls_seen = set()
-        for stock in portfolio:
-            query = f"{stock} stock news"
-            results = self._perform_search(query, count=10)
-            if results and results.get("results"):
-                for item in results["results"]:
-                    url = item.get("url")
-                    if url and url not in urls_seen:
-                        urls_seen.add(url)
-                        all_news.append({
-                            "title": item.get("title"),
-                            "url": url,
-                            "description": item.get("description"),
-                            "page_age": item.get("page_age"),
-                            "age": item.get("age")
-                        })
-            asyncio.sleep(1)
+        async with aiohttp.ClientSession(**self.searcher.session_config) as session:
+            for stock in portfolio:
+                query = f"{stock} stock news"
+                results = await self.searcher.search(session, query, search_type='news', max_sources=10)
+                if results:
+                    for item in results:
+                        url = item.get("link")
+                        if url and url not in urls_seen:
+                            urls_seen.add(url)
+                            all_news.append({
+                                "title": item.get("title"),
+                                "url": url,
+                                "description": item.get("snippet"),
+                                "page_age": item.get("publication_date"),
+                                "age": item.get("date")
+                            })
+                await asyncio.sleep(1)
         return {"latest_news": all_news}
 
     async def get_dashboard_data(self, country_code="IN", country_name="India"):
         """
         Fetches dashboard data for a specific country.
         """
-        print(f"Starting data acquisition for {country_name} from Brave Search API...")
+        print(f"Starting data acquisition for {country_name} from Serper API...")
         queries = self.get_queries(country_name)
-        news = await self.get_latest_news(queries["latest_news"], country_code)
+        news = await self.get_latest_news(queries["latest_news"], country_code, target_count=10)
         dashboard_data = {
             "latest_news": news,
         }
-        print(f"Brave Search API data acquisition for {country_name} complete.")
+        print(f"Serper API data acquisition for {country_name} complete.")
         return dashboard_data

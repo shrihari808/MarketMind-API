@@ -66,12 +66,12 @@ async def lifespan(app: FastAPI):
         app.state.db_pool = None
         print("ERROR: DATABASE_URL not set. Database pool not initialized.")
 
-    # scheduler.add_job(aggregate_and_process_data, 'interval', minutes=20, args=["IN", "India"])
-    # scheduler.add_job(aggregate_and_process_data, 'interval', minutes=40, args=["US", "USA"])
-    # scheduler.add_job(generate_trending_stocks_data, 'interval', minutes=30, args=["IN"])
-    # scheduler.add_job(generate_trending_stocks_data, 'interval', minutes=60, args=["US"])
-    # scheduler.add_job(generate_timeline, 'interval', hours=6) # Add the timeline job
-    # scheduler.start()
+    scheduler.add_job(aggregate_and_process_data, 'interval', minutes=1, args=["IN", "India"])
+    scheduler.add_job(aggregate_and_process_data, 'interval', minutes=40, args=["US", "USA"])
+    scheduler.add_job(generate_trending_stocks_data, 'interval', minutes=30, args=["IN"])
+    scheduler.add_job(generate_trending_stocks_data, 'interval', minutes=60, args=["US"])
+    scheduler.add_job(generate_timeline, 'interval', hours=6) # Add the timeline job
+    scheduler.start()
     yield # The application is now running
 
     print("INFO: Application shutdown...")
