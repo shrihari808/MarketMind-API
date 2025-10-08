@@ -3,6 +3,7 @@
 import os
 import json
 import asyncio
+import aiohttp
 from langchain import PromptTemplate, LLMChain
 from langchain_community.chat_message_histories import (
     PostgresChatMessageHistory,
@@ -16,8 +17,8 @@ import pandas as pd
 from fastapi.responses import StreamingResponse
 from openai import OpenAI
 import pandas as pd
-from config import DB_POOL,BRAVE_API_KEY # Import the DB_POOL
-from api.brave_searcher import BraveRedditSearch
+from config import DB_POOL
+from api.serper_searcher import SerperNews
 from api.reddit_scraper import RedditScraper
 from api.reddit_rag.reddit_vector_store import create_reddit_vector_store_from_scraped_data
 
@@ -30,111 +31,11 @@ psql_url=os.getenv('DATABASE_URL')
 
 
 
-def fetch_search_red1(query):
-    bing_api_key = os.getenv('BING_API_KEY')
-    subscription_key = bing_api_key
-    #print(subscription_key)
-    endpoint = "https://api.bing.microsoft.com/v7.0/search"
-    headers = {"Ocp-Apim-Subscription-Key": subscription_key}
-
-    params = {
-    "count": "10",
-    "cc":'IND',
-    #"freshness": "Month",
-    "q": f"site:reddit.com {query}",
-    #"textDecorations": True,
-    "mkt": "en-IN",
-    #"responseFilter": "News",
-    "sortBy": "Date",
-    }
-        
-
-
-    try:
-        # Send the GET request to the API
-        response = requests.get(url=endpoint, headers=headers, params=params)
-        response.raise_for_status()  # Raise an exception for any HTTP error codes
-        search_results = response.json()
-
-        if search_results and isinstance(search_results, dict) and 'webPages' in search_results:
-            web_pages = search_results.get('webPages', {})
-            if 'value' in web_pages and web_pages['value']:
-                values = web_pages['value']
-                return search_results
-            else:
-                print("No 'value' found in 'webPages'")
-                return None
-        else:
-            print("'webPages' not found in search_results or invalid structure")
-            return None
-
-    except requests.exceptions.HTTPError as http_err:
-        print(f"HTTP error occurred: {http_err}")
-    except requests.exceptions.ConnectionError as conn_err:
-        print(f"Connection error occurred: {conn_err}")
-    except requests.exceptions.Timeout as timeout_err:
-        print(f"Timeout error occurred: {timeout_err}")
-    except requests.exceptions.RequestException as req_err:
-        print(f"An error occurred: {req_err}")
-
-    return None
-
-
-
-def process_search_red1(search_results):
-    # Safely get the 'value' key and check if it's not None and not empty
-    if search_results is None:
-        values=None
-    else:
-        values = search_results['webPages']['value']
-    #print(len(values))
-    
-    if values:
-        news = []
-        for item in search_results['webPages']['value']:
-            #print(item)
-
-            news.append({
-                    "title": item.get("name", None),
-                    "source_url": item.get("url", None),
-                    "image_url": None,  # Explicitly set to None
-                    "description": item.get("snippet", None),
-                    #"heading": item.get('siteName', None),
-                    # "image": item.get("image", {}).get("thumbnail", {}).get("contentUrl", None),
-                    "source_date": item.get("dateLastCrawled", None),
-                    #"date_published": item.get("datePublished", "abc"),
-                })
-            
-        if len(news):
-        
-            # Create a DataFrame from the news list
-            df = pd.DataFrame(news)
-            
-            # Clean up the 'title' and 'description' columns
-            #df['title'] = df['title'].apply(lambda x: re.sub(r'[^\x00-\x7F]+', ' ', x))
-            #df['description'] = df['description'].apply(lambda x: re.sub(r'[^\x00-\x7F]+', ' ', x))    
-            # Convert 'date_published' to a specific format and type
-            #df["date_published"] = pd.to_datetime(df["date_published"]).dt.strftime('%Y%m%d').astype(int)
-            
-            # Drop rows with any NaN values
-            #df.dropna(inplace=True)
-            
-            #print(df.columns)
-            #print(df[['source_date', 'date_published']])
-            filtered_articles = [article["title"] + article["description"] for article in news]
-            links = [article["source_url"] for article in news]
-            return filtered_articles,df,links
-        else:
-            return None,None,None
-    else:
-        return None,None,None
-    
-
-
-import httpx
-async def fetch_search_red(query: str, brave_api_key: str = BRAVE_API_KEY):
-    searcher = BraveRedditSearch(brave_api_key)
-    results = await searcher.search(query)
+async def fetch_search_red(query: str, serper_api_key: str):
+    searcher = SerperNews(serper_api_key)
+    # Use the search method with a site-specific query
+    async with aiohttp.ClientSession(**searcher.session_config) as session:
+        results = await searcher.search(session, f"site:reddit.com {query}", search_type='search')
     return results
 
 
@@ -149,11 +50,11 @@ async def process_search_red(search_results: list[dict]):
     for item in search_results:
         articles.append({
             "title": item.get("title", ""),
-            "description": item.get("description", ""),
-            "url": item.get("url"),
-            "page_age": item.get("page_age")  # Add page_age here
+            "description": item.get("snippet", ""),
+            "url": item.get("link"),
+            "page_age": item.get("publication_date")
         })
-        links.append(item.get('url'))
+        links.append(item.get('link'))
     # --- END OF SNIPPET ---
 
     print(f"DEBUG: Processed {len(articles)} articles and {len(links)} links from search results.")

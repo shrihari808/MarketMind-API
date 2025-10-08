@@ -1,0 +1,50 @@
+FOR WINDOWS PASTE ANY COMMAND INTO CMD
+
+DASHBOARD
+curl -X GET "https://ai.airrchip.com/dashboard?country=US" -H "X-API-Key: example_api_key_12345"
+
+PORTFOLIO
+curl --max-time 5000 -X GET "https://ai.airrchip.com/dashboard/portfolio?portfolio=Tesla&portfolio=NVIDIA&portfolio=Meta" -H "X-API-Key: example_api_key_12345"
+
+STOCK
+curl --max-time 5000 -N -X GET "https://ai.airrchip.com/stock?stock_name=Infosys" -H "X-API-Key: example_api_key_12345"
+
+TRENDING STOCK DASHBOARD (async issue)
+curl -X GET "https://ai.airrchip.com/dashboard/trending&country=IN" -H "X-API-Key: example_api_key_12345"
+
+WEB RAG
+curl -N -X "POST" "https://ai.airrchip.com/web_rag?session_id=1244&prompt_history_id=532&user_id=151&plan_id=2&country=IN" ^
+-H "accept: application/json" ^
+-H "Content-Type: application/json" ^
+-H "x-api-key: example_api_key_12345" ^
+-d "{  \"query\": \"tell me the latest news about RBI interest rates. How is it impacted by US tariffs\"}"
+
+REDDIT RAG
+curl -N -X "POST" "https://ai.airrchip.com/reddit_rag?session_id=2253&prompt_history_id=5432&user_id=151&plan_id=2&country=IN" ^
+-H "accept: application/json" ^
+-H "Content-Type: application/json" ^
+-H "x-api-key: example_api_key_12345" ^
+-d "{  \"query\": \"tell me about reliance stock\"}"
+
+DOC CHAT
+curl -X POST ^
+-H "accept: application/json" ^
+-H "x-api-key: example_api_key_12345" ^
+-F "file=@C:\Users\kshri\Downloads\17501480330.69521300.pdf" ^
+-F "file=@C:\Users\kshri\Downloads\idirect_tatamotors_q4fy25.pdf" ^
+-F "session_id=868" ^
+-F "user_id=151" ^
+-F "plan_id=2" ^
+-F "prompt_history_id=532" ^
+http://127.0.0.1:8000/doc_chat
+
+DOC CHAT QUERY
+curl -N -X POST ^
+-H "accept: application/json" ^
+-H "x-api-key: example_api_key_12345" ^
+-F "session_id=868" ^
+-F "user_id=151" ^
+-F "plan_id=2" ^
+-F "prompt_history_id=533" ^
+-F "query=tell me about tata's India business growth trajectory over FY25-27E" ^
+http://127.0.0.1:8000/doc_chat/query

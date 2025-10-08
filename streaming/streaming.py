@@ -59,6 +59,9 @@ from langchain_core.documents import Document
 from api.brave_searcher import BraveNews, get_brave_results
 from api.reddit_scraper import RedditScraper
 from api.reddit_rag.reddit_vector_store import create_reddit_vector_store_from_scraped_data
+from api.serper_searcher import SerperNews
+from api.reddit_scraper import RedditScraper
+from api.dashboard.web_scraper import scrape_urls
 
 # --- Functions imported from other modules ---
 from streaming.reddit_stream import fetch_search_red, process_search_red
@@ -612,11 +615,11 @@ async def web_rag_mix(
     original_query = request.query.strip()
     today = datetime.now().strftime("%Y-%m-%d")
 
-    brave_api_key = os.getenv('BRAVE_API_KEY')
-    if not brave_api_key:
-        raise HTTPException(status_code=500, detail="Brave API key not configured.")
+    serper_api_key = os.getenv('SERPER_API_KEY')
+    if not serper_api_key:
+        raise HTTPException(status_code=500, detail="Serper API key not configured.")
 
-    searcher = BraveNews(brave_api_key)
+    searcher = SerperNews(serper_api_key)
 
     async def tiered_stream_generator():
         total_start_time = time.time() # Start total timer
@@ -664,18 +667,18 @@ async def web_rag_mix(
                 
                 # --- Tier 1: Recency Search ---
                 yield "& Searching for recent updates...\n".encode("utf-8")
-                recency_articles = await searcher.search_and_scrape(
-                    session, recency_query, max_sources=10, country=country, freshness='pd'
+                recency_articles = await searcher.search(
+                    session, recency_query, search_type='news', max_sources=10, country=country, freshness='pd'
                 )
-                recency_scraped_articles = await searcher.scrape_top_urls(session, recency_articles)
+                recency_scraped_articles = await scrape_urls(recency_articles)
                 recency_passages = await scoring_service.rerank_content_chunks(recency_query, recency_scraped_articles, top_n=5)
                 recency_context = scoring_service.create_enhanced_context(recency_passages) if recency_passages else ""
 
 
                 # --- Tier 2: Analytical and Factual Search ---
                 yield "& Searching for analysis and facts...\n".encode("utf-8")
-                analytical_task = searcher.search_and_scrape(session, analytical_query, max_sources=5, country=country)
-                factual_task = searcher.search_and_scrape(session, factual_query, max_sources=5, country=country)
+                analytical_task = searcher.search(session, analytical_query, search_type='search', max_sources=10, country=country)
+                factual_task = searcher.search(session, factual_query, search_type='search', max_sources=10, country=country)
 
                 search_results_lists = await asyncio.gather(analytical_task, factual_task)
                 
@@ -706,7 +709,7 @@ async def web_rag_mix(
                     yield "\nCould not find any initial sources.".encode("utf-8")
                     return
                 search_end_time = time.time()
-                print(f"DEBUG: Brave search & aggregation took {search_end_time - total_start_time:.2f} seconds.")
+                print(f"DEBUG: Serper search & aggregation took {search_end_time - total_start_time:.2f} seconds.")
 
                 yield f"& Searching sources ... | {len(initial_sources)} unique articles\n".encode("utf-8")
                 for source in initial_sources:
@@ -719,7 +722,7 @@ async def web_rag_mix(
                 sources_to_scrape = initial_sources[:10]
 
                 # The same session from the 'with' block is used here
-                scraped_sources = await searcher.scrape_top_urls(session, sources_to_scrape)
+                scraped_sources = await scrape_urls(sources_to_scrape)
                 
                 scrape_end_time = time.time()
                 print(f"DEBUG: Scraping took {scrape_end_time - scrape_start_time:.2f} seconds.")
@@ -1007,8 +1010,13 @@ async def red_rag_bing(
             # Step 1: Search for Reddit posts
             yield "& Generating search plan...\n".encode("utf-8")
             yield "& Executing search 1 of 1...\n".encode("utf-8")
-            brave_api_key = os.getenv('BRAVE_API_KEY')
-            search_results = await fetch_search_red(original_query, brave_api_key)
+            
+            # --- THIS IS THE FIX ---
+            serper_api_key = os.getenv('SERPER_API_KEY')
+            if not serper_api_key:
+                raise HTTPException(status_code=500, detail="Serper API key not configured.")
+            search_results = await fetch_search_red(original_query, serper_api_key)
+            # --- END OF FIX ---
 
             if not search_results:
                 yield "\nCould not find any relevant Reddit discussions for your query.".encode("utf-8")
