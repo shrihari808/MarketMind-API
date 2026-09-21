@@ -6,7 +6,7 @@ This checklist tracks the end-to-end transformation of **MarketMind-API** from a
 
 ## Progress Overview
 
-- [ ] **Phase 1**: Codebase Pruning & Clean Architecture Setup
+- [x] **Phase 1**: Codebase Pruning & Clean Architecture Setup
 - [ ] **Phase 2**: Free-Tier Provider Integrations & Adapters
 - [ ] **Phase 3**: Core RAG & Business Logic Re-Engineering
 - [ ] **Phase 4**: API Modernization & Standardized SSE Streaming
@@ -19,27 +19,28 @@ This checklist tracks the end-to-end transformation of **MarketMind-API** from a
 
 Goal: Eliminate technical debt, legacy files, hardcoded developer paths, import side-effects, and bloated dependencies before writing new code.
 
-- [ ] **1.1 Junk Code & Legacy File Removal**
-  - [ ] Delete dead / deprecated files (`api/fundamentals_rag/fundamental_chat.py`, `api/graph_openai1.py`).
-  - [ ] Remove scratch notes and obsolete curl dumps (`windows curls.txt`, `localhost curls.txt`).
-  - [ ] Remove generated artifacts checked into version control (`api/deep_research/Tata_Motors_Stock_Analysis.pdf`, `api/dashboard/outputs/`).
-  - [ ] Eliminate the 180 KB hard-coded array (`company_names`) inside `api/caching.py`.
-  - [ ] Fix broken imports referencing `from app_service...` across remaining files.
-- [ ] **1.2 Dependency Sanitization**
-  - [ ] Replace bloated 224-package frozen `requirements.txt` with a lean, categorized requirement set (`requirements.txt` / `pyproject.toml`).
-  - [ ] Remove heavy, unnecessary dependencies (PyTorch, Transformers, Playwright, pytube, Streamlit).
-  - [ ] Add modern, lightweight packages: `google-genai`, `yfinance`, `duckduckgo-search`, `lancedb` (or `chromadb` client-only), `pydantic-settings`, `httpx`, `fastapi`.
-- [ ] **1.3 Type-Safe Configuration Layer (`app/core/config.py`)**
-  - [ ] Create Pydantic v2 `BaseSettings` schema reading from `.env`.
-  - [ ] **Eliminate all import-time side-effects** (no eager Pinecone/Chroma network calls or model downloads upon importing settings).
-  - [ ] Configure environment variables for `GEMINI_API_KEY`, `DATABASE_URL`, `CORS_ORIGINS`, `ENVIRONMENT`.
-- [ ] **1.4 Clean Architecture Directory Structure**
-  - [ ] Scaffold standard clean-architecture folders:
-    - `app/core/` (settings, logging, security, database session)
-    - `app/domain/` (domain models, schemas, abstract provider interfaces)
+- [x] **1.1 Junk Code & Legacy File Removal**
+  - [x] Delete dead / deprecated files (`api/fundamentals_rag/fundamental_chat.py`, `api/graph_openai1.py`).
+  - [x] Remove scratch notes and obsolete curl dumps (`windows curls.txt`, `localhost curls.txt`).
+  - [x] Remove generated artifacts checked into version control (`api/deep_research/Tata_Motors_Stock_Analysis.pdf`, `db_tester.py`, `import_graph.py`).
+  - [x] Add `data/` and `outputs/` to `.gitignore`.
+- [x] **1.2 Dependency Sanitization**
+  - [x] Replace bloated 224-package frozen `requirements.txt` with a lean, categorized requirement set.
+  - [x] Remove heavy, unnecessary dependencies (PyTorch, Transformers, Playwright, pytube, Streamlit).
+  - [x] Add modern, lightweight packages: `google-genai`, `yfinance`, `duckduckgo-search`, `pydantic-settings`, `httpx`, `fastapi`.
+- [x] **1.3 Type-Safe Configuration Layer (`app/core/config.py`)**
+  - [x] Create Pydantic v2 `BaseSettings` schema reading from `.env`.
+  - [x] **Eliminate all import-time side-effects** (no eager Pinecone/Chroma network calls or model downloads upon importing settings).
+  - [x] Configure environment variables for `GEMINI_API_KEY`, `DATABASE_URL`, `CORS_ORIGINS`, `ENVIRONMENT`.
+  - [x] Create `.env.example` template.
+- [x] **1.4 Clean Architecture Directory Structure & Domain Layer**
+  - [x] Scaffold standard clean-architecture folders:
+    - `app/core/` (settings, logging, security)
+    - `app/domain/` (schemas: `rag.py`, `market.py`; interfaces: `search.py`, `scraper.py`, `market.py`, `llm.py`, `vector_store.py`)
     - `app/infrastructure/` (search, scrapers, financial data, vector store adapters)
     - `app/services/` (RAG pipelines, research generator, dashboard services)
-    - `app/api/` (FastAPI route handlers, SSE formatters, dependencies)
+    - `app/api/` (FastAPI route handlers, SSE formatters)
+
 
 ---
 

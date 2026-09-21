@@ -238,3 +238,5 @@ timeline.json
 /logs/
 graph_output.json
 output.pdf
+data/
+outputs/
