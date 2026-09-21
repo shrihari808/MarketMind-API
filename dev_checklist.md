@@ -32,7 +32,8 @@ Goal: Eliminate technical debt, legacy files, hardcoded developer paths, import 
   - [x] Create Pydantic v2 `BaseSettings` schema reading from `.env`.
   - [x] **Eliminate all import-time side-effects** (no eager Pinecone/Chroma network calls or model downloads upon importing settings).
   - [x] Configure environment variables for `GEMINI_API_KEY`, `DATABASE_URL`, `CORS_ORIGINS`, `ENVIRONMENT`.
-  - [x] Create `.env.example` template.
+  - [x] Add developer search configuration: `SEARCH_PROVIDER` (`duckduckgo` | `serper` | `brave`), `SERPER_API_KEY`, `BRAVE_API_KEY`.
+  - [x] Create and update `.env.example` template with optional search API keys.
 - [x] **1.4 Clean Architecture Directory Structure & Domain Layer**
   - [x] Scaffold standard clean-architecture folders:
     - `app/core/` (settings, logging, security)
@@ -54,12 +55,12 @@ Goal: Implement decoupled, pluggable adapters for LLMs, search, market data, vec
   - [x] Implement structured JSON output parsing using native schema enforcement.
   - [x] Support native multimodal PDF/document streaming without OCR/chunking.
   - [x] Safe import with clear warning if `GEMINI_API_KEY` is not yet set.
-- [x] **2.2 Configurable Multi-Search Adapters & Factory (`app/infrastructure/search/`)**
+- [x] **2.2 Configurable Multi-Search Architecture & Optional APIs (`app/infrastructure/search/`)**
   - [x] Implement `SearchEngineFactory` with developer-configurable provider (`SEARCH_PROVIDER="duckduckgo" | "serper" | "brave"`).
-  - [x] Implement `DuckDuckGoSearcher` (`ddgs>=9.16.0`, 100% free, no API key, with regional & worldwide fallback).
-  - [x] Implement `SerperSearcher` (Google Web & News API via `serper.dev`, ISO date parser).
-  - [x] Implement `BraveSearcher` (Brave Web & News Search API, timestamp parser).
-  - [x] Standardize all results into domain `SourceCitation` schemas with graceful fallback.
+  - [x] **DuckDuckGo (Default & Free)**: Upgraded to `ddgs>=9.16.0` (100% free, zero key needed, automatic worldwide fallback when regional queries return empty).
+  - [x] **Serper.dev (Optional Paid/Freemium API)**: Added `SerperSearcher` for Google web & financial news search via Serper API; parses relative dates ("2 hours ago", "3 days ago") and absolute dates into ISO format; graceful degradation if key is omitted.
+  - [x] **Brave Search (Optional API)**: Added `BraveSearcher` for web and financial news search via Brave Search API; normalizes timestamps and handles news-to-web fallback.
+  - [x] Standardize all search providers into uniform domain `SourceCitation` schemas.
 - [x] **2.3 Free Financial Market Data Adapter (`app/infrastructure/market/yfinance_client.py`)**
   - [x] Implement `YFinanceMarketClient` (adhering to `MarketDataClient`).
   - [x] Ticker resolution for Indian (.NS) and US exchanges.
@@ -69,12 +70,13 @@ Goal: Implement decoupled, pluggable adapters for LLMs, search, market data, vec
   - [x] Implement `LanceVectorStore` (adhering to `VectorStore`).
   - [x] In-process Apache Arrow columnar storage (<30 MB RAM footprint, zero separate server).
   - [x] Fast text chunker, vector similarity search, and collection management.
-- [x] **2.5 Async Web Scraper with Redirects & Table Extraction (`app/infrastructure/scrapers/web_scraper.py`)**
+- [x] **2.5 Async Web Scraper with Dynamic Redirects & Table Extraction (`app/infrastructure/scrapers/web_scraper.py`)**
   - [x] Implement `TrafilaturaWebScraper` (adhering to `WebScraper`).
-  - [x] Async HTTP requests via `httpx` with timeout protection and dynamic redirect following (`max_redirects=5`).
-  - [x] Memory guard enforcing a strict 5MB payload limit to protect the 512MB RAM budget.
-  - [x] Lightweight HTML table extraction to formatted GitHub Markdown (`| col |`) via `BeautifulSoup` (<1MB RAM, 0% crash risk).
-  - [x] Non-blocking article extraction via `trafilatura` run in thread pool.
+  - [x] **Memory Constraint Evaluation**: Analyzed IBM `docling` and intentionally avoided it for cloud deployment due to ~2GB PyTorch neural model footprint causing OOM kill on 512MB free tiers.
+  - [x] **Dynamic Redirect Handling**: Async HTTP requests via `httpx` with `follow_redirects=True`, `max_redirects=5`, and automatic final canonical URL tracking.
+  - [x] **512MB RAM Safeguard**: Enforces a strict 5MB payload limit to prevent runaway memory usage.
+  - [x] **Lightweight HTML Table Extraction**: Built an embedded `BeautifulSoup` table-to-markdown parser (<1MB RAM overhead, 0% crash risk) converting HTML tables into clean GitHub Markdown (`| Col 1 | Col 2 |`) appended to article text.
+  - [x] Non-blocking CPU extraction via `trafilatura` run in thread pool.
 - [x] **2.6 Unified Database Layer (`app/core/database.py`)**
   - [x] Consolidate database access into modern **Async SQLAlchemy 2.0**.
   - [x] Support serverless PostgreSQL (Neon.tech / Supabase) via `asyncpg`.
