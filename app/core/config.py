@@ -42,14 +42,19 @@ class Settings(BaseSettings):
     )
 
     # Search & Scraping Parameters
+    SEARCH_PROVIDER: str = Field(
+        default="duckduckgo",
+        description="Search provider to use: 'duckduckgo', 'serper', or 'brave'"
+    )
     DEFAULT_COUNTRY: str = "IN"
     MAX_SEARCH_RESULTS: int = 7
     MAX_SCRAPED_SOURCES: int = 5
     SCRAPER_TIMEOUT_SECONDS: int = 8
     
-    # Optional Third-Party Fallbacks
-    TAVILY_API_KEY: Optional[str] = Field(default=None)
-    BRAVE_API_KEY: Optional[str] = Field(default=None)
+    # Search Engine API Keys
+    SERPER_API_KEY: Optional[str] = Field(default=None, description="Serper.dev API Key")
+    BRAVE_API_KEY: Optional[str] = Field(default=None, description="Brave Search API Key")
+    TAVILY_API_KEY: Optional[str] = Field(default=None, description="Tavily API Key")
 
     # Vector Store
     CHROMA_PERSIST_DIRECTORY: str = "./data/chroma"

@@ -21,22 +21,53 @@ class TrafilaturaWebScraper(WebScraper):
             "User-Agent": (
                 "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
                 "AppleWebKit/537.36 (KHTML, like Gecko) "
-                "Chrome/124.0.0.0 Safari/537.36"
+                "Chrome/133.0.0.0 Safari/537.36"
             ),
             "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
             "Accept-Language": "en-US,en;q=0.9",
         }
+
+    @staticmethod
+    def _extract_markdown_tables(html_content: str) -> List[str]:
+        """Extracts HTML tables and formats them as standard Markdown tables."""
+        try:
+            from bs4 import BeautifulSoup
+            soup = BeautifulSoup(html_content, "html.parser")
+            tables = soup.find_all("table")
+            markdown_tables = []
+
+            for table in tables:
+                rows = []
+                for tr in table.find_all("tr"):
+                    cells = [c.get_text(separator=" ", strip=True) for c in tr.find_all(["th", "td"])]
+                    if cells and any(cells):
+                        rows.append("| " + " | ".join(cells) + " |")
+                if len(rows) >= 2:
+                    header_cols = len(rows[0].split("|")) - 2
+                    if header_cols > 0:
+                        separator = "| " + " | ".join(["---"] * header_cols) + " |"
+                        rows.insert(1, separator)
+                        markdown_tables.append("\n".join(rows))
+
+            return markdown_tables
+        except Exception as e:
+            logger.debug(f"Table extraction notice: {e}")
+            return []
 
     async def scrape(self, url: str) -> ScrapedDocument:
         """Asynchronously fetches a URL and extracts clean article text."""
         if not url or not url.startswith(("http://", "https://")):
             return ScrapedDocument(url=url, success=False, error="Invalid URL format")
 
+        # Guard against gigantic downloads to protect 512MB RAM
+        max_bytes = 5 * 1024 * 1024  # 5 MB limit
+
         try:
             async with httpx.AsyncClient(
                 headers=self.headers,
                 timeout=self.timeout,
                 follow_redirects=True,
+                max_redirects=5,
                 verify=False
             ) as client:
                 response = await client.get(url)
@@ -55,7 +86,19 @@ class TrafilaturaWebScraper(WebScraper):
                         error=f"Unsupported content type: {content_type}"
                     )
 
+                # Memory guard: enforce size limit
+                content_length = response.headers.get("content-length")
+                if content_length and int(content_length) > max_bytes:
+                    return ScrapedDocument(
+                        url=url,
+                        success=False,
+                        error=f"Payload exceeds memory limit ({content_length} bytes)"
+                    )
+
                 html_content = response.text
+                final_url = str(response.url)
+                if final_url != url:
+                    logger.debug(f"Followed redirect: {url} -> {final_url}")
 
             # Run CPU-bound trafilatura extraction in background thread
             extracted_text = await asyncio.to_thread(
@@ -66,7 +109,15 @@ class TrafilaturaWebScraper(WebScraper):
                 no_fallback=False
             )
 
-            if not extracted_text or len(extracted_text.strip()) < 50:
+            # Extract any structured HTML tables as clean Markdown
+            tables = await asyncio.to_thread(self._extract_markdown_tables, html_content)
+            
+            combined_content = (extracted_text or "").strip()
+            if tables:
+                table_section = "\n\n### Extracted Data Tables:\n" + "\n\n".join(tables[:5])  # Cap at top 5 tables
+                combined_content += table_section
+
+            if not combined_content or len(combined_content.strip()) < 50:
                 return ScrapedDocument(
                     url=url,
                     success=False,
@@ -74,8 +125,8 @@ class TrafilaturaWebScraper(WebScraper):
                 )
 
             return ScrapedDocument(
-                url=url,
-                content=extracted_text.strip(),
+                url=final_url,
+                content=combined_content.strip(),
                 success=True
             )
 

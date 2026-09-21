@@ -54,10 +54,12 @@ Goal: Implement decoupled, pluggable adapters for LLMs, search, market data, vec
   - [x] Implement structured JSON output parsing using native schema enforcement.
   - [x] Support native multimodal PDF/document streaming without OCR/chunking.
   - [x] Safe import with clear warning if `GEMINI_API_KEY` is not yet set.
-- [x] **2.2 Zero-Cost Web Search Adapter (`app/infrastructure/search/duckduckgo.py`)**
-  - [x] Implement `DuckDuckGoSearcher` (Strategy pattern adhering to `SearchEngine`).
-  - [x] Support general web search and recency-focused news search (100% free, no API key).
-  - [x] Standardize results into domain `SourceCitation` schemas.
+- [x] **2.2 Configurable Multi-Search Adapters & Factory (`app/infrastructure/search/`)**
+  - [x] Implement `SearchEngineFactory` with developer-configurable provider (`SEARCH_PROVIDER="duckduckgo" | "serper" | "brave"`).
+  - [x] Implement `DuckDuckGoSearcher` (`ddgs>=9.16.0`, 100% free, no API key, with regional & worldwide fallback).
+  - [x] Implement `SerperSearcher` (Google Web & News API via `serper.dev`, ISO date parser).
+  - [x] Implement `BraveSearcher` (Brave Web & News Search API, timestamp parser).
+  - [x] Standardize all results into domain `SourceCitation` schemas with graceful fallback.
 - [x] **2.3 Free Financial Market Data Adapter (`app/infrastructure/market/yfinance_client.py`)**
   - [x] Implement `YFinanceMarketClient` (adhering to `MarketDataClient`).
   - [x] Ticker resolution for Indian (.NS) and US exchanges.
@@ -67,10 +69,12 @@ Goal: Implement decoupled, pluggable adapters for LLMs, search, market data, vec
   - [x] Implement `LanceVectorStore` (adhering to `VectorStore`).
   - [x] In-process Apache Arrow columnar storage (<30 MB RAM footprint, zero separate server).
   - [x] Fast text chunker, vector similarity search, and collection management.
-- [x] **2.5 Async Web Scraper (`app/infrastructure/scrapers/web_scraper.py`)**
+- [x] **2.5 Async Web Scraper with Redirects & Table Extraction (`app/infrastructure/scrapers/web_scraper.py`)**
   - [x] Implement `TrafilaturaWebScraper` (adhering to `WebScraper`).
-  - [x] Async HTTP requests via `httpx` with timeout protection.
-  - [x] Non-blocking article content extraction via `trafilatura` run in thread pool.
+  - [x] Async HTTP requests via `httpx` with timeout protection and dynamic redirect following (`max_redirects=5`).
+  - [x] Memory guard enforcing a strict 5MB payload limit to protect the 512MB RAM budget.
+  - [x] Lightweight HTML table extraction to formatted GitHub Markdown (`| col |`) via `BeautifulSoup` (<1MB RAM, 0% crash risk).
+  - [x] Non-blocking article extraction via `trafilatura` run in thread pool.
 - [x] **2.6 Unified Database Layer (`app/core/database.py`)**
   - [x] Consolidate database access into modern **Async SQLAlchemy 2.0**.
   - [x] Support serverless PostgreSQL (Neon.tech / Supabase) via `asyncpg`.

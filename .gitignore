@@ -239,4 +239,5 @@ timeline.json
 graph_output.json
 output.pdf
 data/
-outputs/
+outputs/
+scratch/

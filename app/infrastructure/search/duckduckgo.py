@@ -6,7 +6,12 @@ Provides zero-cost, API-key-free web and financial news search using DuckDuckGo.
 import asyncio
 from typing import List
 from urllib.parse import urlparse
-from duckduckgo_search import DDGS
+
+try:
+    from ddgs import DDGS
+except ImportError:
+    from duckduckgo_search import DDGS
+
 from app.core.logging import logger
 from app.domain.interfaces.search import SearchEngine
 from app.domain.schemas.rag import SourceCitation
@@ -46,7 +51,11 @@ class DuckDuckGoSearcher(SearchEngine):
 
         def _sync_search() -> List[dict]:
             with DDGS() as ddgs:
-                return list(ddgs.text(query, region=region, max_results=max_results))
+                res = list(ddgs.text(query, region=region, max_results=max_results))
+                if not res:
+                    # Fallback to worldwide region if region-specific results are empty
+                    res = list(ddgs.text(query, region=None, max_results=max_results))
+                return res
 
         try:
             results = await asyncio.to_thread(_sync_search)
@@ -82,7 +91,10 @@ class DuckDuckGoSearcher(SearchEngine):
 
         def _sync_news() -> List[dict]:
             with DDGS() as ddgs:
-                return list(ddgs.news(query, region=region, max_results=max_results))
+                res = list(ddgs.news(query, region=region, max_results=max_results))
+                if not res:
+                    res = list(ddgs.news(query, region=None, max_results=max_results))
+                return res
 
         try:
             results = await asyncio.to_thread(_sync_news)
