@@ -8,7 +8,7 @@ This checklist tracks the end-to-end transformation of **MarketMind-API** from a
 
 - [x] **Phase 1**: Codebase Pruning & Clean Architecture Setup
 - [x] **Phase 2**: Free-Tier Provider Integrations & Adapters
-- [ ] **Phase 3**: Core RAG & Business Logic Re-Engineering
+- [x] **Phase 3**: Core RAG & Business Logic Re-Engineering
 - [ ] **Phase 4**: API Modernization & Standardized SSE Streaming
 - [ ] **Phase 5**: Modern Full-Stack Frontend (Web UI)
 - [ ] **Phase 6**: Testing, Dockerization & $0 Cloud Deployment
@@ -86,30 +86,31 @@ Goal: Implement decoupled, pluggable adapters for LLMs, search, market data, vec
 ---
 
 ## Phase 3: Core RAG & Business Logic Re-Engineering
-
+ 
 Goal: Rebuild the core RAG pipelines to be lean, lightning-fast, and memory-efficient (<512MB RAM).
 
-- [ ] **3.1 High-Performance Streaming Web RAG Service**
-  - [ ] Implement async query analyzer (financial intent validation, sub-query generation, ticker detection).
-  - [ ] Implement concurrent async HTML scraping using `httpx` + `trafilatura` (with strict timeouts & domain blacklists).
-  - [ ] Implement lightweight passage reranking (BM25 or fast cross-encoder) to extract top context.
-  - [ ] Construct cohesive, structured financial prompts with strict citation rules.
-  - [ ] Stream synthesized answers with citation metadata.
-- [ ] **3.2 Gemini Native Multimodal Document RAG Service**
-  - [ ] Implement direct PDF ingestion exploiting Gemini's native 1M+ token context window.
-  - [ ] Eliminate complex multi-stage PDF deconstruction, table splitting, and OCR pipelines.
-  - [ ] Enable native document visual understanding (Gemini natively analyzes financial charts, balance sheet tables, and diagrams in PDFs).
-- [ ] **3.3 Community Sentiment & Reddit RAG Service**
-  - [ ] Implement Reddit discussion discovery via DuckDuckGo site-specific search.
-  - [ ] Extract discussion threads and user comment trees.
-  - [ ] Synthesize retail community sentiment and debate summaries.
-- [ ] **3.4 Market Dashboard Service with Stale-While-Revalidate**
-  - [ ] Replace 24/7 background scheduler with on-demand caching with TTL (Stale-While-Revalidate in Postgres).
-  - [ ] Aggregate top market indices (Nifty 50, Sensex, S&P 500, Nasdaq), standout gainers, and losers via `yfinance`.
-  - [ ] Generate structured daily market briefs using Gemini Flash.
-- [ ] **3.5 Deep Research Pipeline**
-  - [ ] Implement automated equity research orchestrator (Executive Summary, Fundamentals, Technicals, Risks, Catalysts).
-  - [ ] Generate clean Markdown reports with option to export to downloadable PDF.
+- [x] **3.1 High-Performance Streaming Web RAG Service (`WebRAGService`)**
+  - [x] Implement async query analyzer (`QueryAnalyzer`): financial intent validation, multi-angle sub-query generation (recency, analytical, factual), ticker detection, and conversational follow-up resolution.
+  - [x] Implement concurrent async HTML scraping using `httpx` + `trafilatura` (with strict timeouts & 5MB memory guard).
+  - [x] Implement lightweight pure-Python BM25 passage reranking (`BM25Reranker`) with publisher domain diversification (max 2 per domain) and optional zero-PyTorch Gemini API hybrid reranking (`HybridReranker`).
+  - [x] Inject real-time market quotes directly into prompt context when tickers are detected.
+  - [x] Stream synthesized answers with strict citation metadata (`[1]`, `[2]`).
+- [x] **3.2 Gemini Native Multimodal Document RAG Service (`DocumentRAGService`)**
+  - [x] Implement direct PDF ingestion exploiting Gemini's native 1M+ token context window.
+  - [x] Eliminate complex multi-stage PDF deconstruction, table splitting, and OCR pipelines.
+  - [x] Enable native document visual understanding (Gemini natively analyzes financial charts, balance sheet tables, and diagrams in PDFs).
+- [x] **3.3 Community Sentiment & Reddit RAG Service (`RedditRAGService`)**
+  - [x] Implement Reddit discussion discovery via search engine site queries without requiring paid Reddit API keys.
+  - [x] Extract discussion threads and user comment trees via Reddit JSON endpoint with Trafilatura fallback.
+  - [x] Synthesize retail community sentiment and debate summaries (Bullish vs. Bearish consensus, normalized score, argument breakdown).
+- [x] **3.4 Market Dashboard Service with Stale-While-Revalidate (`MarketDashboardService`)**
+  - [x] Replace 24/7 background scheduler with on-demand caching with TTL (Stale-While-Revalidate in Postgres/SQLite).
+  - [x] Provide configurable active/inactive toggle (`DASHBOARD_ENABLED`) and configurable cache TTL in hours (`DASHBOARD_CACHE_TTL_HOURS`).
+  - [x] Aggregate top market indices (Nifty 50, Sensex, S&P 500, Nasdaq), standout gainers, and losers via `yfinance`.
+  - [x] Generate structured daily market briefs using Gemini Flash.
+- [x] **3.5 Deep Research Pipeline (`DeepResearchService`)**
+  - [x] Implement automated equity research orchestrator (Executive Summary, Business Profile, Fundamentals, Industry Moat, Risks, Catalysts, Valuation & Recommendation).
+  - [x] Generate clean Markdown reports with option to export to publication-ready downloadable PDF in-memory via `ReportLab`.
 
 ---
 

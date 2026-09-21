@@ -59,6 +59,10 @@ class Settings(BaseSettings):
     # Vector Store
     CHROMA_PERSIST_DIRECTORY: str = "./data/chroma"
 
+    # Market Dashboard Configuration
+    DASHBOARD_ENABLED: bool = Field(default=True, description="Enable or disable market dashboard services")
+    DASHBOARD_CACHE_TTL_HOURS: float = Field(default=1.0, description="Dashboard cache TTL in hours (e.g. 0.25, 1.0, 4.0)")
+
     model_config = SettingsConfigDict(
         env_file=".env",
         env_file_encoding="utf-8",
