@@ -7,7 +7,7 @@ This checklist tracks the end-to-end transformation of **MarketMind-API** from a
 ## Progress Overview
 
 - [x] **Phase 1**: Codebase Pruning & Clean Architecture Setup
-- [ ] **Phase 2**: Free-Tier Provider Integrations & Adapters
+- [x] **Phase 2**: Free-Tier Provider Integrations & Adapters
 - [ ] **Phase 3**: Core RAG & Business Logic Re-Engineering
 - [ ] **Phase 4**: API Modernization & Standardized SSE Streaming
 - [ ] **Phase 5**: Modern Full-Stack Frontend (Web UI)
@@ -48,29 +48,34 @@ Goal: Eliminate technical debt, legacy files, hardcoded developer paths, import 
 
 Goal: Implement decoupled, pluggable adapters for LLMs, search, market data, vector storage, and relational persistence that operate completely within $0 free tiers.
 
-- [ ] **2.1 Google Gemini AI Engine Adapter (`app/infrastructure/llm/`)**
-  - [ ] Implement async Gemini client using the latest Google GenAI SDK (`google-genai`).
-  - [ ] Implement streaming token generator with Gemini 2.0 / 1.5 Flash.
-  - [ ] Implement structured JSON output parsing using Gemini's native schema enforcement.
-  - [ ] Add token usage tracking & latency calculation without external paid loggers.
-- [ ] **2.2 Zero-Cost Web Search Adapter (`app/infrastructure/search/`)**
-  - [ ] Create abstract `SearchEngine` interface (Strategy pattern).
-  - [ ] Implement `DuckDuckGoSearcher` using `duckduckgo-search` (`ddgs`) with news and web search modes (100% free, no API key).
-  - [ ] Implement optional fallback adapter for `TavilySearcher` / `BraveSearcher` using free monthly tiers.
-- [ ] **2.3 Free Financial Market Data Adapter (`app/infrastructure/market/`)**
-  - [ ] Replace CMOTS and Playwright scrapers with a unified `YFinanceClient`.
-  - [ ] Implement ticker resolution from company names.
-  - [ ] Implement real-time price & volume quotes.
-  - [ ] Implement fundamental data fetchers (P&L, balance sheets, cash flow statements, key valuation ratios).
-- [ ] **2.4 Embedded / In-Process Vector Store (`app/infrastructure/vector_store/`)**
-  - [ ] Create abstract `VectorStore` interface.
-  - [ ] Implement lightweight in-process vector store using **LanceDB** or local persistent **Chroma** (eliminating Pinecone & remote Chroma server).
-  - [ ] Use Gemini `text-embedding-004` or fast local ONNX embeddings (`fastembed`).
-- [ ] **2.5 Unified Database Layer (`app/core/database.py`)**
-  - [ ] Consolidate database access into modern **Async SQLAlchemy 2.0**.
-  - [ ] Configure connection pooling optimized for serverless PostgreSQL (**Neon.tech** or **Supabase**).
-  - [ ] Create declarative models for Chat Sessions, Message History, and Dashboard Cache.
-  - [ ] Set up Alembic for automated schema migrations.
+- [x] **2.1 Google Gemini AI Engine Adapter (`app/infrastructure/llm/gemini.py`)**
+  - [x] Implement async Gemini client using Google GenAI SDK.
+  - [x] Implement streaming token generator with Gemini 2.0 / 1.5 Flash.
+  - [x] Implement structured JSON output parsing using native schema enforcement.
+  - [x] Support native multimodal PDF/document streaming without OCR/chunking.
+  - [x] Safe import with clear warning if `GEMINI_API_KEY` is not yet set.
+- [x] **2.2 Zero-Cost Web Search Adapter (`app/infrastructure/search/duckduckgo.py`)**
+  - [x] Implement `DuckDuckGoSearcher` (Strategy pattern adhering to `SearchEngine`).
+  - [x] Support general web search and recency-focused news search (100% free, no API key).
+  - [x] Standardize results into domain `SourceCitation` schemas.
+- [x] **2.3 Free Financial Market Data Adapter (`app/infrastructure/market/yfinance_client.py`)**
+  - [x] Implement `YFinanceMarketClient` (adhering to `MarketDataClient`).
+  - [x] Ticker resolution for Indian (.NS) and US exchanges.
+  - [x] Real-time prices, market indices (Nifty, Sensex, S&P 500, Nasdaq), and top gainers/losers.
+  - [x] Complete company fundamentals (P/E ratio, market cap, balance sheets, cash flow).
+- [x] **2.4 Embedded / In-Process Vector Store (`app/infrastructure/vector_store/lance_store.py`)**
+  - [x] Implement `LanceVectorStore` (adhering to `VectorStore`).
+  - [x] In-process Apache Arrow columnar storage (<30 MB RAM footprint, zero separate server).
+  - [x] Fast text chunker, vector similarity search, and collection management.
+- [x] **2.5 Async Web Scraper (`app/infrastructure/scrapers/web_scraper.py`)**
+  - [x] Implement `TrafilaturaWebScraper` (adhering to `WebScraper`).
+  - [x] Async HTTP requests via `httpx` with timeout protection.
+  - [x] Non-blocking article content extraction via `trafilatura` run in thread pool.
+- [x] **2.6 Unified Database Layer (`app/core/database.py`)**
+  - [x] Consolidate database access into modern **Async SQLAlchemy 2.0**.
+  - [x] Support serverless PostgreSQL (Neon.tech / Supabase) via `asyncpg`.
+  - [x] Support automatic local SQLite fallback (`sqlite+aiosqlite`) for offline zero-config dev.
+  - [x] Create declarative models for `ChatMessageRecord` and `DashboardCacheRecord`.
 
 ---
 

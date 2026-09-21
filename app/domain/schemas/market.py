@@ -3,7 +3,7 @@ Pydantic Schemas for Financial Market Data and Dashboards.
 """
 
 from typing import List, Optional, Dict, Any
-from datetime import datetime
+from datetime import datetime, timezone
 from pydantic import BaseModel, Field
 
 
@@ -22,7 +22,7 @@ class StockQuote(BaseModel):
     year_high: Optional[float] = None
     year_low: Optional[float] = None
     volume: Optional[int] = None
-    timestamp: datetime = Field(default_factory=datetime.utcnow)
+    timestamp: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
 
 class MarketIndex(BaseModel):
@@ -50,7 +50,7 @@ class MarketDashboardSnapshot(BaseModel):
     top_gainers: List[StockMover] = []
     top_losers: List[StockMover] = []
     market_sentiment: Optional[str] = None
-    updated_at: datetime = Field(default_factory=datetime.utcnow)
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
 
 class StockFundamentals(BaseModel):
