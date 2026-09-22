@@ -73,42 +73,48 @@ export const MarketDashboardView: React.FC<MarketDashboardViewProps> = ({
 
       {/* 2. Benchmark Indices Grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        {isLoading && !dashboardData
-          ? [1, 2, 3, 4].map((i) => (
-              <div key={i} className="h-28 rounded-xl bg-slate-900/50 border border-slate-800 animate-pulse p-4" />
-            ))
-          : dashboardData?.indices.map((idx) => {
-              const isPositive = idx.change >= 0;
-              return (
-                <div
-                  key={idx.ticker}
-                  className="rounded-xl bg-[#0E1626] border border-slate-800/80 p-4 hover:border-slate-700 transition shadow-sm"
-                >
-                  <div className="flex items-center justify-between text-xs text-slate-400 mb-1">
-                    <span className="font-semibold text-slate-300">{idx.name}</span>
-                    <span className="font-mono text-[10px] text-slate-500">{idx.ticker}</span>
-                  </div>
-
-                  <div className="text-xl font-bold font-mono text-white tracking-tight my-1">
-                    {formatCurrency(idx.price, idx.currency)}
-                  </div>
-
-                  <div className="flex items-center justify-between text-xs pt-1">
-                    <span
-                      className={`inline-flex items-center space-x-0.5 font-semibold font-mono ${
-                        isPositive ? 'text-emerald-400' : 'text-rose-400'
-                      }`}
-                    >
-                      {isPositive ? <ArrowUpRight className="w-3.5 h-3.5" /> : <ArrowDownRight className="w-3.5 h-3.5" />}
-                      <span>{formatPercent(idx.change_percent)}</span>
-                    </span>
-                    <span className="text-[11px] font-mono text-slate-500">
-                      {isPositive ? '+' : ''}{idx.change.toFixed(2)}
-                    </span>
-                  </div>
+        {isLoading && !dashboardData ? (
+          [1, 2, 3, 4].map((i) => (
+            <div key={i} className="h-28 rounded-xl bg-slate-900/50 border border-slate-800 animate-pulse p-4" />
+          ))
+        ) : (dashboardData?.indices && dashboardData.indices.length > 0) ? (
+          dashboardData.indices.map((idx, index) => {
+            const isPositive = (idx.change ?? 0) >= 0;
+            return (
+              <div
+                key={idx.ticker || idx.name || `idx-${index}`}
+                className="rounded-xl bg-[#0E1626] border border-slate-800/80 p-4 hover:border-slate-700 transition shadow-sm"
+              >
+                <div className="flex items-center justify-between text-xs text-slate-400 mb-1">
+                  <span className="font-semibold text-slate-300">{idx.name || idx.ticker}</span>
+                  <span className="font-mono text-[10px] text-slate-500">{idx.ticker}</span>
                 </div>
-              );
-            })}
+
+                <div className="text-xl font-bold font-mono text-white tracking-tight my-1">
+                  {formatCurrency(idx.price ?? 0, idx.currency || (country === 'IN' ? 'INR' : 'USD'))}
+                </div>
+
+                <div className="flex items-center justify-between text-xs pt-1">
+                  <span
+                    className={`inline-flex items-center space-x-0.5 font-semibold font-mono ${
+                      isPositive ? 'text-emerald-400' : 'text-rose-400'
+                    }`}
+                  >
+                    {isPositive ? <ArrowUpRight className="w-3.5 h-3.5" /> : <ArrowDownRight className="w-3.5 h-3.5" />}
+                    <span>{formatPercent(idx.change_percent ?? 0)}</span>
+                  </span>
+                  <span className="text-[11px] font-mono text-slate-500">
+                    {isPositive ? '+' : ''}{(idx.change ?? 0).toFixed(2)}
+                  </span>
+                </div>
+              </div>
+            );
+          })
+        ) : (
+          <div className="col-span-full py-4 text-center text-xs text-slate-500">
+            No market index quotes available at this time.
+          </div>
+        )}
       </div>
 
       {/* 3. AI Macro Brief Card */}

@@ -1,5 +1,6 @@
 import {
   MarketDashboardResponse,
+  MarketIndexQuote,
   ConsolidatedStockProfile,
   StockQuote,
   FinancialFundamentals,
@@ -64,8 +65,42 @@ async function request<T>(endpoint: string, options: RequestInit = {}, clientId?
 
 export const api = {
   // --- Market Dashboard ---
-  getDashboard: (country: string = 'IN', clientId?: string) =>
-    request<MarketDashboardResponse>(`/api/v2/dashboard?country=${encodeURIComponent(country)}`, {}, clientId),
+  getDashboard: async (country: string = 'IN', clientId?: string): Promise<MarketDashboardResponse> => {
+    const raw = await request<any>(`/api/v2/dashboard?country=${encodeURIComponent(country)}`, {}, clientId);
+    const snapshot = raw?.data || raw || {};
+    const isIndia = (snapshot?.country || country).toUpperCase() === 'IN';
+    const currency = isIndia ? 'INR' : 'USD';
+
+    const indices: MarketIndexQuote[] = (snapshot?.indices || []).map((idx: any) => ({
+      ticker: idx.symbol || idx.ticker || '',
+      name: idx.name || idx.symbol || '',
+      price: typeof idx.price === 'number' ? idx.price : parseFloat(idx.price) || 0,
+      change: typeof idx.change === 'number' ? idx.change : parseFloat(idx.change) || 0,
+      change_percent: typeof idx.change_percent === 'number' ? idx.change_percent : parseFloat(idx.change_percent) || 0,
+      currency: idx.currency || currency,
+    }));
+
+    const mapMovers = (list: any[]): StockQuote[] =>
+      (list || []).map((item: any) => ({
+        ticker: item.ticker || item.symbol || '',
+        name: item.name || item.company_name || item.ticker || '',
+        price: typeof item.price === 'number' ? item.price : parseFloat(item.price) || 0,
+        change: typeof item.change === 'number' ? item.change : parseFloat(item.change) || 0,
+        change_percent: typeof item.change_percent === 'number' ? item.change_percent : parseFloat(item.change_percent) || 0,
+        currency: item.currency || currency,
+        volume: item.volume ?? null,
+      }));
+
+    return {
+      country: snapshot?.country || country,
+      last_updated: snapshot?.updated_at || snapshot?.last_updated || new Date().toISOString(),
+      indices,
+      gainers: mapMovers(snapshot?.top_gainers || snapshot?.gainers || []),
+      losers: mapMovers(snapshot?.top_losers || snapshot?.losers || []),
+      market_summary: snapshot?.market_sentiment || snapshot?.market_summary || '',
+      is_cached: !raw?.stale,
+    };
+  },
 
   // --- Stocks & Fundamentals ---
   getStockProfile: (ticker: string, clientId?: string) =>
