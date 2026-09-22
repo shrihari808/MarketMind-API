@@ -15,12 +15,28 @@ from app.core.logging import logger
 
 settings = get_settings()
 
-# Default to local SQLite if DATABASE_URL is not set
-DATABASE_URL = settings.DATABASE_URL
-if not DATABASE_URL:
-    os.makedirs("./data", exist_ok=True)
-    DATABASE_URL = "sqlite+aiosqlite:///./data/marketmind.db"
-    logger.info("DATABASE_URL not set. Falling back to local SQLite: ./data/marketmind.db")
+def _normalize_database_url(url: Optional[str]) -> str:
+    """Normalizes database connection string for Async SQLAlchemy and asyncpg."""
+    if not url:
+        os.makedirs("./data", exist_ok=True)
+        logger.info("DATABASE_URL not set. Falling back to local SQLite: ./data/marketmind.db")
+        return "sqlite+aiosqlite:///./data/marketmind.db"
+
+    clean = url.strip()
+
+    # Normalize standard postgresql:// prefixes to asyncpg dialect
+    if clean.startswith("postgresql://"):
+        clean = "postgresql+asyncpg://" + clean[len("postgresql://"):]
+    elif clean.startswith("postgres://"):
+        clean = "postgresql+asyncpg://" + clean[len("postgres://"):]
+
+    # asyncpg expects 'ssl=' rather than 'sslmode=' (common Neon / Supabase copy-paste)
+    if "sslmode=" in clean:
+        clean = clean.replace("sslmode=", "ssl=")
+
+    return clean
+
+DATABASE_URL = _normalize_database_url(settings.DATABASE_URL)
 
 # Create Async Engine
 engine = create_async_engine(
@@ -84,9 +100,22 @@ async def get_db_session() -> AsyncGenerator[AsyncSession, None]:
 
 async def init_db():
     """Initializes database tables on startup if they do not exist."""
-    async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.create_all)
-    logger.info("Database tables initialized successfully.")
+    import asyncio
+    max_retries = 3
+    for attempt in range(1, max_retries + 1):
+        try:
+            logger.info(f"Connecting to database and initializing schema (attempt {attempt}/{max_retries})...")
+            async with engine.begin() as conn:
+                await conn.run_sync(Base.metadata.create_all)
+            logger.info("Database tables initialized successfully.")
+            return
+        except Exception as e:
+            if attempt < max_retries:
+                logger.warning(f"Database connection attempt {attempt} failed ({e}). Retrying in 2 seconds...")
+                await asyncio.sleep(2)
+            else:
+                logger.error(f"Database initialization failed after {max_retries} attempts: {e}")
+                raise
 
 
 async def close_db():
