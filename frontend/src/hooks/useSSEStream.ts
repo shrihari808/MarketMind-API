@@ -1,8 +1,7 @@
 import { useState, useCallback, useRef } from 'react';
 import { SourceCitation } from '../types/api';
 import { SSEStatusPayload, SSESourcesPayload, SSETokenPayload, SSEErrorPayload } from '../types/sse';
-
-const API_BASE = import.meta.env.VITE_API_BASE_URL || '';
+import { buildApiUrl } from '../lib/api';
 
 export interface StreamState {
   isStreaming: boolean;
@@ -79,7 +78,7 @@ export function useSSEStream(clientId: string) {
           requestBody = JSON.stringify(body);
         }
 
-        const response = await fetch(`${API_BASE}${endpoint}`, {
+        const response = await fetch(buildApiUrl(endpoint), {
           method: 'POST',
           headers,
           body: requestBody,

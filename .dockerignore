@@ -1,10 +1,13 @@
-# Git & IDEs
-.git/
-.gitignore
-.vscode/
-.idea/
+# Ignore frontend source and build artifacts (hosted independently on Vercel)
+frontend/
+node_modules/
 
-# Virtual Environments & Python Caches
+# Ignore version control and CI
+.git/
+.github/
+.gitignore
+
+# Ignore Python virtual environment and caches
 .venv/
 venv/
 ENV/
@@ -12,22 +15,18 @@ __pycache__/
 *.py[cod]
 *$py.class
 .pytest_cache/
-.coverage
-htmlcov/
 
-# Local Data, Scratch & Logs
-data/
-outputs/
+# Ignore local scratch scripts, tests, and temporary data
 scratch/
-*.db
+tests/
+data/
 *.sqlite
-*.sqlite3
+*.db
+
+# Ignore environment files
+.env
+.env.*
+
+# Ignore docs and metadata not needed in production container
+dev_checklist.md
 *.log
-
-# Frontend Build & Node Modules
-frontend/node_modules/
-frontend/dist/
-node_modules/
-
-# Markdown & Docs
-*.md

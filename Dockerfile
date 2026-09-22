@@ -1,21 +1,9 @@
 # ==============================================================================
-# Stage 1: Frontend Build Stage
+# MarketMind API v2 - Production Backend Runtime (Render Free Tier)
+# Strict 512 MB RAM footprint, fast build (<30s), zero Node.js/frontend bloat
+# Frontend hosted independently on Vercel: https://market-mind-api.vercel.app
 # ==============================================================================
-FROM node:22-alpine AS frontend-builder
-WORKDIR /app/frontend
-
-# Install dependencies using clean install
-COPY frontend/package.json frontend/package-lock.json ./
-RUN npm ci
-
-# Copy frontend source and build static distribution
-COPY frontend/ ./
-RUN npm run build
-
-# ==============================================================================
-# Stage 2: Backend Runtime Stage
-# ==============================================================================
-FROM python:3.11-slim AS runner
+FROM python:3.11-slim
 
 # System environment variables for Python & 512 MB RAM cloud guard
 ENV PYTHONUNBUFFERED=1 \
@@ -27,12 +15,12 @@ ENV PYTHONUNBUFFERED=1 \
 
 WORKDIR /app
 
-# Install minimal system utilities for healthcheck
+# Install minimal system utilities for healthcheck probe
 RUN apt-get update && apt-get install -y --no-install-recommends \
     curl \
     && rm -rf /var/lib/apt/lists/*
 
-# Install Python dependencies with zero cache to keep image lean (<300 MB)
+# Install Python dependencies with zero cache to keep image lean (<150 MB)
 COPY requirements.txt ./
 RUN pip install --no-cache-dir -r requirements.txt
 
@@ -41,12 +29,9 @@ RUN useradd -m -u 1000 appuser && \
     mkdir -p /app/data && \
     chown -R appuser:appuser /app
 
-# Copy application source code
+# Copy backend application source code
 COPY app/ ./app
 COPY main.py ./main.py
-
-# Copy pre-built frontend distribution from Stage 1
-COPY --from=frontend-builder /app/frontend/dist ./frontend/dist
 
 # Switch to non-root user
 USER appuser
@@ -60,4 +45,3 @@ HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
 
 # Start FastAPI application via Uvicorn bound dynamically to $PORT (Render / Cloud support)
 CMD ["sh", "-c", "uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8000}"]
-

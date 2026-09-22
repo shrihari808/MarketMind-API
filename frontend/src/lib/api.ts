@@ -10,7 +10,13 @@ import {
   HealthStatusResponse
 } from '../types/api';
 
-const API_BASE = import.meta.env.VITE_API_BASE_URL || '';
+const RAW_API_BASE = import.meta.env.VITE_API_BASE_URL || '';
+export const API_BASE = RAW_API_BASE.replace(/\/+$/, '');
+
+export function buildApiUrl(endpoint: string): string {
+  const cleanEndpoint = endpoint.replace(/^\/+/, '/');
+  return `${API_BASE}${cleanEndpoint}`;
+}
 
 export class ApiError extends Error {
   status: number;
@@ -34,7 +40,7 @@ async function request<T>(endpoint: string, options: RequestInit = {}, clientId?
     headers['X-Client-ID'] = clientId;
   }
 
-  const url = `${API_BASE}${endpoint}`;
+  const url = buildApiUrl(endpoint);
   const response = await fetch(url, { ...options, headers });
 
   if (response.status === 429) {
@@ -106,7 +112,7 @@ export const api = {
     };
     if (clientId) headers['X-Client-ID'] = clientId;
 
-    const response = await fetch(`${API_BASE}/api/v2/research/pdf`, {
+    const response = await fetch(buildApiUrl('/api/v2/research/pdf'), {
       method: 'POST',
       headers,
       body: JSON.stringify({ ticker, country, section_by_section: sectionBySection }),

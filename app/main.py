@@ -5,6 +5,7 @@ Clean Architecture, SOLID principles, and strict 512 MB RAM footprint.
 """
 
 import os
+import re
 import sys
 import time
 
@@ -15,6 +16,7 @@ os.environ["MKL_NUM_THREADS"] = "1"
 os.environ["OMP_NUM_THREADS"] = "1"
 
 from contextlib import asynccontextmanager
+from starlette.types import ASGIApp, Receive, Scope, Send
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, Response
@@ -24,6 +26,25 @@ from app.core.database import init_db, close_db
 from app.core.logging import logger
 from app.core.rate_limiter import IPRateLimitMiddleware
 from app.api.v2.router import api_v2_router
+
+
+class NormalizePathMiddleware:
+    """
+    Normalizes consecutive slashes in HTTP request paths (e.g. '//api/v2/...' -> '/api/v2/...')
+    so requests route correctly even if clients send URLs with extra slashes.
+    """
+    def __init__(self, app: ASGIApp):
+        self.app = app
+
+    async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
+        if scope["type"] == "http":
+            path = scope.get("path", "")
+            if "//" in path:
+                normalized_path = re.sub(r"/+", "/", path)
+                scope["path"] = normalized_path
+                if "raw_path" in scope:
+                    scope["raw_path"] = normalized_path.encode("ascii")
+        await self.app(scope, receive, send)
 
 
 @asynccontextmanager
@@ -56,10 +77,13 @@ app = FastAPI(
     lifespan=lifespan
 )
 
-# --- 1. IP Rate Limiting Middleware (25 req/min) ---
+# --- 1. Path Normalization Middleware (prevents 404 on URLs with consecutive slashes) ---
+app.add_middleware(NormalizePathMiddleware)
+
+# --- 2. IP Rate Limiting Middleware (25 req/min) ---
 app.add_middleware(IPRateLimitMiddleware)
 
-# --- 2. CORS Middleware ---
+# --- 3. CORS Middleware ---
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -70,7 +94,7 @@ app.add_middleware(
 )
 
 
-# --- 3. Request Timing & Process Monitoring Middleware ---
+# --- 4. Request Timing & Process Monitoring Middleware ---
 @app.middleware("http")
 async def process_time_middleware(request: Request, call_next):
     start_time = time.time()
@@ -80,7 +104,7 @@ async def process_time_middleware(request: Request, call_next):
     return response
 
 
-# --- 4. Global Exception Handler ---
+# --- 5. Global Exception Handler ---
 @app.exception_handler(Exception)
 async def global_exception_handler(request: Request, exc: Exception):
     logger.exception(f"[GlobalException] Unhandled error during request to {request.url.path}: {exc}")
@@ -93,11 +117,11 @@ async def global_exception_handler(request: Request, exc: Exception):
     )
 
 
-# --- 5. Mount API v2 Master Router ---
+# --- 6. Mount API v2 Master Router ---
 app.include_router(api_v2_router)
 
 
-# --- 6. Mount Frontend Static Distribution (Hybrid Host Support) ---
+# --- 7. Mount Frontend Static Distribution (Hybrid Host Support) ---
 frontend_dist_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "frontend", "dist")
 frontend_assets_dir = os.path.join(frontend_dist_dir, "assets")
 
@@ -106,7 +130,7 @@ if os.path.exists(frontend_assets_dir):
     app.mount("/assets", StaticFiles(directory=frontend_assets_dir), name="frontend-assets")
 
 
-# --- 7. Root Landing Endpoint ---
+# --- 8. Root Landing Endpoint ---
 @app.get("/", tags=["Root"], summary="MarketMind v2 API Gateway Welcome & Web Terminal")
 async def root_gateway(request: Request):
     accept_header = request.headers.get("accept", "")
@@ -123,6 +147,7 @@ async def root_gateway(request: Request):
         "status": "online",
         "documentation": "/docs",
         "v2_endpoints": "/api/v2",
+        "web_terminal": "https://market-mind-api.vercel.app",
         "architecture": "Clean Architecture & SOLID",
         "memory_optimized": True
     }
