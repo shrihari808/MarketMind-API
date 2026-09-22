@@ -9,7 +9,7 @@ This checklist tracks the end-to-end transformation of **MarketMind-API** from a
 - [x] **Phase 1**: Codebase Pruning & Clean Architecture Setup
 - [x] **Phase 2**: Free-Tier Provider Integrations & Adapters
 - [x] **Phase 3**: Core RAG & Business Logic Re-Engineering
-- [ ] **Phase 4**: API Modernization & Standardized SSE Streaming
+- [x] **Phase 4**: API Modernization & Standardized SSE Streaming (MarketMind API v2)
 - [ ] **Phase 5**: Modern Full-Stack Frontend (Web UI)
 - [ ] **Phase 6**: Testing, Dockerization & $0 Cloud Deployment
 
@@ -149,7 +149,9 @@ Goal: Replace legacy ad-hoc routes with MarketMind v2 REST endpoints, standardiz
   - [x] `/api/v2/chat/sessions/{session_id}`: GET full message history for a conversation.
   - [x] `/api/v2/chat/sessions/{session_id}`: DELETE a conversation.
 - [x] **4.4 Security, Rate Limiting & Middleware**
-  - [x] In-memory sliding-window IP rate limiter enforcing **25 requests per minute per IP** with proxy header resolution (`X-Forwarded-For`).
+  - [x] In-memory sliding-window IP rate limiter enforcing **requests per minute per IP** (default: 25 req/min) with proxy header resolution (`X-Forwarded-For`).
+  - [x] Configurable active toggle (`RATE_LIMIT_ENABLED`) and threshold (`RATE_LIMIT_PER_MINUTE`) via `.env` and `app/core/config.py`.
+  - [x] Runtime inspection and dynamic control endpoints: `GET /api/v2/health/rate-limit` and `POST /api/v2/health/rate-limit` (toggle on/off, adjust threshold, reset history without restart).
   - [x] Returns HTTP 429 Too Many Requests with `Retry-After` header when limit is exceeded.
   - [x] Standardize API key authorization dependency (`X-API-Key`) with clear 401/403 status codes.
   - [x] Configured CORS middleware for production and preview domains.
