@@ -73,6 +73,10 @@ class Settings(BaseSettings):
         description="Generate equity report section-by-section via modular prompts (True) or cohesive single-pass (False)"
     )
 
+    # Rate Limiting Configuration
+    RATE_LIMIT_ENABLED: bool = Field(default=True, description="Enable or disable IP rate limiting")
+    RATE_LIMIT_PER_MINUTE: int = Field(default=25, description="Maximum allowed requests per minute per IP")
+
     model_config = SettingsConfigDict(
         env_file=".env",
         env_file_encoding="utf-8",

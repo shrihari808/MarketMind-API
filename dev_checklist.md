@@ -119,28 +119,43 @@ Goal: Rebuild the core RAG pipelines to be lean, lightning-fast, and memory-effi
 
 ---
 
-## 4. Phase 4: API Modernization & Standardized SSE Streaming
+## 4. Phase 4: API Modernization & Standardized SSE Streaming (MarketMind API v2)
 
-Goal: Replace ad-hoc string formatting with industry-standard protocols, clean REST routes, and robust error handling.
+Goal: Replace legacy ad-hoc routes with MarketMind v2 REST endpoints, standardized Server-Sent Events (SSE) streaming protocols, anonymous client UUID chat isolation, and IP-wise rate limiting (25 req/min).
 
-- [ ] **4.1 Standardized Server-Sent Events (SSE) Protocol**
-  - [ ] Replace plain-text magic-string streams (`& Generating search plan...`) with typed SSE events (`text/event-stream`):
+- [x] **4.1 Standardized Server-Sent Events (SSE) Protocol**
+  - [x] Replaced plain-text magic-string streams with typed SSE events (`text/event-stream`):
     - `event: status` -> Progress step updates for UI indicators.
     - `event: sources` -> Cited article metadata (title, URL, publisher).
     - `event: token` -> Incremental response text chunks.
     - `event: error` -> Structured error messages.
     - `event: complete` -> Total token usage and generation latency.
-- [ ] **4.2 RESTful Endpoint Cleanup**
-  - [ ] `/api/v1/rag/web`: POST streaming web RAG endpoint.
-  - [ ] `/api/v1/rag/document`: POST multipart PDF upload & chat query.
-  - [ ] `/api/v1/rag/reddit`: POST community sentiment analysis.
-  - [ ] `/api/v1/dashboard`: GET live market indices & trending stocks.
-  - [ ] `/api/v1/stocks/{ticker}`: GET detailed fundamentals & quotes.
-  - [ ] `/api/v1/research`: POST deep equity report generator.
-- [ ] **4.3 Security & Middleware**
-  - [ ] Standardize API key authorization dependency (`X-API-Key`) with clear 401/403 status codes.
-  - [ ] Configure strict CORS middleware for frontend production and preview domains.
-  - [ ] Add global exception handlers and request logging middleware.
+- [x] **4.2 RESTful v2 Endpoint Architecture (`/api/v2/`)**
+  - [x] `/api/v2/rag/web`: POST streaming web RAG endpoint with SSE support and automatic conversation turn persistence.
+  - [x] `/api/v2/rag/document`: POST multipart PDF upload & chat query with native multimodal SSE streaming.
+  - [x] `/api/v2/rag/document/summary`: POST multipart PDF upload for executive financial summary.
+  - [x] `/api/v2/rag/reddit`: POST community sentiment analysis without paid Reddit keys.
+  - [x] `/api/v2/dashboard`: GET live market indices, trending gainers/losers, and AI macro brief (SWR cached).
+  - [x] `/api/v2/stocks/{ticker}`: GET consolidated real-time quote + fundamentals.
+  - [x] `/api/v2/stocks/{ticker}/quote`: GET real-time stock quote.
+  - [x] `/api/v2/stocks/{ticker}/fundamentals`: GET financial fundamentals and valuation ratios.
+  - [x] `/api/v2/research`: POST deep 7-section equity report generator (JSON markdown).
+  - [x] `/api/v2/research/pdf`: POST deep equity report downloadable PDF compiled in-memory via ReportLab.
+  - [x] `/api/v2/health`: GET system health, active providers, and database connectivity.
+- [x] **4.3 Anonymous Client UUID & Chat History (`/api/v2/chat/`)**
+  - [x] Implemented zero-login device identification via browser client UUID (`X-Client-ID`).
+  - [x] Isolated multi-turn chat conversations and session history per `client_id` in `ChatMessageRecord`.
+  - [x] `/api/v2/chat/sessions`: GET all conversations for the client.
+  - [x] `/api/v2/chat/sessions/{session_id}`: GET full message history for a conversation.
+  - [x] `/api/v2/chat/sessions/{session_id}`: DELETE a conversation.
+- [x] **4.4 Security, Rate Limiting & Middleware**
+  - [x] In-memory sliding-window IP rate limiter enforcing **25 requests per minute per IP** with proxy header resolution (`X-Forwarded-For`).
+  - [x] Returns HTTP 429 Too Many Requests with `Retry-After` header when limit is exceeded.
+  - [x] Standardize API key authorization dependency (`X-API-Key`) with clear 401/403 status codes.
+  - [x] Configured CORS middleware for production and preview domains.
+  - [x] Process timing middleware (`X-Process-Time`) and global exception handler.
+  - [x] Lifespan database initialization and connection pool cleanup.
+  - [x] Root `main.py` entrypoint updated to delegate to `app.main:app`.
 
 ---
 

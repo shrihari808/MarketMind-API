@@ -10,6 +10,7 @@ class RAGQueryRequest(BaseModel):
     """Incoming user query request for RAG."""
     query: str = Field(..., min_length=2, max_length=1000, description="The user's search or financial question")
     session_id: Optional[str] = Field(default=None, description="Client session ID for conversation memory")
+    client_id: Optional[str] = Field(default=None, description="Anonymous client browser UUID for user-isolated history")
     country: str = Field(default="IN", description="ISO 2-letter country code (e.g. IN, US)")
 
 

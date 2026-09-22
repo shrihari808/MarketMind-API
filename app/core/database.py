@@ -5,7 +5,7 @@ automatic local SQLite fallback for offline development.
 """
 
 import os
-from typing import AsyncGenerator
+from typing import AsyncGenerator, Optional
 from datetime import datetime
 from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker, AsyncSession
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
@@ -43,14 +43,18 @@ class Base(DeclarativeBase):
 
 
 class ChatMessageRecord(Base):
-    """Persistent storage for multi-turn user/AI chat conversations."""
+    """
+    Persistent storage for multi-turn user/AI chat conversations,
+    isolated by anonymous browser client UUID (client_id) and session_id.
+    """
     __tablename__ = "chat_messages"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
-    session_id: Mapped[str] = mapped_column(String(100), index=True, nullable=False)
+    client_id: Mapped[str] = mapped_column(String(64), index=True, nullable=False, default="default_client")
+    session_id: Mapped[str] = mapped_column(String(64), index=True, nullable=False)
     role: Mapped[str] = mapped_column(String(20), nullable=False)  # 'user' | 'assistant'
     content: Mapped[str] = mapped_column(Text, nullable=False)
-    sources_json: Mapped[str] = mapped_column(Text, nullable=True)
+    sources_json: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     tokens: Mapped[int] = mapped_column(Integer, default=0)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
 
@@ -83,3 +87,9 @@ async def init_db():
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
     logger.info("Database tables initialized successfully.")
+
+
+async def close_db():
+    """Disposes database connection engine on shutdown."""
+    await engine.dispose()
+    logger.info("Database connection engine disposed.")
