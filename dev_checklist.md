@@ -10,7 +10,7 @@ This checklist tracks the end-to-end transformation of **MarketMind-API** from a
 - [x] **Phase 2**: Free-Tier Provider Integrations & Adapters
 - [x] **Phase 3**: Core RAG & Business Logic Re-Engineering
 - [x] **Phase 4**: API Modernization & Standardized SSE Streaming (MarketMind API v2)
-- [ ] **Phase 5**: Modern Full-Stack Frontend (Web UI)
+- [x] **Phase 5**: Modern Full-Stack Frontend (MarketMind v2 Web Terminal)
 - [ ] **Phase 6**: Testing, Dockerization & $0 Cloud Deployment
 
 ---
@@ -161,30 +161,42 @@ Goal: Replace legacy ad-hoc routes with MarketMind v2 REST endpoints, standardiz
 
 ---
 
-## Phase 5: Modern Full-Stack Frontend (Web UI)
+## Phase 5: Modern Full-Stack Frontend (MarketMind v2 Web Terminal)
 
 Goal: Build a responsive, dark-mode financial terminal web application connecting to the modernized backend.
 
-- [ ] **5.1 Project Setup & Design System**
-  - [ ] Initialize Next.js 15 (App Router) or Vite + React 19 project.
-  - [ ] Configure Tailwind CSS and install **shadcn/ui** components (Button, Input, Card, Badge, Dialog, Tabs, Table).
-  - [ ] Implement financial dark-mode theme with sleek typography.
-- [ ] **5.2 Market Overview Dashboard**
-  - [ ] Live ticker marquee for major indices.
-  - [ ] Standout market gainers & losers cards with price change indicators.
-  - [ ] Interactive price chart using **TradingView Lightweight Charts** or **Recharts**.
-- [ ] **5.3 Streaming AI Financial Search & Chat**
-  - [ ] Omnibar search input with query suggestion pills.
-  - [ ] Live streaming message bubble consuming backend SSE stream.
-  - [ ] Step-by-step progress stepper (e.g. *Searching web* -> *Reading articles* -> *Analyzing financials*).
-  - [ ] Interactive source citation cards and badge pills.
-- [ ] **5.4 Multimodal Document Analyzer UI**
-  - [ ] Drag-and-drop PDF upload component.
-  - [ ] Split-view layout: PDF preview on left, Gemini Q&A conversation on right.
-  - [ ] Quick-action prompts (e.g., *Analyze balance sheet*, *Identify major risk factors*, *Extract EBITDA growth*).
-- [ ] **5.5 Deep Research Report Viewer**
-  - [ ] Markdown-rendered equity research report view.
-  - [ ] Download as PDF button.
+- [x] **5.1 Project Setup, Design System & Raleway Typography**
+  - [x] Initialized modern Vite + React 19 + TypeScript + Tailwind CSS application (`frontend/`).
+  - [x] Configured Google Font **Raleway** (`weights: 100..900`) throughout the entire terminal application.
+  - [x] Implemented institutional financial dark-mode theme (`#080C14` background, elevated `#0E1626` panels, `#10B981` bullish green, `#F43F5E` bearish red).
+- [x] **5.2 Persistent Sidebar & Navigation**
+  - [x] Always-visible persistent sidebar with MarketMind v2 branding and system tier badges.
+  - [x] New Chat action button and isolated chat sessions history drawer.
+  - [x] Quick navigation tabs across all institutional terminal features.
+- [x] **5.3 Market Overview Dashboard & Live Marquee**
+  - [x] Top live continuous ticker marquee for benchmark indices and blue-chip stocks.
+  - [x] Landing page default state showcasing live benchmark indices (Nifty 50, Sensex, S&P 500, Nasdaq).
+  - [x] Standout market gainers & decliners cards with price change indicators.
+  - [x] Daily Gemini Flash AI Macro Brief.
+- [x] **5.4 Streaming AI Financial Search & Dynamic Omnibar**
+  - [x] Docked bottom Omnibar with country selector dropdown (🇮🇳 India / 🇺🇸 United States).
+  - [x] Dynamic transition: typing prompt or clicking shortcut transitions landing dashboard to live streaming chat.
+  - [x] Dynamic top-left **"Market Dashboard"** button with icon to return to dashboard anytime.
+  - [x] Real-time typed SSE streaming consumer (`status`, `sources`, `token`, `complete`, `error`).
+  - [x] Progress stepper pills and interactive source citation cards.
+- [x] **5.5 Multimodal Document Analyzer UI**
+  - [x] Drag-and-drop PDF upload component with file size guard.
+  - [x] Split-view layout: In-browser PDF preview on left, Gemini multimodal Q&A on right.
+  - [x] Quick-action prompts (Executive Summary, Balance Sheet Moat, Major Risks).
+- [x] **5.6 Deep Research Report Viewer & PDF Download**
+  - [x] Institutional 7-section report viewer with markdown styling.
+  - [x] One-click "Download PDF" triggering backend in-memory ReportLab stream into browser download.
+- [x] **5.7 Reddit Community Sentiment & Stock Inspector**
+  - [x] Keyless retail community sentiment gauge with Bullish/Bearish thesis breakdown.
+  - [x] Real-time stock quote and financial fundamentals inspector (P/E, P/B, ROE, Debt/Equity).
+- [x] **5.8 Hybrid Deployment & Full-Stack Integration**
+  - [x] FastAPI optionally mounts `frontend/dist` static assets and serves `index.html` on root with `Accept: text/html` while preserving JSON API negotiation for programmatic clients.
+
 
 ---
 

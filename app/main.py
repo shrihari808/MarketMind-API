@@ -97,9 +97,26 @@ async def global_exception_handler(request: Request, exc: Exception):
 app.include_router(api_v2_router)
 
 
-# --- 6. Root Landing Endpoint ---
-@app.get("/", tags=["Root"], summary="MarketMind v2 API Gateway Welcome")
-async def root_gateway():
+# --- 6. Mount Frontend Static Distribution (Hybrid Host Support) ---
+frontend_dist_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "frontend", "dist")
+frontend_assets_dir = os.path.join(frontend_dist_dir, "assets")
+
+if os.path.exists(frontend_assets_dir):
+    from fastapi.staticfiles import StaticFiles
+    app.mount("/assets", StaticFiles(directory=frontend_assets_dir), name="frontend-assets")
+
+
+# --- 7. Root Landing Endpoint ---
+@app.get("/", tags=["Root"], summary="MarketMind v2 API Gateway Welcome & Web Terminal")
+async def root_gateway(request: Request):
+    accept_header = request.headers.get("accept", "")
+    index_file = os.path.join(frontend_dist_dir, "index.html")
+
+    # If browser requests HTML and frontend distribution is built, serve the web terminal
+    if "text/html" in accept_header and os.path.exists(index_file):
+        from fastapi.responses import FileResponse
+        return FileResponse(index_file)
+
     return {
         "service": "MarketMind Intelligence API",
         "version": "2.0.0",
@@ -114,3 +131,4 @@ async def root_gateway():
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run("app.main:app", host="0.0.0.0", port=8000, reload=True)
+

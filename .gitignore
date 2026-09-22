@@ -240,4 +240,7 @@ graph_output.json
 output.pdf
 data/
 outputs/
-scratch/
+scratch/
+node_modules/
+frontend/dist/
+
