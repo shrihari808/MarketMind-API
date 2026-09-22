@@ -8,9 +8,8 @@ pydantic>=2.9.0
 pydantic-settings>=2.5.0
 python-multipart>=0.0.9
 
-# Google Gemini AI (Official Google GenAI SDK)
-google-genai>=0.1.1
-google-generativeai>=0.8.0
+# Google Gemini AI (Official Modern Google GenAI SDK)
+google-genai>=2.0.0
 
 # Free Web Search & High-Performance Scraping
 ddgs>=9.16.0

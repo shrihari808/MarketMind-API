@@ -1,17 +1,16 @@
 """
 Google Gemini AI Engine Adapter.
-Implements the LLMClient protocol using Google's official Generative AI SDK with streaming,
-Pydantic structured output, and native multimodal document analysis.
+Implements the LLMClient protocol using the official modern Google GenAI SDK (google-genai)
+with native async streaming, Pydantic structured output, multimodal document analysis,
+and batched text embeddings.
 """
 
 import asyncio
-import warnings
 from typing import AsyncIterator, Optional, Type, TypeVar, List
 from pydantic import BaseModel
+from google import genai
+from google.genai import types
 
-# Suppress Google Generative AI SDK deprecation notice in server logs
-warnings.filterwarnings("ignore", category=FutureWarning)
-import google.generativeai as genai
 from app.core.config import get_settings
 from app.core.logging import logger
 from app.domain.interfaces.llm import LLMClient
@@ -20,29 +19,30 @@ T = TypeVar("T", bound=BaseModel)
 
 
 class GeminiLLMClient(LLMClient):
-    """Concrete Google Gemini AI adapter."""
+    """Concrete Google Gemini AI adapter using official modern google-genai SDK."""
 
     def __init__(self):
         settings = get_settings()
         self.api_key = settings.GEMINI_API_KEY
         self.model_name = settings.GEMINI_MODEL
         self.embedding_model_name = settings.GEMINI_EMBEDDING_MODEL
+        self._client: Optional[genai.Client] = None
 
         if self.api_key:
-            genai.configure(api_key=self.api_key)
+            self._client = genai.Client(api_key=self.api_key)
             logger.info(f"Gemini client initialized with model: {self.model_name}")
         else:
             logger.warning("GEMINI_API_KEY not configured. Set it in .env to enable Gemini features.")
 
-    def _ensure_configured(self):
-        if not self.api_key:
-            # Re-check settings in case it was set dynamically
-            settings = get_settings()
-            if settings.GEMINI_API_KEY:
-                self.api_key = settings.GEMINI_API_KEY
-                genai.configure(api_key=self.api_key)
-            else:
-                raise ValueError("GEMINI_API_KEY is required but not configured.")
+    def _get_client(self) -> genai.Client:
+        if self._client:
+            return self._client
+        settings = get_settings()
+        if settings.GEMINI_API_KEY:
+            self.api_key = settings.GEMINI_API_KEY
+            self._client = genai.Client(api_key=self.api_key)
+            return self._client
+        raise ValueError("GEMINI_API_KEY is required but not configured.")
 
     async def generate_stream(
         self,
@@ -50,28 +50,29 @@ class GeminiLLMClient(LLMClient):
         system_prompt: Optional[str] = None,
         temperature: Optional[float] = None
     ) -> AsyncIterator[str]:
-        """Streams generated tokens asynchronously."""
-        self._ensure_configured()
+        """Streams generated tokens asynchronously using client.aio."""
+        client = self._get_client()
         settings = get_settings()
         temp = temperature if temperature is not None else settings.LLM_TEMPERATURE
         logger.debug(f"[GeminiLLMClient] Initiating stream with model={self.model_name}, temp={temp}, prompt_len={len(prompt)}")
-        
-        model = genai.GenerativeModel(
-            model_name=self.model_name,
-            system_instruction=system_prompt,
-            generation_config=genai.GenerationConfig(temperature=temp)
+
+        config = types.GenerateContentConfig(
+            temperature=temp,
+            system_instruction=system_prompt if system_prompt else None,
         )
 
-        def _sync_stream():
-            return model.generate_content(prompt, stream=True)
+        stream = await client.aio.models.generate_content_stream(
+            model=self.model_name,
+            contents=prompt,
+            config=config,
+        )
 
-        response = await asyncio.to_thread(_sync_stream)
         token_count = 0
-        for chunk in response:
+        async for chunk in stream:
             if chunk.text:
                 token_count += 1
                 yield chunk.text
-                await asyncio.sleep(0)  # Yield control to event loop
+                await asyncio.sleep(0)
 
         logger.debug(f"[GeminiLLMClient] Stream completed. Yielded {token_count} chunks.")
 
@@ -82,19 +83,23 @@ class GeminiLLMClient(LLMClient):
         temperature: Optional[float] = None
     ) -> str:
         """Generates a complete textual response."""
-        self._ensure_configured()
+        client = self._get_client()
         settings = get_settings()
         temp = temperature if temperature is not None else settings.LLM_TEMPERATURE
         logger.debug(f"[GeminiLLMClient] Generating text with model={self.model_name}, temp={temp}, prompt_len={len(prompt)}")
 
-        model = genai.GenerativeModel(
-            model_name=self.model_name,
-            system_instruction=system_prompt,
-            generation_config=genai.GenerationConfig(temperature=temp)
+        config = types.GenerateContentConfig(
+            temperature=temp,
+            system_instruction=system_prompt if system_prompt else None,
         )
 
-        response = await asyncio.to_thread(model.generate_content, prompt)
-        text_out = response.text if response and response.text else ""
+        response = await client.aio.models.generate_content(
+            model=self.model_name,
+            contents=prompt,
+            config=config,
+        )
+
+        text_out = response.text or ""
         logger.debug(f"[GeminiLLMClient] Generated {len(text_out)} chars of text response.")
         return text_out
 
@@ -105,28 +110,25 @@ class GeminiLLMClient(LLMClient):
         system_prompt: Optional[str] = None
     ) -> T:
         """Generates a structured output adhering strictly to the provided Pydantic model."""
-        self._ensure_configured()
+        client = self._get_client()
         logger.debug(f"[GeminiLLMClient] Generating structured output for schema: {response_schema.__name__}")
 
-        # Instruct Gemini to output pure JSON matching schema
-        schema_json = response_schema.model_json_schema()
-        instructions = (
-            f"{system_prompt or ''}\n\n"
-            f"You MUST respond ONLY with valid JSON strictly conforming to this schema:\n"
-            f"{schema_json}"
+        config = types.GenerateContentConfig(
+            temperature=0.0,
+            system_instruction=system_prompt if system_prompt else None,
+            response_mime_type="application/json",
+            response_schema=response_schema,
         )
 
-        model = genai.GenerativeModel(
-            model_name=self.model_name,
-            system_instruction=instructions,
-            generation_config=genai.GenerationConfig(
-                response_mime_type="application/json",
-                temperature=0.0
-            )
+        response = await client.aio.models.generate_content(
+            model=self.model_name,
+            contents=prompt,
+            config=config,
         )
 
-        response = await asyncio.to_thread(model.generate_content, prompt)
-        logger.debug(f"[GeminiLLMClient] Received structured JSON ({len(response.text)} chars). Validating schema...")
+        # Use native parsed model if available, otherwise validate json string
+        if response.parsed and isinstance(response.parsed, response_schema):
+            return response.parsed
         return response_schema.model_validate_json(response.text)
 
     async def generate_multimodal_stream(
@@ -140,29 +142,28 @@ class GeminiLLMClient(LLMClient):
         Streams analysis directly from a multimodal file (e.g. PDF) exploiting Gemini's
         native 1M+ token context window.
         """
-        self._ensure_configured()
+        client = self._get_client()
         logger.info(f"[GeminiLLMClient] Starting multimodal stream for {len(file_bytes):,} bytes ({mime_type})")
 
-        model = genai.GenerativeModel(
-            model_name=self.model_name,
-            system_instruction=system_prompt
+        part = types.Part.from_bytes(data=file_bytes, mime_type=mime_type)
+
+        config = types.GenerateContentConfig(
+            system_instruction=system_prompt if system_prompt else None,
         )
 
-        part = {
-            "mime_type": mime_type,
-            "data": file_bytes
-        }
+        stream = await client.aio.models.generate_content_stream(
+            model=self.model_name,
+            contents=[part, prompt],
+            config=config,
+        )
 
-        def _sync_stream():
-            return model.generate_content([part, prompt], stream=True)
-
-        response = await asyncio.to_thread(_sync_stream)
         chunk_count = 0
-        for chunk in response:
+        async for chunk in stream:
             if chunk.text:
                 chunk_count += 1
                 yield chunk.text
                 await asyncio.sleep(0)
+
         logger.info(f"[GeminiLLMClient] Multimodal stream completed ({chunk_count} chunks generated).")
 
     async def get_embeddings(
@@ -173,7 +174,7 @@ class GeminiLLMClient(LLMClient):
         """
         Generates embeddings using Gemini text-embedding-004 with configurable batching.
         """
-        self._ensure_configured()
+        client = self._get_client()
         if not texts:
             return []
 
@@ -192,21 +193,15 @@ class GeminiLLMClient(LLMClient):
             batch = texts[b_idx:b_idx + effective_batch_size]
             logger.debug(f"[GeminiLLMClient] Embedding batch {b_idx // effective_batch_size + 1}/{total_batches} ({len(batch)} texts)...")
 
-            def _embed_batch(batch_slice):
-                result = genai.embed_content(
-                    model=self.embedding_model_name,
-                    content=batch_slice,
-                    task_type="retrieval_document"
-                )
-                return result.get("embedding", [])
+            response = await client.aio.models.embed_content(
+                model=self.embedding_model_name,
+                contents=batch,
+            )
 
-            batch_embs = await asyncio.to_thread(_embed_batch, batch)
-
-            # Handle single vs batch format returned by SDK
-            if len(batch) == 1 and isinstance(batch_embs, list) and len(batch_embs) > 0 and isinstance(batch_embs[0], float):
-                all_embeddings.append(batch_embs)
-            elif isinstance(batch_embs, list):
-                all_embeddings.extend(batch_embs)
+            if response and response.embeddings:
+                for emb in response.embeddings:
+                    if emb.values:
+                        all_embeddings.append(list(emb.values))
 
         logger.info(f"[GeminiLLMClient] Successfully generated {len(all_embeddings)} embedding vector(s).")
         return all_embeddings
