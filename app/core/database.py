@@ -16,25 +16,54 @@ from app.core.logging import logger
 settings = get_settings()
 
 def _normalize_database_url(url: Optional[str]) -> str:
-    """Normalizes database connection string for Async SQLAlchemy and asyncpg."""
+    """
+    Normalizes database connection string for Async SQLAlchemy and asyncpg.
+    Filters out libpq-specific parameters (like channel_binding and sslmode)
+    that cause asyncpg connection errors, and enforces SSL for cloud hosts (Neon, Supabase).
+    """
     if not url:
         os.makedirs("./data", exist_ok=True)
         logger.info("DATABASE_URL not set. Falling back to local SQLite: ./data/marketmind.db")
         return "sqlite+aiosqlite:///./data/marketmind.db"
 
     clean = url.strip()
+    if "sqlite" in clean:
+        return clean
 
-    # Normalize standard postgresql:// prefixes to asyncpg dialect
-    if clean.startswith("postgresql://"):
-        clean = "postgresql+asyncpg://" + clean[len("postgresql://"):]
-    elif clean.startswith("postgres://"):
-        clean = "postgresql+asyncpg://" + clean[len("postgres://"):]
+    from sqlalchemy.engine.url import make_url
 
-    # asyncpg expects 'ssl=' rather than 'sslmode=' (common Neon / Supabase copy-paste)
-    if "sslmode=" in clean:
+    try:
+        parsed = make_url(clean)
+        query_dict = dict(parsed.query)
+
+        # Check if SSL is required by query string or known cloud hostnames
+        host = (parsed.host or "").lower()
+        needs_ssl = (
+            "sslmode" in query_dict
+            or "ssl" in query_dict
+            or "channel_binding" in query_dict
+            or "neon.tech" in host
+            or "supabase" in host
+        )
+
+        # asyncpg accepts strictly 'ssl' (not 'sslmode' or 'channel_binding')
+        new_query = {}
+        if needs_ssl:
+            new_query["ssl"] = "require"
+
+        if "statement_cache_size" in query_dict:
+            new_query["statement_cache_size"] = query_dict["statement_cache_size"]
+
+        normalized = parsed.set(drivername="postgresql+asyncpg", query=new_query)
+        final_url = normalized.render_as_string(hide_password=False)
+        logger.info(f"Database URL normalized for asyncpg (host={parsed.host}, ssl={new_query.get('ssl')})")
+        return final_url
+    except Exception as e:
+        logger.warning(f"Error normalizing database URL ({e}). Using raw string with asyncpg prefix.")
+        if clean.startswith("postgresql://"):
+            clean = "postgresql+asyncpg://" + clean[len("postgresql://"):]
         clean = clean.replace("sslmode=", "ssl=")
-
-    return clean
+        return clean
 
 DATABASE_URL = _normalize_database_url(settings.DATABASE_URL)
 

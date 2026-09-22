@@ -5,8 +5,12 @@ Pydantic structured output, and native multimodal document analysis.
 """
 
 import asyncio
+import warnings
 from typing import AsyncIterator, Optional, Type, TypeVar, List
 from pydantic import BaseModel
+
+# Suppress Google Generative AI SDK deprecation notice in server logs
+warnings.filterwarnings("ignore", category=FutureWarning)
 import google.generativeai as genai
 from app.core.config import get_settings
 from app.core.logging import logger
