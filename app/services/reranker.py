@@ -66,8 +66,10 @@ class BM25Reranker:
         if not passages:
             return []
 
+        logger.info(f"[BM25Reranker] Reranking {len(passages)} passages for query='{query[:60]}...' (top_k={top_k}, max_per_domain={max_per_domain})")
         query_tokens = self.tokenize(query)
         if not query_tokens:
+            logger.debug("[BM25Reranker] No alphanumeric query tokens found. Returning unranked slice.")
             return passages[:top_k]
 
         num_docs = len(passages)
@@ -125,9 +127,10 @@ class BM25Reranker:
             if len(diversified) >= top_k:
                 break
 
-        logger.debug(
-            f"BM25 Reranker: Scored {len(passages)} passages. Selected top {len(diversified)} "
-            f"across {len(domain_counts)} domains."
+        top_score = diversified[0].score if diversified else 0.0
+        logger.info(
+            f"[BM25Reranker] Selected top {len(diversified)} passages across {len(domain_counts)} domains. "
+            f"Top score={top_score}, domains={list(domain_counts.keys())}"
         )
         return diversified
 
@@ -173,6 +176,8 @@ class HybridReranker:
         if not passages:
             return []
 
+        logger.info(f"[HybridReranker] Starting hybrid rerank for {len(passages)} passages (alpha={self.alpha}, top_k={top_k})")
+
         # Step 1: Pre-filter candidate pool with BM25 if pool is large
         candidate_pool = self.bm25.rerank(
             query=query,
@@ -183,15 +188,17 @@ class HybridReranker:
 
         # If no LLMClient configured, return pure BM25 results
         if not self.llm_client:
+            logger.debug("[HybridReranker] No LLM client provided. Returning pure BM25 candidate pool.")
             return candidate_pool[:top_k]
 
         try:
             # Step 2: Fetch embeddings via API
             texts_to_embed = [query] + [p.text[:500] for p in candidate_pool]
+            logger.debug(f"[HybridReranker] Requesting embeddings for query + {len(candidate_pool)} candidate passages...")
             embeddings = await self.llm_client.get_embeddings(texts_to_embed)
 
             if not embeddings or len(embeddings) < len(texts_to_embed):
-                logger.warning("Embeddings incomplete. Falling back to BM25 ranking.")
+                logger.warning("[HybridReranker] Embeddings incomplete. Falling back to BM25 ranking.")
                 return candidate_pool[:top_k]
 
             query_emb = embeddings[0]
@@ -224,8 +231,9 @@ class HybridReranker:
                 if len(diversified) >= top_k:
                     break
 
+            logger.info(f"[HybridReranker] Hybrid ranking complete: returned {len(diversified)} passages across {len(domain_counts)} domains.")
             return diversified
 
         except Exception as e:
-            logger.warning(f"Hybrid reranking encountered error ({e}). Using BM25 fallback.")
+            logger.warning(f"[HybridReranker] Hybrid reranking encountered error ({e}). Using BM25 fallback.")
             return candidate_pool[:top_k]

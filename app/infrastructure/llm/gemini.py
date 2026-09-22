@@ -44,45 +44,55 @@ class GeminiLLMClient(LLMClient):
         self,
         prompt: str,
         system_prompt: Optional[str] = None,
-        temperature: float = 0.2
+        temperature: Optional[float] = None
     ) -> AsyncIterator[str]:
         """Streams generated tokens asynchronously."""
         self._ensure_configured()
+        settings = get_settings()
+        temp = temperature if temperature is not None else settings.LLM_TEMPERATURE
+        logger.debug(f"[GeminiLLMClient] Initiating stream with model={self.model_name}, temp={temp}, prompt_len={len(prompt)}")
         
         model = genai.GenerativeModel(
             model_name=self.model_name,
             system_instruction=system_prompt,
-            generation_config=genai.GenerationConfig(temperature=temperature)
+            generation_config=genai.GenerationConfig(temperature=temp)
         )
 
-        # Run synchronous generate_content in thread with stream=True
         def _sync_stream():
             return model.generate_content(prompt, stream=True)
 
         response = await asyncio.to_thread(_sync_stream)
-        
+        token_count = 0
         for chunk in response:
             if chunk.text:
+                token_count += 1
                 yield chunk.text
                 await asyncio.sleep(0)  # Yield control to event loop
+
+        logger.debug(f"[GeminiLLMClient] Stream completed. Yielded {token_count} chunks.")
 
     async def generate_text(
         self,
         prompt: str,
         system_prompt: Optional[str] = None,
-        temperature: float = 0.2
+        temperature: Optional[float] = None
     ) -> str:
         """Generates a complete textual response."""
         self._ensure_configured()
+        settings = get_settings()
+        temp = temperature if temperature is not None else settings.LLM_TEMPERATURE
+        logger.debug(f"[GeminiLLMClient] Generating text with model={self.model_name}, temp={temp}, prompt_len={len(prompt)}")
 
         model = genai.GenerativeModel(
             model_name=self.model_name,
             system_instruction=system_prompt,
-            generation_config=genai.GenerationConfig(temperature=temperature)
+            generation_config=genai.GenerationConfig(temperature=temp)
         )
 
         response = await asyncio.to_thread(model.generate_content, prompt)
-        return response.text if response and response.text else ""
+        text_out = response.text if response and response.text else ""
+        logger.debug(f"[GeminiLLMClient] Generated {len(text_out)} chars of text response.")
+        return text_out
 
     async def generate_structured(
         self,
@@ -92,6 +102,7 @@ class GeminiLLMClient(LLMClient):
     ) -> T:
         """Generates a structured output adhering strictly to the provided Pydantic model."""
         self._ensure_configured()
+        logger.debug(f"[GeminiLLMClient] Generating structured output for schema: {response_schema.__name__}")
 
         # Instruct Gemini to output pure JSON matching schema
         schema_json = response_schema.model_json_schema()
@@ -111,6 +122,7 @@ class GeminiLLMClient(LLMClient):
         )
 
         response = await asyncio.to_thread(model.generate_content, prompt)
+        logger.debug(f"[GeminiLLMClient] Received structured JSON ({len(response.text)} chars). Validating schema...")
         return response_schema.model_validate_json(response.text)
 
     async def generate_multimodal_stream(
@@ -125,6 +137,7 @@ class GeminiLLMClient(LLMClient):
         native 1M+ token context window.
         """
         self._ensure_configured()
+        logger.info(f"[GeminiLLMClient] Starting multimodal stream for {len(file_bytes):,} bytes ({mime_type})")
 
         model = genai.GenerativeModel(
             model_name=self.model_name,
@@ -140,25 +153,56 @@ class GeminiLLMClient(LLMClient):
             return model.generate_content([part, prompt], stream=True)
 
         response = await asyncio.to_thread(_sync_stream)
+        chunk_count = 0
         for chunk in response:
             if chunk.text:
+                chunk_count += 1
                 yield chunk.text
                 await asyncio.sleep(0)
+        logger.info(f"[GeminiLLMClient] Multimodal stream completed ({chunk_count} chunks generated).")
 
-    async def get_embeddings(self, texts: List[str]) -> List[List[float]]:
-        """Generates embeddings using Gemini text-embedding-004."""
+    async def get_embeddings(
+        self,
+        texts: List[str],
+        batch_size: Optional[int] = None
+    ) -> List[List[float]]:
+        """
+        Generates embeddings using Gemini text-embedding-004 with configurable batching.
+        """
         self._ensure_configured()
+        if not texts:
+            return []
 
-        def _embed():
-            result = genai.embed_content(
-                model=self.embedding_model_name,
-                content=texts,
-                task_type="retrieval_document"
-            )
-            return result.get("embedding", [])
+        settings = get_settings()
+        effective_batch_size = max(1, batch_size or settings.EMBEDDING_BATCH_SIZE)
+        total_texts = len(texts)
+        total_batches = (total_texts + effective_batch_size - 1) // effective_batch_size
+        logger.info(
+            f"[GeminiLLMClient] Generating embeddings for {total_texts} texts "
+            f"across {total_batches} batch(es) (batch_size={effective_batch_size})."
+        )
 
-        embeddings = await asyncio.to_thread(_embed)
-        # Handle single vs batch output from SDK
-        if texts and isinstance(embeddings, list) and len(embeddings) > 0 and isinstance(embeddings[0], float):
-            return [embeddings]
-        return embeddings
+        all_embeddings: List[List[float]] = []
+
+        for b_idx in range(0, total_texts, effective_batch_size):
+            batch = texts[b_idx:b_idx + effective_batch_size]
+            logger.debug(f"[GeminiLLMClient] Embedding batch {b_idx // effective_batch_size + 1}/{total_batches} ({len(batch)} texts)...")
+
+            def _embed_batch(batch_slice):
+                result = genai.embed_content(
+                    model=self.embedding_model_name,
+                    content=batch_slice,
+                    task_type="retrieval_document"
+                )
+                return result.get("embedding", [])
+
+            batch_embs = await asyncio.to_thread(_embed_batch, batch)
+
+            # Handle single vs batch format returned by SDK
+            if len(batch) == 1 and isinstance(batch_embs, list) and len(batch_embs) > 0 and isinstance(batch_embs[0], float):
+                all_embeddings.append(batch_embs)
+            elif isinstance(batch_embs, list):
+                all_embeddings.extend(batch_embs)
+
+        logger.info(f"[GeminiLLMClient] Successfully generated {len(all_embeddings)} embedding vector(s).")
+        return all_embeddings

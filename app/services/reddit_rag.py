@@ -96,24 +96,31 @@ class RedditRAGService:
         Searches Reddit for discussions on the topic, parses threads,
         and generates a structured sentiment synthesis.
         """
-        search_query = self._build_search_query(topic, country)
-        logger.info(f"Searching Reddit discussions: {search_query}")
+        from app.core.config import get_settings
+        settings = get_settings()
 
-        citations = await self.search_engine.search(search_query, max_results=6, country=country)
+        search_query = self._build_search_query(topic, country)
+        logger.info(f"[RedditRAGService] Searching Reddit discussions for topic='{topic}': query='{search_query}'")
+
+        citations = await self.search_engine.search(search_query, max_results=settings.MAX_SEARCH_RESULTS, country=country)
         reddit_citations = [c for c in citations if "reddit.com/r/" in c.url][:4]
 
         if not reddit_citations:
-            logger.info(f"No direct Reddit links found for {topic}. Falling back to general discussions.")
+            logger.info(f"[RedditRAGService] No direct Reddit links found for '{topic}'. Using top {min(len(citations), 3)} general discussions.")
             reddit_citations = citations[:3]
+        else:
+            logger.info(f"[RedditRAGService] Found {len(reddit_citations)} Reddit thread citations.")
 
         # Concurrently fetch thread contents
+        logger.info(f"[RedditRAGService] Fetching content for {len(reddit_citations)} thread(s)...")
         fetch_tasks = [self._fetch_reddit_thread(c.url) for c in reddit_citations]
         thread_results = await asyncio.gather(*fetch_tasks, return_exceptions=True)
 
         valid_threads = [t for t in thread_results if isinstance(t, dict) and t.get("content")]
+        logger.info(f"[RedditRAGService] Successfully parsed {len(valid_threads)} discussion thread(s).")
 
         if not valid_threads:
-            # If scraping was blocked or empty, synthesize from search snippets
+            logger.info("[RedditRAGService] No complete threads parsed. Synthesizing from search snippets.")
             combined_context = "\n\n".join([f"Thread: {c.title}\nSummary: {c.snippet}" for c in reddit_citations if c.snippet])
         else:
             combined_context = "\n\n---\n\n".join([
@@ -143,6 +150,7 @@ Synthesize a comprehensive sentiment report with:
 """
 
         try:
+            logger.info(f"[RedditRAGService] Generating structured sentiment report via Gemini (temperature={settings.LLM_TEMPERATURE})...")
             result = await self.llm.generate_structured(
                 prompt=prompt,
                 response_schema=CommunitySentimentResult,
@@ -150,9 +158,13 @@ Synthesize a comprehensive sentiment report with:
             )
             result.topic = topic
             result.top_discussions = reddit_citations
+            logger.info(
+                f"[RedditRAGService] Sentiment analysis complete: topic='{topic}', "
+                f"sentiment='{result.overall_sentiment}', score={result.sentiment_score}"
+            )
             return result
         except Exception as e:
-            logger.error(f"Failed to generate structured sentiment ({e}). Returning heuristic fallback.")
+            logger.error(f"[RedditRAGService] Failed to generate structured sentiment ({e}). Returning heuristic fallback.")
             return CommunitySentimentResult(
                 topic=topic,
                 overall_sentiment="Neutral",

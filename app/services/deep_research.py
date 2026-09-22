@@ -52,19 +52,29 @@ class DeepResearchService:
     async def generate_research_report(
         self,
         company_or_ticker: str,
-        country: str = "IN"
+        country: str = "IN",
+        section_by_section: Optional[bool] = None
     ) -> DeepResearchResult:
         """
         Runs the end-to-end equity research pipeline for a company.
+        Supports both single-pass synthesis and modular section-by-section multi-prompt generation.
         """
-        logger.info(f"Starting deep equity research on: {company_or_ticker}")
+        from app.core.config import get_settings
+        settings = get_settings()
+        use_sectional = section_by_section if section_by_section is not None else settings.RESEARCH_SECTION_BY_SECTION
+
+        logger.info(
+            f"[DeepResearchService] Starting deep equity research on: '{company_or_ticker}' "
+            f"(country={country}, section_by_section={use_sectional})"
+        )
         created_time = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
 
         # Step 1: Resolve Ticker
         ticker = await self.market.resolve_ticker(company_or_ticker) or company_or_ticker
-        logger.info(f"Resolved ticker: {ticker}")
+        logger.info(f"[DeepResearchService] Resolved ticker symbol: '{company_or_ticker}' -> '{ticker}'")
 
         # Step 2: Fetch Fundamentals & Market Quote in Parallel
+        logger.info(f"[DeepResearchService] Concurrently fetching fundamentals and real-time quote for '{ticker}'...")
         fundamentals_task = self.market.get_fundamentals(ticker)
         quote_task = self.market.get_quote(ticker)
         fundamentals, quote = await asyncio.gather(fundamentals_task, quote_task)
@@ -74,6 +84,7 @@ class DeepResearchService:
             or (quote.company_name if quote else None)
             or company_or_ticker.title()
         )
+        logger.info(f"[DeepResearchService] Target Company Name: '{company_name}' ({ticker})")
 
         # Step 3: Multi-Angle Web Research
         search_queries = [
@@ -83,12 +94,13 @@ class DeepResearchService:
             f"{company_name} future catalysts capital expenditure strategic expansion",
         ]
 
-        logger.info(f"Conducting multi-angle web searches for {company_name}...")
+        logger.info(f"[DeepResearchService] Conducting multi-angle web searches for '{company_name}' across {len(search_queries)} queries...")
+        per_query_limit = max(2, settings.MAX_SEARCH_RESULTS // 2)
         search_tasks = [
-            self.search_engine.search_news(q, max_results=3, country=country)
+            self.search_engine.search_news(q, max_results=per_query_limit, country=country)
             for q in search_queries[:2]
         ] + [
-            self.search_engine.search(q, max_results=3, country=country)
+            self.search_engine.search(q, max_results=per_query_limit, country=country)
             for q in search_queries[2:]
         ]
 
@@ -103,12 +115,14 @@ class DeepResearchService:
                         seen_urls.add(cit.url)
                         unique_citations.append(cit)
 
-        top_citations = unique_citations[:8]
+        top_citations = unique_citations[:settings.MAX_SEARCH_RESULTS]
         for idx, c in enumerate(top_citations, start=1):
             c.id = idx
+        logger.info(f"[DeepResearchService] Identified {len(top_citations)} unique citations for research grounding.")
 
         # Step 4: Parallel Scrape of Top Sources
         urls_to_scrape = [c.url for c in top_citations[:5]]
+        logger.info(f"[DeepResearchService] Concurrently scraping {len(urls_to_scrape)} top URLs...")
         scraped_docs = await self.scraper.scrape_many(urls_to_scrape)
         
         extracted_contexts = []
@@ -118,14 +132,66 @@ class DeepResearchService:
 
         # Fallback to snippets if scraping is empty
         if not extracted_contexts:
+            logger.info("[DeepResearchService] No complete document bodies extracted. Relying on search snippets.")
             extracted_contexts = [f"### Source: {c.title}\n{c.snippet}" for c in top_citations if c.snippet]
 
         web_context_text = "\n\n---\n\n".join(extracted_contexts)
+        logger.debug(f"[DeepResearchService] Web intelligence context compiled ({len(web_context_text):,} chars).")
 
         # Step 5: Format Financial Fundamentals Context
         fundamentals_context = self._format_fundamentals_context(company_name, ticker, quote, fundamentals)
 
-        # Step 6: Synthesize Institutional Research Report
+        # Step 6: Generate Research Report (Modular Sections vs Single Pass)
+        if use_sectional:
+            logger.info(f"[DeepResearchService] Generating report via MODULAR SECTION-BY-SECTION prompts...")
+            markdown_report = await self._generate_section_by_section(
+                company_name=company_name,
+                ticker=ticker,
+                created_time=created_time,
+                country=country,
+                fundamentals_context=fundamentals_context,
+                web_context=web_context_text,
+                temperature=settings.LLM_TEMPERATURE
+            )
+        else:
+            logger.info(f"[DeepResearchService] Generating report via SINGLE-PASS cohesive prompt...")
+            markdown_report = await self._generate_single_pass(
+                company_name=company_name,
+                ticker=ticker,
+                created_time=created_time,
+                country=country,
+                fundamentals_context=fundamentals_context,
+                web_context=web_context_text,
+                temperature=settings.LLM_TEMPERATURE
+            )
+
+        # Extract executive summary preview
+        exec_match = re.search(r"## 1\. Executive Summary.*?\n(.*?)(?=\n## 2|\Z)", markdown_report, re.DOTALL)
+        exec_summary = exec_match.group(1).strip() if exec_match else f"Comprehensive equity research report for {company_name} ({ticker})."
+
+        logger.info(f"[DeepResearchService] Research report compilation complete ({len(markdown_report):,} chars).")
+        return DeepResearchResult(
+            ticker=ticker,
+            company_name=company_name,
+            executive_summary=exec_summary,
+            markdown_report=markdown_report,
+            recommendation="Institutional Analysis",
+            sources=top_citations,
+            created_at=created_time,
+            pdf_available=True
+        )
+
+    async def _generate_single_pass(
+        self,
+        company_name: str,
+        ticker: str,
+        created_time: str,
+        country: str,
+        fundamentals_context: str,
+        web_context: str,
+        temperature: float
+    ) -> str:
+        """Synthesizes the entire 7-section report in a single cohesive prompt."""
         report_prompt = f"""Target Company: {company_name} ({ticker})
 Date of Report: {created_time}
 Country: {country}
@@ -133,7 +199,7 @@ Country: {country}
 {fundamentals_context}
 
 Extracted Web & Industry Intelligence:
-{web_context_text or "No web articles extracted. Rely on fundamental metrics and market data provided above."}
+{web_context or "No web articles extracted. Rely on fundamental metrics and market data provided above."}
 
 Please synthesize an exhaustive, institutional Equity Research Report organized into the following mandatory sections:
 ## 1. Executive Summary & Investment Thesis
@@ -163,31 +229,73 @@ Please synthesize an exhaustive, institutional Equity Research Report organized 
 - Bull, Base, and Bear case price targets or expected returns
 - Final concluding verdict for investors
 """
-
         try:
-            markdown_report = await self.llm.generate_text(
+            return await self.llm.generate_text(
                 prompt=report_prompt,
                 system_prompt=self.SYSTEM_PROMPT,
-                temperature=0.2
+                temperature=temperature
             )
         except Exception as e:
-            logger.error(f"Error generating research report with Gemini: {e}")
-            markdown_report = f"# Equity Research Report: {company_name} ({ticker})\n\nReport generation encountered an error: {str(e)}"
+            logger.error(f"[DeepResearchService] Error generating single-pass research report: {e}")
+            return f"# Equity Research Report: {company_name} ({ticker})\n\nReport generation encountered an error: {str(e)}"
 
-        # Extract executive summary preview
-        exec_match = re.search(r"## 1\. Executive Summary.*?\n(.*?)(?=\n## 2|\Z)", markdown_report, re.DOTALL)
-        exec_summary = exec_match.group(1).strip() if exec_match else f"Comprehensive equity research report for {company_name} ({ticker})."
+    async def _generate_section_by_section(
+        self,
+        company_name: str,
+        ticker: str,
+        created_time: str,
+        country: str,
+        fundamentals_context: str,
+        web_context: str,
+        temperature: float
+    ) -> str:
+        """
+        Generates each of the 7 sections with dedicated, specialized prompts
+        to maximize granularity, table depth, and analytical rigor.
+        """
+        sections_meta = [
+            ("1. Executive Summary & Investment Thesis", "Synthesize a sharp executive summary, investment verdict (Overweight/Neutral/Underweight), target price expectations, and 3-4 core investment pillars."),
+            ("2. Company Profile & Core Business Model", "Detail the company's operating divisions, revenue model, geographic split, manufacturing footprint, and core value proposition."),
+            ("3. Fundamental & Valuation Analysis", f"Conduct an exhaustive financial ratio analysis. Include a structured Markdown table comparing P/E, P/B, EV/EBITDA, EPS, ROE, debt-to-equity, and free cash flow based on:\n{fundamentals_context}"),
+            ("4. Industry Dynamics & Competitive Moat", "Analyze industry secular trends, market share dynamics, competitive rivalry, pricing power, and barriers to entry."),
+            ("5. Key Risk Factors", "Examine critical operational risks, regulatory challenges, interest rate sensitivities, currency risks, and competitive threats."),
+            ("6. Strategic Catalysts & Outlook", "Identify upcoming catalysts: capacity additions, product roadmap, expansion into new markets, margin turnaround triggers."),
+            ("7. Valuation Conclusion & Rating Recommendation", "Provide Bull, Base, and Bear case valuation scenarios with estimated price targets and final institutional investment recommendation."),
+        ]
 
-        return DeepResearchResult(
-            ticker=ticker,
-            company_name=company_name,
-            executive_summary=exec_summary,
-            markdown_report=markdown_report,
-            recommendation="Institutional Analysis",
-            sources=top_citations,
-            created_at=created_time,
-            pdf_available=True
-        )
+        generated_sections = []
+        for idx, (title, instruction) in enumerate(sections_meta, start=1):
+            logger.info(f"[DeepResearchService] Generating Section {idx}/7: '{title}'...")
+            section_prompt = f"""Target Company: {company_name} ({ticker})
+Country: {country}
+Date: {created_time}
+
+Financial Context:
+{fundamentals_context}
+
+Web Intelligence:
+{web_context[:2500] if web_context else 'Rely on company fundamentals.'}
+
+TASK:
+Write the complete Section: "## {title}".
+Instructions: {instruction}
+
+Focus solely on providing exhaustive, deeply researched content for this section in Markdown. Do not repeat titles of other sections.
+"""
+            try:
+                content = await self.llm.generate_text(
+                    prompt=section_prompt,
+                    system_prompt=self.SYSTEM_PROMPT,
+                    temperature=temperature
+                )
+                generated_sections.append(content.strip())
+                logger.debug(f"[DeepResearchService] Section {idx}/7 completed ({len(content)} chars).")
+            except Exception as e:
+                logger.error(f"[DeepResearchService] Error generating section {title}: {e}")
+                generated_sections.append(f"## {title}\n\nSection analysis temporarily unavailable: {str(e)}")
+
+        combined_report = f"# Equity Research Report: {company_name} ({ticker})\n\n" + "\n\n".join(generated_sections)
+        return combined_report
 
     def _format_fundamentals_context(
         self,
@@ -374,4 +482,5 @@ Please synthesize an exhaustive, institutional Equity Research Report organized 
         doc.build(story)
         pdf_bytes = buffer.getvalue()
         buffer.close()
+        logger.info(f"[DeepResearchService] PDF successfully compiled: {len(pdf_bytes):,} bytes.")
         return pdf_bytes

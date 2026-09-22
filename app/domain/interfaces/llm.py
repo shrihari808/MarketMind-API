@@ -18,7 +18,7 @@ class LLMClient(ABC):
         self,
         prompt: str,
         system_prompt: Optional[str] = None,
-        temperature: float = 0.2
+        temperature: Optional[float] = None
     ) -> AsyncIterator[str]:
         """Streams generated tokens asynchronously."""
         pass
@@ -28,7 +28,7 @@ class LLMClient(ABC):
         self,
         prompt: str,
         system_prompt: Optional[str] = None,
-        temperature: float = 0.2
+        temperature: Optional[float] = None
     ) -> str:
         """Generates a complete textual response."""
         pass
@@ -55,6 +55,10 @@ class LLMClient(ABC):
         pass
 
     @abstractmethod
-    async def get_embeddings(self, texts: List[str]) -> List[List[float]]:
-        """Generates semantic embedding vectors for a list of texts."""
+    async def get_embeddings(
+        self,
+        texts: List[str],
+        batch_size: Optional[int] = None
+    ) -> List[List[float]]:
+        """Generates semantic embedding vectors for a list of texts with optional batching."""
         pass

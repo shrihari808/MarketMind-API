@@ -39,6 +39,10 @@ class DocumentRAGService:
         """
         Streams analysis for a user question directly from raw PDF bytes.
         """
+        logger.info(
+            f"[DocumentRAGService] Processing query on '{filename}' "
+            f"({len(file_bytes):,} bytes, mime={mime_type}). Query: '{query}'"
+        )
         yield SSEMessage(
             event="status",
             data={"step": "processing_document", "message": f"Analyzing {filename} natively with Gemini..."}
@@ -61,10 +65,11 @@ class DocumentRAGService:
                 token_count += 1
                 yield SSEMessage(event="token", data={"token": token})
         except Exception as e:
-            logger.error(f"Multimodal document analysis error for {filename}: {e}")
+            logger.error(f"[DocumentRAGService] Multimodal document analysis error for {filename}: {e}")
             yield SSEMessage(event="error", data={"message": f"Document processing failed: {str(e)}"})
             return
 
+        logger.info(f"[DocumentRAGService] Document analysis complete for {filename}: {token_count} tokens streamed.")
         yield SSEMessage(
             event="complete",
             data={"tokens_used": token_count, "filename": filename}
@@ -79,6 +84,7 @@ class DocumentRAGService:
         """
         Generates an executive summary of the document (key findings, financials, balance sheet highlights).
         """
+        logger.info(f"[DocumentRAGService] Requesting executive summary for {filename} ({len(file_bytes):,} bytes)...")
         summary_query = (
             "Provide an executive financial summary of this document. Include:\n"
             "1. Core Purpose / Subject of the Document\n"

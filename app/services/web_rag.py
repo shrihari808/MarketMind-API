@@ -54,21 +54,25 @@ class WebRAGService:
             self.reranker = BM25Reranker()
 
     @staticmethod
-    def _chunk_text(text: str, chunk_size: int = 400, overlap: int = 50) -> List[str]:
-        """Splits document text into overlapping word chunks."""
+    def _chunk_text(text: str, chunk_size: Optional[int] = None, overlap: Optional[int] = None) -> List[str]:
+        """Splits document text into overlapping word chunks based on settings."""
+        settings = get_settings()
+        c_size = chunk_size or settings.RAG_CHUNK_SIZE
+        o_lap = overlap or settings.RAG_CHUNK_OVERLAP
+
         words = text.split()
-        if len(words) <= chunk_size:
+        if len(words) <= c_size:
             return [text]
 
         chunks = []
         start = 0
         while start < len(words):
-            end = min(start + chunk_size, len(words))
+            end = min(start + c_size, len(words))
             chunk = " ".join(words[start:end])
             chunks.append(chunk)
             if end >= len(words):
                 break
-            start += chunk_size - overlap
+            start += c_size - o_lap
         return chunks
 
     def _extract_passages(
@@ -77,6 +81,7 @@ class WebRAGService:
         citations_map: Dict[str, SourceCitation]
     ) -> List[PassageChunk]:
         """Converts scraped documents into indexed passage chunks linked to source citations."""
+        settings = get_settings()
         passages: List[PassageChunk] = []
         for doc in documents:
             if not doc.success or not doc.content:
@@ -84,7 +89,6 @@ class WebRAGService:
 
             citation = citations_map.get(doc.url)
             if not citation:
-                # Find matching citation by prefix or canonical URL
                 citation = next((c for u, c in citations_map.items() if u in doc.url or doc.url in u), None)
 
             if not citation:
@@ -95,7 +99,7 @@ class WebRAGService:
                     domain=BM25Reranker.extract_domain(doc.url)
                 )
 
-            chunks = self._chunk_text(doc.content)
+            chunks = self._chunk_text(doc.content, chunk_size=settings.RAG_CHUNK_SIZE, overlap=settings.RAG_CHUNK_OVERLAP)
             for idx, text_chunk in enumerate(chunks[:8]):  # Cap at top 8 chunks per document
                 passages.append(
                     PassageChunk(
@@ -105,6 +109,7 @@ class WebRAGService:
                         chunk_index=idx
                     )
                 )
+        logger.info(f"[WebRAGService] Extracted {len(passages)} candidate passage chunks from {len(documents)} scraped document(s).")
         return passages
 
     async def stream(
@@ -115,7 +120,9 @@ class WebRAGService:
         """
         Executes the Web RAG pipeline and yields standardized SSE messages.
         """
+        settings = get_settings()
         start_time = time.time()
+        logger.info(f"[WebRAGService] Incoming RAG query: '{request.query}' (country={request.country}, session_id={request.session_id})")
 
         # Step 1: Query Analysis & Financial Guardrail
         yield SSEMessage(event="status", data={"step": "analyzing_query", "message": "Analyzing financial query..."})
@@ -127,6 +134,7 @@ class WebRAGService:
         )
 
         if not analysis.is_financial:
+            logger.info(f"[WebRAGService] Guardrail triggered: '{request.query}' rejected as non-financial.")
             yield SSEMessage(
                 event="token",
                 data={"token": f"I specialize in financial markets, equities, and economic intelligence. {analysis.financial_reason}\n\nPlease ask a question related to stocks, financial statements, or market trends."}
@@ -140,19 +148,21 @@ class WebRAGService:
         # Step 2: Fetch Live Stock Quote if applicable
         quote_task = None
         if analysis.detected_ticker:
-            logger.info(f"Detected ticker {analysis.detected_ticker}. Fetching live quote in parallel.")
+            logger.info(f"[WebRAGService] Ticker '{analysis.detected_ticker}' detected. Dispatching live quote fetch.")
             quote_task = asyncio.create_task(self.market.get_quote(analysis.detected_ticker))
 
         # Step 3: Multi-Query Search
         yield SSEMessage(event="status", data={"step": "searching", "message": "Searching financial news and web..."})
         search_queries = analysis.sub_queries or [request.query]
+        max_search = settings.MAX_SEARCH_RESULTS
+        per_query_limit = max(2, max_search // len(search_queries) + 1)
+        logger.info(f"[WebRAGService] Dispatching search across {len(search_queries)} sub-queries (per_query_limit={per_query_limit})...")
 
-        # Execute searches concurrently across sub-queries
         search_tasks = [
-            self.search_engine.search_news(q, max_results=3, country=request.country)
+            self.search_engine.search_news(q, max_results=per_query_limit, country=request.country)
             for q in search_queries[:2]
         ] + [
-            self.search_engine.search(search_queries[-1], max_results=3, country=request.country)
+            self.search_engine.search(search_queries[-1], max_results=per_query_limit, country=request.country)
         ]
         search_results_nested = await asyncio.gather(*search_tasks, return_exceptions=True)
 
@@ -166,11 +176,12 @@ class WebRAGService:
                         all_citations.append(item)
 
         # Cap citations and re-index
-        top_citations = all_citations[:6]
+        top_citations = all_citations[:max_search]
         for idx, cit in enumerate(top_citations, start=1):
             cit.id = idx
 
         citations_map = {c.url: c for c in top_citations}
+        logger.info(f"[WebRAGService] Found {len(all_citations)} unique search results. Filtered to top {len(top_citations)} citations.")
 
         # Step 4: Emit Citations to Client Early
         yield SSEMessage(
@@ -181,6 +192,7 @@ class WebRAGService:
         # Step 5: Concurrently Scrape Top URLs
         yield SSEMessage(event="status", data={"step": "reading_sources", "message": "Scraping and analyzing source articles..."})
         urls_to_scrape = [c.url for c in top_citations]
+        logger.info(f"[WebRAGService] Scraping {len(urls_to_scrape)} URLs...")
         scraped_docs = await self.scraper.scrape_many(urls_to_scrape)
 
         # Step 6: Passage Extraction and BM25 Reranking
@@ -188,6 +200,7 @@ class WebRAGService:
         
         # If scraper failed to extract full text, build fallback passages from search snippets
         if not passages and top_citations:
+            logger.info("[WebRAGService] No article bodies extracted. Falling back to search snippets for passage pool.")
             for c in top_citations:
                 if c.snippet:
                     passages.append(
@@ -200,6 +213,7 @@ class WebRAGService:
                     )
 
         # Rerank and diversify passages
+        logger.info(f"[WebRAGService] Reranking {len(passages)} passages...")
         if isinstance(self.reranker, HybridReranker):
             selected_passages = await self.reranker.rerank(
                 query=request.query,
@@ -220,8 +234,10 @@ class WebRAGService:
         if quote_task:
             try:
                 live_quote = await quote_task
+                if live_quote:
+                    logger.info(f"[WebRAGService] Live quote retrieved for {live_quote.ticker}: {live_quote.currency} {live_quote.current_price:.2f}")
             except Exception as e:
-                logger.warning(f"Failed to retrieve quote for {analysis.detected_ticker}: {e}")
+                logger.warning(f"[WebRAGService] Failed to retrieve live quote for {analysis.detected_ticker}: {e}")
 
         # Step 7: Construct Grounded Financial Prompt
         context_parts = []
@@ -240,6 +256,7 @@ class WebRAGService:
             )
 
         full_context = "\n\n---\n\n".join(context_parts)
+        logger.debug(f"[WebRAGService] Final constructed prompt context length: {len(full_context):,} characters.")
 
         system_instruction = (
             "You are MarketMind AI, a senior institutional financial analyst and market intelligence assistant. "
@@ -264,22 +281,24 @@ Provide a comprehensive, well-structured financial analysis addressing the quest
 
         # Step 8: Stream Synthesis Tokens
         yield SSEMessage(event="status", data={"step": "generating", "message": "Synthesizing market response..."})
-        
+        logger.info(f"[WebRAGService] Initiating Gemini stream (temperature={settings.LLM_TEMPERATURE})...")
+
         token_count = 0
         try:
             async for token in self.llm.generate_stream(
                 prompt=user_prompt,
                 system_prompt=system_instruction,
-                temperature=0.2
+                temperature=settings.LLM_TEMPERATURE
             ):
                 token_count += 1
                 yield SSEMessage(event="token", data={"token": token})
         except Exception as e:
-            logger.error(f"Error streaming from Gemini: {e}")
+            logger.error(f"[WebRAGService] Error streaming from Gemini: {e}")
             yield SSEMessage(event="error", data={"message": f"Generation error: {str(e)}"})
             return
 
         elapsed = round(time.time() - start_time, 2)
+        logger.info(f"[WebRAGService] Generation finished: {token_count} tokens streamed in {elapsed}s.")
         yield SSEMessage(
             event="complete",
             data={"tokens_used": token_count, "duration_seconds": elapsed}

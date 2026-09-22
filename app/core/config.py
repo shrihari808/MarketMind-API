@@ -34,6 +34,8 @@ class Settings(BaseSettings):
     GEMINI_API_KEY: Optional[str] = Field(default=None, description="Google AI Studio Gemini API Key")
     GEMINI_MODEL: str = Field(default="gemini-2.0-flash", description="Default model for synthesis")
     GEMINI_EMBEDDING_MODEL: str = Field(default="text-embedding-004", description="Default embedding model")
+    LLM_TEMPERATURE: float = Field(default=0.2, description="Default temperature for LLM generation")
+    EMBEDDING_BATCH_SIZE: int = Field(default=32, description="Batch size for generating embeddings")
 
     # Database Configuration (Serverless PostgreSQL: Neon / Supabase)
     DATABASE_URL: Optional[str] = Field(
@@ -47,9 +49,11 @@ class Settings(BaseSettings):
         description="Search provider to use: 'duckduckgo', 'serper', or 'brave'"
     )
     DEFAULT_COUNTRY: str = "IN"
-    MAX_SEARCH_RESULTS: int = 7
+    MAX_SEARCH_RESULTS: int = Field(default=7, description="Maximum search results retrieved per query")
     MAX_SCRAPED_SOURCES: int = 5
     SCRAPER_TIMEOUT_SECONDS: int = 8
+    RAG_CHUNK_SIZE: int = Field(default=400, description="Word chunk size for document passages")
+    RAG_CHUNK_OVERLAP: int = Field(default=50, description="Overlap between consecutive passage chunks")
     
     # Search Engine API Keys
     SERPER_API_KEY: Optional[str] = Field(default=None, description="Serper.dev API Key")
@@ -62,6 +66,12 @@ class Settings(BaseSettings):
     # Market Dashboard Configuration
     DASHBOARD_ENABLED: bool = Field(default=True, description="Enable or disable market dashboard services")
     DASHBOARD_CACHE_TTL_HOURS: float = Field(default=1.0, description="Dashboard cache TTL in hours (e.g. 0.25, 1.0, 4.0)")
+
+    # Deep Equity Research Configuration
+    RESEARCH_SECTION_BY_SECTION: bool = Field(
+        default=False,
+        description="Generate equity report section-by-section via modular prompts (True) or cohesive single-pass (False)"
+    )
 
     model_config = SettingsConfigDict(
         env_file=".env",

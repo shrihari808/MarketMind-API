@@ -66,14 +66,17 @@ class MarketDashboardService:
             f"Provide an objective commentary highlighting dominant sectors, overall sentiment, and key drivers."
         )
 
+        logger.info(f"[MarketDashboardService] Fetched {len(indices)} indices, {len(gainers)} gainers, {len(losers)} losers for country: {country}.")
+
         try:
+            logger.info(f"[MarketDashboardService] Generating macro market brief via Gemini (temp={self.settings.LLM_TEMPERATURE})...")
             sentiment_commentary = await self.llm.generate_text(
                 prompt=prompt,
                 system_prompt="You are MarketMind, an institutional financial market intelligence assistant.",
-                temperature=0.2
+                temperature=self.settings.LLM_TEMPERATURE
             )
         except Exception as e:
-            logger.warning(f"LLM synthesis failed for dashboard brief: {e}")
+            logger.warning(f"[MarketDashboardService] LLM synthesis failed for dashboard brief ({e}). Using rule-based fallback.")
             sentiment_commentary = (
                 f"Markets closed with mixed performance across sectors. "
                 f"Major indices recorded: {indices_summary}."

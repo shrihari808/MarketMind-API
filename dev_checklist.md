@@ -90,9 +90,10 @@ Goal: Implement decoupled, pluggable adapters for LLMs, search, market data, vec
 Goal: Rebuild the core RAG pipelines to be lean, lightning-fast, and memory-efficient (<512MB RAM).
 
 - [x] **3.1 High-Performance Streaming Web RAG Service (`WebRAGService`)**
-  - [x] Implement async query analyzer (`QueryAnalyzer`): financial intent validation, multi-angle sub-query generation (recency, analytical, factual), ticker detection, and conversational follow-up resolution.
+  - [x] Implement async query analyzer (`QueryAnalyzer`): financial intent validation with expanded 162-term financial taxonomy, multi-angle sub-query generation (recency, analytical, factual), ticker detection, and conversational follow-up resolution.
   - [x] Implement concurrent async HTML scraping using `httpx` + `trafilatura` (with strict timeouts & 5MB memory guard).
   - [x] Implement lightweight pure-Python BM25 passage reranking (`BM25Reranker`) with publisher domain diversification (max 2 per domain) and optional zero-PyTorch Gemini API hybrid reranking (`HybridReranker`).
+  - [x] Support configurable passage chunking (`RAG_CHUNK_SIZE=400`, `RAG_CHUNK_OVERLAP=50`), search limits (`MAX_SEARCH_RESULTS=7`), and generation temperature (`LLM_TEMPERATURE=0.2`).
   - [x] Inject real-time market quotes directly into prompt context when tickers are detected.
   - [x] Stream synthesized answers with strict citation metadata (`[1]`, `[2]`).
 - [x] **3.2 Gemini Native Multimodal Document RAG Service (`DocumentRAGService`)**
@@ -102,15 +103,19 @@ Goal: Rebuild the core RAG pipelines to be lean, lightning-fast, and memory-effi
 - [x] **3.3 Community Sentiment & Reddit RAG Service (`RedditRAGService`)**
   - [x] Implement Reddit discussion discovery via search engine site queries without requiring paid Reddit API keys.
   - [x] Extract discussion threads and user comment trees via Reddit JSON endpoint with Trafilatura fallback.
-  - [x] Synthesize retail community sentiment and debate summaries (Bullish vs. Bearish consensus, normalized score, argument breakdown).
+  - [x] Synthesize retail community sentiment and debate summaries (Bullish vs. Bearish consensus, normalized score, argument breakdown) with configurable temperature and search limits.
 - [x] **3.4 Market Dashboard Service with Stale-While-Revalidate (`MarketDashboardService`)**
   - [x] Replace 24/7 background scheduler with on-demand caching with TTL (Stale-While-Revalidate in Postgres/SQLite).
   - [x] Provide configurable active/inactive toggle (`DASHBOARD_ENABLED`) and configurable cache TTL in hours (`DASHBOARD_CACHE_TTL_HOURS`).
   - [x] Aggregate top market indices (Nifty 50, Sensex, S&P 500, Nasdaq), standout gainers, and losers via `yfinance`.
-  - [x] Generate structured daily market briefs using Gemini Flash.
+  - [x] Generate structured daily market briefs using Gemini Flash with configurable temperature.
 - [x] **3.5 Deep Research Pipeline (`DeepResearchService`)**
   - [x] Implement automated equity research orchestrator (Executive Summary, Business Profile, Fundamentals, Industry Moat, Risks, Catalysts, Valuation & Recommendation).
+  - [x] Support dual generation strategies: cohesive single-pass vs. granular section-by-section multi-prompting via `RESEARCH_SECTION_BY_SECTION`.
   - [x] Generate clean Markdown reports with option to export to publication-ready downloadable PDF in-memory via `ReportLab`.
+- [x] **3.6 Service-Wide Observability & Embedding Batching**
+  - [x] Add rich, structured logging (`logger.info`, `logger.debug`, `logger.warning`) across all services.
+  - [x] Configurable batch size for embedding generation (`EMBEDDING_BATCH_SIZE=32`) to prevent API throttling and payload size overflows.
 
 ---
 

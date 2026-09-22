@@ -18,13 +18,58 @@ from app.infrastructure.market.yfinance_client import YFinanceMarketClient
 class QueryAnalyzer:
     """Async query analyzer for financial intelligence workflows."""
 
-    # Common financial keywords for rapid heuristic fallback
+    # Comprehensive financial keyword dictionary for rapid heuristic fallback (162 terms)
     FINANCIAL_KEYWORDS = {
+        # ------------------ PREVIOUS SET (81 TERMS) ------------------
+        # Base Equities & Indices
         "stock", "share", "equity", "market", "nifty", "sensex", "nasdaq", "s&p",
         "dividend", "earnings", "q1", "q2", "q3", "q4", "revenue", "profit", "ebitda",
         "pe ratio", "p/e", "eps", "ipo", "invest", "portfolio", "yield", "bond",
+        "price", "valuation", "target", "guidance", "balance sheet", "debt", "cash flow",
+
+        # Valuation & Fundamental Metrics
+        "market cap", "free cash flow", "fcf", "roe", "roce", "operating margin",
+        "book value", "net income", "capex", "topline", "bottom line",
+
+        # Corporate Actions & Capital Structure
+        "buyback", "bonus share", "stock split", "rights issue", "merger",
+        "acquisition", "delisting", "promoter holding", "insider trading",
+
+        # Trading, Markets & Derivatives
+        "volume", "liquidity", "volatility", "vix", "short selling", "short squeeze",
+        "options", "futures", "call option", "put option", "derivatives",
+        "52-week high", "52-week low", "breakout", "stop loss",
+
+        # Macro & Sentiment
         "inflation", "interest rate", "fed", "rbi", "bull", "bear", "rally", "crash",
-        "price", "valuation", "target", "guidance", "balance sheet", "debt", "cash flow"
+        "gdp", "recession", "monetary policy", "fii", "dii", "treasury",
+
+        # ------------------ NEW ADDITIONS (81 TERMS) ------------------
+        # Asset Classes, Funds & Fixed Income
+        "etf", "mutual fund", "index fund", "commodities", "crude oil", "gold", "forex",
+        "reit", "sovereign bond", "corporate bond", "commercial paper",
+        "certificate of deposit", "debenture", "preferred stock", "penny stock",
+        "hedge fund", "private equity", "venture capital",
+
+        # Ratios, Profitability & Accounting
+        "ebit", "gross margin", "net margin", "operating cash flow", "working capital",
+        "current ratio", "debt to equity", "peg ratio", "price to book", "enterprise value",
+        "ev/ebitda", "depreciation", "amortization", "impairment", "write-down",
+        "retained earnings", "cagr", "alpha", "beta", "sharpe ratio",
+
+        # Technical Analysis & Order Execution
+        "order book", "bid-ask spread", "ask price", "bid price", "limit order",
+        "market order", "support", "resistance", "moving average", "rsi", "macd",
+        "candlestick", "open interest", "slippage", "margin call", "leverage",
+        "arbitrage", "overbought", "oversold", "gap up", "gap down",
+
+        # Filings, Governance & Capital Raising
+        "annual report", "10-k", "10-q", "proxy statement", "esop", "fpo",
+        "offer for sale", "ofs", "qip", "credit rating", "default risk",
+
+        # Macroeconomics, Central Banking & Regulation
+        "fiscal deficit", "rate hike", "rate cut", "quantitative easing",
+        "stagflation", "cpi", "wpi", "sec", "sebi", "yield curve", "hawkish"
     }
 
     def __init__(
@@ -49,10 +94,11 @@ class QueryAnalyzer:
         query_lower = query.lower().strip()
         for pat in followup_patterns:
             if re.search(pat, query_lower):
+                logger.debug(f"[QueryAnalyzer] Follow-up pattern matched: '{pat}' in query.")
                 return True
 
-        # Very short queries in active conversation are typically follow-ups
         if len(query_lower.split()) <= 3:
+            logger.debug("[QueryAnalyzer] Query is <=3 words in active conversation; treating as follow-up.")
             return True
 
         return False
@@ -64,12 +110,15 @@ class QueryAnalyzer:
         chat_history: Optional[List[Dict[str, str]]] = None
     ) -> QueryAnalysisResult:
         """Robust non-LLM heuristic fallback analyzer."""
+        logger.info(f"[QueryAnalyzer] Running heuristic fallback analysis for: '{query}'")
         query_lower = query.lower().strip()
-        words = set(re.findall(r"\b\w+\b", query_lower))
 
-        # Check for financial relevance
-        has_fin_keyword = any(k in query_lower for k in self.FINANCIAL_KEYWORDS)
-        
+        # Check for financial relevance against expanded 162-term dictionary
+        matched_keywords = [k for k in self.FINANCIAL_KEYWORDS if k in query_lower]
+        if matched_keywords:
+            logger.debug(f"[QueryAnalyzer] Matched financial keywords: {matched_keywords[:5]}")
+        has_fin_keyword = bool(matched_keywords)
+
         # Check ticker dictionary
         detected_ticker = None
         company_name = None
@@ -78,12 +127,13 @@ class QueryAnalyzer:
             if name in query_lower:
                 detected_ticker = ticker
                 company_name = name.title()
+                logger.debug(f"[QueryAnalyzer] Matched known company: '{name}' -> ticker: '{ticker}'")
                 break
 
         is_financial = has_fin_keyword or bool(detected_ticker)
 
         # Check if numerical data is requested
-        numerical_triggers = {"price", "pe", "ratio", "valuation", "target", "high", "low", "market cap"}
+        numerical_triggers = {"price", "pe", "ratio", "valuation", "target", "high", "low", "market cap", "revenue", "eps"}
         requires_market_data = bool(detected_ticker) and any(t in query_lower for t in numerical_triggers)
 
         # Basic sub-queries
@@ -93,6 +143,11 @@ class QueryAnalyzer:
             f"{clean_name} financial performance analysis",
             f"{clean_name} stock overview fundamentals",
         ]
+
+        logger.info(
+            f"[QueryAnalyzer] Heuristic fallback complete: is_financial={is_financial}, "
+            f"detected_ticker={detected_ticker}, requires_market_data={requires_market_data}"
+        )
 
         return QueryAnalysisResult(
             is_financial=is_financial,
@@ -115,6 +170,10 @@ class QueryAnalyzer:
         Analyzes user query, validates financial intent, resolves tickers,
         and generates multi-angle sub-queries.
         """
+        logger.info(
+            f"[QueryAnalyzer] Starting query analysis for: '{query}' "
+            f"(country={country}, history_turns={len(chat_history) if chat_history else 0})"
+        )
         today_str = datetime.now(timezone.utc).strftime("%Y-%m-%d")
         history_context = ""
         if chat_history:
@@ -154,11 +213,18 @@ Tasks:
                 system_prompt=system_prompt
             )
 
+            logger.info(
+                f"[QueryAnalyzer] Structured analysis result: is_financial={result.is_financial}, "
+                f"company='{result.company_name}', detected_ticker='{result.detected_ticker}', "
+                f"requires_market_data={result.requires_market_data}"
+            )
+
             # Resolve ticker symbol via MarketDataClient if company is detected
             if result.company_name or result.detected_ticker:
                 search_term = result.detected_ticker or result.company_name
                 resolved_ticker = await self.market.resolve_ticker(search_term)
                 if resolved_ticker:
+                    logger.info(f"[QueryAnalyzer] Resolved ticker symbol: '{search_term}' -> '{resolved_ticker}'")
                     result.detected_ticker = resolved_ticker
 
             # If user query is clearly not financial, provide clear reason
@@ -167,14 +233,17 @@ Tasks:
                     result.financial_reason or
                     "Query does not appear related to financial markets, stocks, or economics."
                 )
+                logger.info(f"[QueryAnalyzer] Query classified as NON-FINANCIAL. Reason: {result.financial_reason}")
 
+            logger.debug(f"[QueryAnalyzer] Sub-queries generated: {result.sub_queries}")
             return result
 
         except Exception as e:
-            logger.warning(f"LLM query analysis failed or API unconfigured ({e}). Utilizing heuristic fallback.")
+            logger.warning(f"[QueryAnalyzer] LLM query analysis failed ({e}). Falling back to heuristic analyzer.")
             fallback = await self._heuristic_fallback(query, country, chat_history)
             if fallback.company_name:
                 resolved = await self.market.resolve_ticker(fallback.company_name)
                 if resolved:
+                    logger.info(f"[QueryAnalyzer] Resolved ticker from fallback: '{fallback.company_name}' -> '{resolved}'")
                     fallback.detected_ticker = resolved
             return fallback
