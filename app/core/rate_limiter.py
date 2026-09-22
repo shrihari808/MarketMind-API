@@ -1,12 +1,12 @@
 """
 IP-Wise Rate Limiting Middleware and In-Memory Sliding Window Manager.
-Enforces strict requests-per-minute limits (default: 25 req/min) per client IP,
+Enforces strict requests-per-minute limits (configurable via settings or runtime toggle) per client IP,
 with proxy header resolution (X-Forwarded-For) and minimal RAM footprint.
 """
 
 import time
 from collections import defaultdict
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Tuple
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
 from starlette.responses import JSONResponse, Response
@@ -19,13 +19,57 @@ class SlidingWindowRateLimiter:
     """
     Lightweight, thread-safe in-memory sliding window rate limiter.
     Stores request timestamps per IP and automatically evicts expired entries.
+    Supports both static settings configuration (.env) and dynamic runtime overrides.
     """
 
-    def __init__(self, limit_per_minute: int = 25, window_seconds: int = 60):
-        self.limit_per_minute = limit_per_minute
-        self.window_seconds = window_seconds
+    def __init__(
+        self,
+        limit_per_minute: Optional[int] = None,
+        window_seconds: int = 60,
+        enabled: Optional[bool] = None
+    ):
+        self._limit_per_minute: Optional[int] = limit_per_minute
+        self.window_seconds: int = window_seconds
+        self._enabled: Optional[bool] = enabled
         self._history: Dict[str, List[float]] = defaultdict(list)
-        self._last_cleanup = time.time()
+        self._last_cleanup: float = time.time()
+
+    @property
+    def is_enabled(self) -> bool:
+        """Determines if rate limiting is active, checking runtime override or settings."""
+        if self._enabled is not None:
+            return self._enabled
+        return get_settings().RATE_LIMIT_ENABLED
+
+    @property
+    def limit_per_minute(self) -> int:
+        """Returns the active limit per minute, checking runtime override or settings."""
+        if self._limit_per_minute is not None:
+            return self._limit_per_minute
+        return get_settings().RATE_LIMIT_PER_MINUTE
+
+    def set_enabled(self, enabled: bool):
+        """Programmatically toggle rate limiting on or off at runtime."""
+        self._enabled = enabled
+        logger.info(f"[RateLimiter] Rate limiting toggle updated: enabled={enabled}")
+
+    def set_limit(self, limit_per_minute: int):
+        """Programmatically configure the number of requests per minute."""
+        self._limit_per_minute = max(1, limit_per_minute)
+        logger.info(f"[RateLimiter] Rate limit threshold updated: {self._limit_per_minute} req/min")
+
+    def reset_overrides(self):
+        """Reverts runtime overrides back to Settings (.env defaults)."""
+        self._enabled = None
+        self._limit_per_minute = None
+        logger.info("[RateLimiter] Runtime overrides cleared. Reverted to Settings (.env).")
+
+    def reset(self, ip: Optional[str] = None):
+        """Clears request timestamp history for a specific IP or all IPs."""
+        if ip:
+            self._history.pop(ip, None)
+        else:
+            self._history.clear()
 
     def get_client_ip(self, request: Request) -> str:
         """
@@ -34,7 +78,6 @@ class SlidingWindowRateLimiter:
         """
         forwarded_for = request.headers.get("X-Forwarded-For")
         if forwarded_for:
-            # First element in comma-separated list is the original client IP
             client_ip = forwarded_for.split(",")[0].strip()
             if client_ip:
                 return client_ip
@@ -48,11 +91,14 @@ class SlidingWindowRateLimiter:
 
         return "127.0.0.1"
 
-    def is_allowed(self, ip: str) -> tuple[bool, int]:
+    def is_allowed(self, ip: str) -> Tuple[bool, int]:
         """
-        Checks if the IP is within limits.
+        Checks if the IP is within the configured limit.
         Returns: (is_allowed: bool, retry_after_seconds: int)
         """
+        if not self.is_enabled:
+            return True, 0
+
         now = time.time()
         cutoff = now - self.window_seconds
 
@@ -65,7 +111,8 @@ class SlidingWindowRateLimiter:
         timestamps = [t for t in self._history[ip] if t > cutoff]
         self._history[ip] = timestamps
 
-        if len(timestamps) >= self.limit_per_minute:
+        active_limit = self.limit_per_minute
+        if len(timestamps) >= active_limit:
             oldest = timestamps[0]
             retry_after = max(1, int(self.window_seconds - (now - oldest)))
             return False, retry_after
@@ -91,34 +138,31 @@ class IPRateLimitMiddleware(BaseHTTPMiddleware):
     Bypasses documentation, OpenAPI schema, and health check endpoints.
     """
 
-    EXEMPT_PATHS = {"/docs", "/redoc", "/openapi.json", "/api/v2/health", "/"}
+    EXEMPT_PATHS = {"/docs", "/redoc", "/openapi.json", "/api/v2/health", "/api/v2/health/rate-limit", "/"}
 
     async def dispatch(self, request: Request, call_next) -> Response:
-        settings = get_settings()
-
-        if not settings.RATE_LIMIT_ENABLED:
+        # Check if rate limiting is enabled
+        if not rate_limiter.is_enabled:
             return await call_next(request)
 
         # Bypass exempt paths
-        if request.url.path in self.EXEMPT_PATHS:
+        if request.url.path in self.EXEMPT_PATHS or request.url.path.startswith("/api/v2/health"):
             return await call_next(request)
-
-        # Dynamic limit sync from settings
-        rate_limiter.limit_per_minute = settings.RATE_LIMIT_PER_MINUTE
 
         client_ip = rate_limiter.get_client_ip(request)
         allowed, retry_after = rate_limiter.is_allowed(client_ip)
 
         if not allowed:
+            active_limit = rate_limiter.limit_per_minute
             logger.warning(
                 f"[RateLimiter] Rate limit exceeded for IP: {client_ip} "
-                f"({settings.RATE_LIMIT_PER_MINUTE} req/min). Path: {request.url.path}"
+                f"({active_limit} req/min). Path: {request.url.path}"
             )
             return JSONResponse(
                 status_code=429,
                 content={
                     "error": "Too Many Requests",
-                    "detail": f"Rate limit exceeded. Maximum {settings.RATE_LIMIT_PER_MINUTE} requests per minute allowed.",
+                    "detail": f"Rate limit exceeded. Maximum {active_limit} requests per minute allowed.",
                     "retry_after_seconds": retry_after
                 },
                 headers={"Retry-After": str(retry_after)}
