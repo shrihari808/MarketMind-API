@@ -1,0 +1,68 @@
+# ==============================================================================
+# Render.com Infrastructure-as-Code (Blueprint) for MarketMind API v2
+# Free Web Service Tier with 512 MB RAM limit and Zero-Downtime Auto-Deploy
+# ==============================================================================
+services:
+  - type: web
+    name: marketmind-api
+    env: docker
+    plan: free
+    region: oregon
+    dockerfilePath: ./Dockerfile
+    healthCheckPath: /api/v2/health
+    autoDeploy: true
+    envVars:
+      # Project Environment
+      - key: ENVIRONMENT
+        value: production
+      - key: DEBUG
+        value: "false"
+
+      # Google Gemini 2.0 Flash (Paste in Render Dashboard)
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: GEMINI_MODEL
+        value: gemini-2.0-flash
+      - key: GEMINI_EMBEDDING_MODEL
+        value: text-embedding-004
+      - key: LLM_TEMPERATURE
+        value: "0.2"
+      - key: EMBEDDING_BATCH_SIZE
+        value: "32"
+
+      # Database: Serverless Postgres (Neon / Supabase)
+      # e.g. postgresql+asyncpg://user:password@ep-xyz.neon.tech/neondb?sslmode=require
+      - key: DATABASE_URL
+        sync: false
+
+      # Free Search Provider (DuckDuckGo 9.16+ default)
+      - key: SEARCH_PROVIDER
+        value: duckduckgo
+      - key: MAX_SEARCH_RESULTS
+        value: "7"
+      - key: RAG_CHUNK_SIZE
+        value: "400"
+      - key: RAG_CHUNK_OVERLAP
+        value: "50"
+
+      # Optional Paid Search Providers (Leave empty for 100% free operation)
+      - key: SERPER_API_KEY
+        sync: false
+      - key: BRAVE_API_KEY
+        sync: false
+
+      # Market Dashboard SWR Cache
+      - key: DASHBOARD_ENABLED
+        value: "true"
+      - key: DASHBOARD_CACHE_TTL_HOURS
+        value: "1.0"
+
+      # Deep Research Mode (single-pass or section-by-section)
+      - key: RESEARCH_SECTION_BY_SECTION
+        value: "false"
+
+      # IP Rate Limiting (25 req/min)
+      - key: RATE_LIMIT_ENABLED
+        value: "true"
+      - key: RATE_LIMIT_PER_MINUTE
+        value: "25"

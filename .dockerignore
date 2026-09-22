@@ -1,0 +1,33 @@
+# Git & IDEs
+.git/
+.gitignore
+.vscode/
+.idea/
+
+# Virtual Environments & Python Caches
+.venv/
+venv/
+ENV/
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Local Data, Scratch & Logs
+data/
+outputs/
+scratch/
+*.db
+*.sqlite
+*.sqlite3
+*.log
+
+# Frontend Build & Node Modules
+frontend/node_modules/
+frontend/dist/
+node_modules/
+
+# Markdown & Docs
+*.md
