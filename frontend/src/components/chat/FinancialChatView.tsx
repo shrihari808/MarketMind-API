@@ -5,7 +5,7 @@ import {
   Loader2,
   AlertTriangle,
 } from 'lucide-react';
-import { ChatMessageItem, SourceCitation } from '../../types/api';
+import { ChatMessageItem, SourceCitation, PromptSuggestion } from '../../types/api';
 import { MarkdownRenderer } from '../common/MarkdownRenderer';
 import { SourcesPopover } from './SourcesPopover';
 
@@ -17,6 +17,7 @@ interface FinancialChatViewProps {
   streamingSources: SourceCitation[];
   streamingError: string | null;
   onSuggestionClick: (prompt: string) => void;
+  suggestions?: PromptSuggestion[];
 }
 
 export const FinancialChatView: React.FC<FinancialChatViewProps> = ({
@@ -27,12 +28,36 @@ export const FinancialChatView: React.FC<FinancialChatViewProps> = ({
   streamingSources,
   streamingError,
   onSuggestionClick,
+  suggestions,
 }) => {
   const bottomRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, streamingText, streamingStatus]);
+
+  const defaultCards = [
+    {
+      title: 'Tata Motors EV Roadmap',
+      desc: 'Analyze JLR electrification timeline and domestic passenger EV market share.',
+    },
+    {
+      title: 'Reliance Industries Capex',
+      desc: 'Assess 5G rollout returns, retail segment growth, and net debt position.',
+    },
+    {
+      title: 'Nvidia Blackwell Demand',
+      desc: 'Evaluate data center revenue catalysts and hyperscaler AI infrastructure capex.',
+    },
+    {
+      title: 'S&P 500 Valuation Multiples',
+      desc: 'Historical P/E comparison against long-term averages in declining rate regimes.',
+    },
+  ];
+
+  const cards = (suggestions && suggestions.length > 0)
+    ? suggestions.slice(0, 4).map(s => ({ title: s.header, desc: s.prompt }))
+    : defaultCards;
 
   return (
     <div className="flex-1 flex flex-col h-full max-w-4xl mx-auto px-2 sm:px-4 w-full pb-36">
@@ -51,24 +76,7 @@ export const FinancialChatView: React.FC<FinancialChatViewProps> = ({
           </p>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 w-full max-w-xl text-left">
-            {[
-              {
-                title: 'Tata Motors EV Roadmap',
-                desc: 'Analyze JLR electrification timeline and domestic passenger EV market share.',
-              },
-              {
-                title: 'Reliance Industries Capex',
-                desc: 'Assess 5G rollout returns, retail segment growth, and net debt position.',
-              },
-              {
-                title: 'Nvidia Blackwell Demand',
-                desc: 'Evaluate data center revenue catalysts and hyperscaler AI infrastructure capex.',
-              },
-              {
-                title: 'S&P 500 Valuation Multiples',
-                desc: 'Historical P/E comparison against long-term averages in declining rate regimes.',
-              },
-            ].map((card, idx) => (
+            {cards.map((card, idx) => (
               <button
                 key={idx}
                 onClick={() => onSuggestionClick(card.desc)}

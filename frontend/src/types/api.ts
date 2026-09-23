@@ -50,6 +50,11 @@ export interface ConsolidatedStockProfile {
   fundamentals?: FinancialFundamentals | null;
 }
 
+export interface PromptSuggestion {
+  header: string;
+  prompt: string;
+}
+
 export interface MarketDashboardResponse {
   country: string;
   last_updated: string;
@@ -57,6 +62,7 @@ export interface MarketDashboardResponse {
   gainers: StockQuote[];
   losers: StockQuote[];
   market_summary: string;
+  prompt_suggestions?: PromptSuggestion[];
   is_cached?: boolean;
 }
 

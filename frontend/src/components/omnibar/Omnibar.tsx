@@ -2,6 +2,8 @@ import React, { useState, useRef, useEffect } from 'react';
 import { Send, Square, Sparkles, ChevronDown, Check } from 'lucide-react';
 import { CountryFlag } from '../common/CountryFlag';
 
+import { PromptSuggestion } from '../../types/api';
+
 interface OmnibarProps {
   country: 'IN' | 'US';
   onSelectCountry: (country: 'IN' | 'US') => void;
@@ -10,6 +12,7 @@ interface OmnibarProps {
   isStreaming?: boolean;
   onStopStreaming?: () => void;
   placeholder?: string;
+  suggestions?: PromptSuggestion[];
 }
 
 export const Omnibar: React.FC<OmnibarProps> = ({
@@ -20,6 +23,7 @@ export const Omnibar: React.FC<OmnibarProps> = ({
   isStreaming = false,
   onStopStreaming,
   placeholder = "Ask any financial question (e.g. 'Tata Motors EV outlook', 'Nvidia Blackwell GPU demand')...",
+  suggestions,
 }) => {
   const [prompt, setPrompt] = useState('');
   const [isCountryDropdownOpen, setIsCountryDropdownOpen] = useState(false);
@@ -59,19 +63,23 @@ export const Omnibar: React.FC<OmnibarProps> = ({
     }
   };
 
-  const suggestions = country === 'IN'
+  const defaultSuggestions: PromptSuggestion[] = country === 'IN'
     ? [
-        { label: 'Tata Motors EV Growth', query: 'What is Tata Motors valuation outlook and EV strategy?' },
-        { label: 'Reliance Q3 Capex', query: 'Analyze Reliance Industries capex and debt levels' },
-        { label: 'HDFC Bank Margins', query: 'What is the latest NIM margin trend for HDFC Bank?' },
-        { label: 'RELIANCE.NS', query: 'What is the stock performance and financial health of RELIANCE.NS?' },
+        { header: 'Tata Motors EV', prompt: 'What is Tata Motors valuation outlook and EV strategy?' },
+        { header: 'Reliance Capex', prompt: 'Analyze Reliance Industries capex and debt levels' },
+        { header: 'HDFC Bank Margins', prompt: 'What is the latest NIM margin trend for HDFC Bank?' },
+        { header: 'Nifty IT Sector', prompt: 'Analyze the valuation multiples and earnings growth outlook for Indian IT majors' },
       ]
     : [
-        { label: 'Nvidia Blackwell Demand', query: 'What is the demand outlook for Nvidia Blackwell AI chips?' },
-        { label: 'Apple Services Moat', query: 'Analyze Apple Services revenue growth and ecosystem moat' },
-        { label: 'S&P 500 Fed Cuts', query: 'How will Fed interest rate cuts impact the S&P 500 tech sector?' },
-        { label: 'NVDA', query: 'What is the valuation outlook and key risk factors for NVDA?' },
+        { header: 'Nvidia Blackwell', prompt: 'What is the demand outlook for Nvidia Blackwell AI chips?' },
+        { header: 'Apple Services', prompt: 'Analyze Apple Services revenue growth and ecosystem moat' },
+        { header: 'S&P 500 Fed Cuts', prompt: 'How will Fed interest rate cuts impact the S&P 500 tech sector?' },
+        { header: 'Cloud Capex ROI', prompt: 'Evaluate cloud capex trends and AI infrastructure returns for Microsoft, Google, and Amazon' },
       ];
+
+  const activeSuggestions = (suggestions && suggestions.length > 0)
+    ? suggestions.slice(0, 4)
+    : defaultSuggestions;
 
   return (
     <div className="w-full bg-[#2a262b]/95 backdrop-blur-xl border-t border-[#3d363f] px-3 py-2 sm:px-4 sm:py-3 pb-[max(0.6rem,env(safe-area-inset-bottom))] sm:pb-3 transition-all">
@@ -82,13 +90,14 @@ export const Omnibar: React.FC<OmnibarProps> = ({
             <Sparkles className="w-3 h-3 text-[#c084fc] inline" />
             <span>Shortcuts:</span>
           </span>
-          {suggestions.map((item, idx) => (
+          {activeSuggestions.map((item, idx) => (
             <button
               key={idx}
-              onClick={() => handleSuggestionClick(item.query)}
+              onClick={() => handleSuggestionClick(item.prompt)}
               className="shrink-0 px-2.5 py-1 rounded-full bg-[#1d1a1e] hover:bg-[#3d363f] border border-[#3d363f] hover:border-[#9013fe]/60 text-slate-300 hover:text-white transition text-xs font-medium"
+              title={item.prompt}
             >
-              {item.label}
+              {item.header}
             </button>
           ))}
         </div>

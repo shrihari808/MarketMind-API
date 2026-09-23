@@ -43,6 +43,12 @@ class StockMover(BaseModel):
     summary: Optional[str] = None
 
 
+class PromptSuggestion(BaseModel):
+    """Dynamic prompt suggestion based on current market dynamics."""
+    header: str = Field(description="Short 2-4 word punchy title for display button")
+    prompt: str = Field(description="Full research question/prompt for AI analysis")
+
+
 class MarketDashboardSnapshot(BaseModel):
     """Aggregated market dashboard snapshot."""
     country: str = "IN"
@@ -50,6 +56,7 @@ class MarketDashboardSnapshot(BaseModel):
     top_gainers: List[StockMover] = []
     top_losers: List[StockMover] = []
     market_sentiment: Optional[str] = None
+    prompt_suggestions: List[PromptSuggestion] = Field(default_factory=list)
     updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
 

@@ -1,5 +1,6 @@
 import {
   MarketDashboardResponse,
+  PromptSuggestion,
   MarketIndexQuote,
   ConsolidatedStockProfile,
   StockQuote,
@@ -92,6 +93,13 @@ export const api = {
         volume: item.volume ?? null,
       }));
 
+    const prompt_suggestions: PromptSuggestion[] = (snapshot?.prompt_suggestions || [])
+      .map((p: any) => ({
+        header: (p.header || p.label || p.title || '').trim(),
+        prompt: (p.prompt || p.query || p.desc || '').trim(),
+      }))
+      .filter((p: PromptSuggestion) => p.header.length > 0 && p.prompt.length > 0);
+
     return {
       country: snapshot?.country || country,
       last_updated: snapshot?.updated_at || snapshot?.last_updated || new Date().toISOString(),
@@ -99,6 +107,7 @@ export const api = {
       gainers: mapMovers(snapshot?.top_gainers || snapshot?.gainers || []),
       losers: mapMovers(snapshot?.top_losers || snapshot?.losers || []),
       market_summary: snapshot?.market_sentiment || snapshot?.market_summary || '',
+      prompt_suggestions,
       is_cached: !raw?.stale,
     };
   },

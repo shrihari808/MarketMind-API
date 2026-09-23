@@ -249,6 +249,7 @@ export function App() {
               streamingSources={streamingSources}
               streamingError={streamingError}
               onSuggestionClick={handleSuggestedPrompt}
+              suggestions={dashboardData?.prompt_suggestions}
             />
           )}
 
@@ -282,6 +283,7 @@ export function App() {
             onSelectSuggestion={handleSuggestedPrompt}
             isStreaming={isStreaming}
             onStopStreaming={stopStreaming}
+            suggestions={dashboardData?.prompt_suggestions}
           />
         </div>
       </div>
