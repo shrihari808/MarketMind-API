@@ -15,6 +15,7 @@ import {
   Check,
 } from 'lucide-react';
 import { ChatSessionSummary } from '../../types/api';
+import logoImg from '../../assets/logo.png';
 
 interface SidebarProps {
   activeView: string;
@@ -71,7 +72,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
       <div className="py-2 px-3 border-b border-[#3d363f] flex items-center justify-between min-h-[64px]">
         <div className="flex items-center space-x-3 overflow-hidden">
           <img
-            src="/logo.png"
+            src={logoImg}
             alt="MarketMind Logo"
             className="w-12 h-12 sm:w-14 sm:h-14 object-contain shrink-0 drop-shadow"
           />
