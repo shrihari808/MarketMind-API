@@ -100,3 +100,17 @@ class DocumentRAGService:
             mime_type=mime_type
         ):
             yield msg
+
+    async def stream_summary(
+        self,
+        file_bytes: bytes,
+        filename: str = "document.pdf",
+        mime_type: str = "application/pdf"
+    ) -> AsyncIterator[SSEMessage]:
+        """Streams executive summary of the document (alias for summarize_document)."""
+        async for msg in self.summarize_document(
+            file_bytes=file_bytes,
+            filename=filename,
+            mime_type=mime_type
+        ):
+            yield msg
