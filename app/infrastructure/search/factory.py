@@ -23,6 +23,15 @@ class SearchEngineFactory:
     }
 
     @classmethod
+    def create(
+        cls,
+        provider: Optional[str] = None,
+        api_key: Optional[str] = None
+    ) -> SearchEngine:
+        """Instantiates and returns the configured search engine."""
+        return cls.get_search_engine(provider=provider, api_key=api_key)
+
+    @classmethod
     def get_search_engine(
         cls,
         provider: Optional[str] = None,

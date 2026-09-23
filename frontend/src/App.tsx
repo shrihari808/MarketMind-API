@@ -37,7 +37,7 @@ export function App() {
   const [messages, setMessages] = useState<ChatMessageItem[]>([]);
 
   // 5. Stock Inspector target ticker
-  const [inspectedTicker, setInspectedTicker] = useState('TATAMOTORS.NS');
+  const [inspectedTicker, setInspectedTicker] = useState('RELIANCE.NS');
 
   // 6. SSE Streaming Hook for Web RAG
   const {

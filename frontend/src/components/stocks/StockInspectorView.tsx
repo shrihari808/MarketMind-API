@@ -23,7 +23,7 @@ interface StockInspectorViewProps {
 }
 
 export const StockInspectorView: React.FC<StockInspectorViewProps> = ({
-  initialTicker = 'TATAMOTORS.NS',
+  initialTicker = 'RELIANCE.NS',
   onAskAboutStock,
   clientId,
 }) => {
@@ -78,7 +78,7 @@ export const StockInspectorView: React.FC<StockInspectorViewProps> = ({
             onKeyDown={(e) => {
               if (e.key === 'Enter') handleSearch(ticker);
             }}
-            placeholder="Enter ticker (e.g. TATAMOTORS.NS, RELIANCE.NS, NVDA, AAPL)..."
+            placeholder="Enter ticker (e.g. RELIANCE.NS, TCS.NS, NVDA, AAPL)..."
             className="flex-1 bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-xs text-slate-200 font-mono uppercase focus:outline-none focus:border-sky-500"
           />
           <button
@@ -103,7 +103,7 @@ export const StockInspectorView: React.FC<StockInspectorViewProps> = ({
         {/* Shortcut chips */}
         <div className="flex items-center space-x-2 mt-3 text-xs overflow-x-auto">
           <span className="text-[10px] font-mono text-slate-500 uppercase tracking-wider">Common:</span>
-          {['TATAMOTORS.NS', 'RELIANCE.NS', 'HDFCBANK.NS', 'NVDA', 'AAPL', 'MSFT'].map((t) => (
+          {['RELIANCE.NS', 'TCS.NS', 'HDFCBANK.NS', 'NVDA', 'AAPL', 'MSFT'].map((t) => (
             <button
               key={t}
               onClick={() => {

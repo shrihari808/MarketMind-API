@@ -5,6 +5,7 @@ Includes Web RAG streaming, Multimodal PDF analysis, and Reddit sentiment discov
 
 import uuid
 from typing import Optional, List
+from pydantic import BaseModel, Field
 from fastapi import APIRouter, Depends, Query, UploadFile, File, Form, HTTPException, status
 from fastapi.responses import StreamingResponse
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -82,22 +83,24 @@ async def web_rag_endpoint(
             assistant_answer = "".join(accumulated_tokens)
             if assistant_answer:
                 try:
-                    await ChatHistoryService.save_message(
-                        db=db,
-                        client_id=client_id,
-                        session_id=session_id,
-                        role="user",
-                        content=request.query
-                    )
-                    await ChatHistoryService.save_message(
-                        db=db,
-                        client_id=client_id,
-                        session_id=session_id,
-                        role="assistant",
-                        content=assistant_answer,
-                        sources=captured_sources,
-                        tokens=token_count
-                    )
+                    from app.core.database import async_session_factory
+                    async with async_session_factory() as save_db:
+                        await ChatHistoryService.save_message(
+                            db=save_db,
+                            client_id=client_id,
+                            session_id=session_id,
+                            role="user",
+                            content=request.query
+                        )
+                        await ChatHistoryService.save_message(
+                            db=save_db,
+                            client_id=client_id,
+                            session_id=session_id,
+                            role="assistant",
+                            content=assistant_answer,
+                            sources=captured_sources,
+                            tokens=token_count
+                        )
                 except Exception:
                     pass
 
@@ -217,19 +220,38 @@ async def document_summary_endpoint(
     )
 
 
+class RedditSentimentRequest(BaseModel):
+    """Optional JSON payload for Reddit sentiment analysis."""
+    topic: Optional[str] = Field(None, description="Target company or stock/crypto topic")
+    country: Optional[str] = Field(default="IN", description="Country context (e.g. 'IN', 'US')")
+
+
 @router.post(
     "/reddit",
     response_model=CommunitySentimentResult,
     summary="Reddit Financial Community Sentiment Analysis"
 )
 async def reddit_sentiment_endpoint(
-    topic: str = Query(..., min_length=2, description="Ticker or stock/crypto topic (e.g. 'Tata Motors', 'NVDA')"),
-    country: str = Query(default="IN", description="Country context (e.g. 'IN', 'US')"),
+    request: Optional[RedditSentimentRequest] = None,
+    topic: Optional[str] = Query(None, description="Ticker or stock/crypto topic (e.g. 'Reliance', 'NVDA')"),
+    country: Optional[str] = Query(None, description="Country context (e.g. 'IN', 'US')"),
     reddit_service: RedditRAGService = Depends(get_reddit_rag_service)
 ) -> CommunitySentimentResult:
     """
     Searches retail investor communities on Reddit (e.g. r/IndianStockMarket, r/wallstreetbets)
     without paid Reddit API keys, aggregates discussion threads, and synthesizes structured
     consensus sentiment (Bullish vs. Bearish arguments, normalized sentiment score).
+    Accepts input via JSON body or query parameters.
     """
-    return await reddit_service.analyze_sentiment(topic=topic, country=country)
+    resolved_topic = (request.topic if request and request.topic else topic)
+    if not resolved_topic or len(resolved_topic.strip()) < 2:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="Field 'topic' is required with at least 2 characters."
+        )
+
+    resolved_country = (request.country if request and request.country else country) or "IN"
+    return await reddit_service.analyze_sentiment(
+        topic=resolved_topic.strip(),
+        country=resolved_country.strip()
+    )

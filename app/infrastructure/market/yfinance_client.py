@@ -98,6 +98,10 @@ class YFinanceMarketClient(MarketDataClient):
                     or info.get("previousClose")
                     or 0.0
                 )
+                if not info or price <= 0.0:
+                    logger.warning(f"No valid price or info found for ticker {ticker}")
+                    return None
+
                 prev = info.get("regularMarketPreviousClose") or price
                 change = price - prev
                 change_pct = (change / prev * 100) if prev > 0 else 0.0
@@ -127,7 +131,7 @@ class YFinanceMarketClient(MarketDataClient):
         """Fetches quotes for multiple tickers concurrently."""
         tasks = [self.get_quote(t) for t in tickers]
         results = await asyncio.gather(*tasks)
-        return [r for r in results if r is not None]
+        return [r for r in results if r is not None and r.current_price > 0]
 
     async def get_market_indices(self, country: str = "IN") -> List[MarketIndex]:
         """Fetches performance of key market indices."""
@@ -162,7 +166,7 @@ class YFinanceMarketClient(MarketDataClient):
     async def get_top_movers(self, country: str = "IN") -> Dict[str, List[StockMover]]:
         """Returns top standout gainers and losers from benchmark lists."""
         benchmark_tickers = (
-            ["RELIANCE.NS", "TCS.NS", "HDFCBANK.NS", "INFY.NS", "TATAMOTORS.NS", "ICICIBANK.NS", "ITC.NS", "SBIN.NS"]
+            ["RELIANCE.NS", "TCS.NS", "HDFCBANK.NS", "INFY.NS", "ICICIBANK.NS", "ITC.NS", "SBIN.NS", "BHARTIARTL.NS", "LT.NS"]
             if country.upper() == "IN"
             else ["AAPL", "MSFT", "NVDA", "GOOGL", "AMZN", "TSLA", "META"]
         )

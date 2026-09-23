@@ -57,7 +57,7 @@ export const Omnibar: React.FC<OmnibarProps> = ({
         { label: 'Tata Motors EV Growth', query: 'What is Tata Motors valuation outlook and EV strategy?' },
         { label: 'Reliance Q3 Capex', query: 'Analyze Reliance Industries capex and debt levels' },
         { label: 'HDFC Bank Margins', query: 'What is the latest NIM margin trend for HDFC Bank?' },
-        { label: 'TATAMOTORS.NS', query: 'What is the stock performance and financial health of TATAMOTORS.NS?' },
+        { label: 'RELIANCE.NS', query: 'What is the stock performance and financial health of RELIANCE.NS?' },
       ]
     : [
         { label: 'Nvidia Blackwell Demand', query: 'What is the demand outlook for Nvidia Blackwell AI chips?' },

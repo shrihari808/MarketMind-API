@@ -27,6 +27,12 @@ async def get_stock_profile(
     """
     clean_ticker = ticker.upper().strip()
     quote = await market_client.get_quote(clean_ticker)
+    if not quote and "." not in clean_ticker:
+        resolved = await market_client.resolve_ticker(clean_ticker)
+        if resolved and resolved != clean_ticker:
+            clean_ticker = resolved
+            quote = await market_client.get_quote(clean_ticker)
+
     if not quote:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -56,6 +62,12 @@ async def get_stock_quote(
     """
     clean_ticker = ticker.upper().strip()
     quote = await market_client.get_quote(clean_ticker)
+    if not quote and "." not in clean_ticker:
+        resolved = await market_client.resolve_ticker(clean_ticker)
+        if resolved and resolved != clean_ticker:
+            clean_ticker = resolved
+            quote = await market_client.get_quote(clean_ticker)
+
     if not quote:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -78,6 +90,12 @@ async def get_stock_fundamentals(
     """
     clean_ticker = ticker.upper().strip()
     fundamentals = await market_client.get_fundamentals(clean_ticker)
+    if not fundamentals and "." not in clean_ticker:
+        resolved = await market_client.resolve_ticker(clean_ticker)
+        if resolved and resolved != clean_ticker:
+            clean_ticker = resolved
+            fundamentals = await market_client.get_fundamentals(clean_ticker)
+
     if not fundamentals:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,

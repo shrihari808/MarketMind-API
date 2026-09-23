@@ -18,7 +18,7 @@ interface DeepResearchViewProps {
 }
 
 export const DeepResearchView: React.FC<DeepResearchViewProps> = ({ clientId }) => {
-  const [ticker, setTicker] = useState('TATAMOTORS.NS');
+  const [ticker, setTicker] = useState('RELIANCE.NS');
   const [country, setCountry] = useState<'IN' | 'US'>('IN');
   const [sectionBySection, setSectionBySection] = useState(false);
   const [report, setReport] = useState<DeepResearchReport | null>(null);
@@ -80,8 +80,8 @@ export const DeepResearchView: React.FC<DeepResearchViewProps> = ({ clientId }) 
               onChange={(e) => {
                 const c = e.target.value as 'IN' | 'US';
                 setCountry(c);
-                if (c === 'IN' && ticker === 'NVDA') setTicker('TATAMOTORS.NS');
-                if (c === 'US' && ticker === 'TATAMOTORS.NS') setTicker('NVDA');
+                if (c === 'IN' && ticker === 'NVDA') setTicker('RELIANCE.NS');
+                if (c === 'US' && ticker === 'RELIANCE.NS') setTicker('NVDA');
               }}
               className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-xs text-slate-200 focus:outline-none focus:border-sky-500"
             >
@@ -96,7 +96,7 @@ export const DeepResearchView: React.FC<DeepResearchViewProps> = ({ clientId }) 
               type="text"
               value={ticker}
               onChange={(e) => setTicker(e.target.value.toUpperCase())}
-              placeholder="e.g. TATAMOTORS.NS, NVDA, AAPL"
+              placeholder="e.g. RELIANCE.NS, NVDA, AAPL"
               className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-xs text-slate-200 font-mono focus:outline-none focus:border-sky-500 uppercase"
             />
           </div>

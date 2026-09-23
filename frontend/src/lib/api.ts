@@ -137,7 +137,7 @@ export const api = {
     request<DeepResearchReport>('/api/v2/research', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ ticker, country, section_by_section: sectionBySection }),
+      body: JSON.stringify({ company_name: ticker, ticker, country, section_by_section: sectionBySection }),
     }, clientId),
 
   downloadResearchPdf: async (ticker: string, country: string = 'IN', sectionBySection: boolean = false, clientId?: string) => {
@@ -150,7 +150,7 @@ export const api = {
     const response = await fetch(buildApiUrl('/api/v2/research/pdf'), {
       method: 'POST',
       headers,
-      body: JSON.stringify({ ticker, country, section_by_section: sectionBySection }),
+      body: JSON.stringify({ company_name: ticker, ticker, country, section_by_section: sectionBySection }),
     });
 
     if (!response.ok) {

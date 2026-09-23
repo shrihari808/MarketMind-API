@@ -160,7 +160,7 @@ export function useSSEStream(clientId: string) {
 
                   case 'token': {
                     const tokenPayload = parsed as SSETokenPayload;
-                    const tokenStr = tokenPayload.text || '';
+                    const tokenStr = tokenPayload.token ?? tokenPayload.text ?? '';
                     accumulatedText += tokenStr;
                     setStreamState((prev) => ({
                       ...prev,
@@ -178,7 +178,7 @@ export function useSSEStream(clientId: string) {
 
                   case 'error': {
                     const errorPayload = parsed as SSEErrorPayload;
-                    throw new Error(errorPayload.error || errorPayload.detail || 'Streaming error');
+                    throw new Error(errorPayload.message || errorPayload.error || errorPayload.detail || 'Streaming error');
                   }
                 }
               } catch (e: any) {

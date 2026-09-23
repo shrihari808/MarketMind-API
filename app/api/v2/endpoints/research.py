@@ -16,12 +16,22 @@ router = APIRouter(prefix="/research", tags=["Deep Research"])
 
 class ResearchRequest(BaseModel):
     """Payload for initiating an equity research report."""
-    company_name: str = Field(..., min_length=2, description="Target company name or ticker (e.g. 'Tata Motors', 'AAPL')")
+    company_name: Optional[str] = Field(None, description="Target company name or ticker (e.g. 'Reliance', 'AAPL')")
+    ticker: Optional[str] = Field(None, description="Target company ticker")
     country: str = Field(default="IN", description="Country market context (e.g. 'IN', 'US')")
     section_by_section: Optional[bool] = Field(
         default=None,
         description="Override: True for modular granular generation, False for single-pass"
     )
+
+    def get_target_name(self) -> str:
+        name = self.company_name or self.ticker
+        if not name or len(name.strip()) < 2:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail="Either 'company_name' or 'ticker' must be provided with at least 2 characters."
+            )
+        return name.strip()
 
 
 @router.post(
@@ -44,7 +54,7 @@ async def generate_research_report(
     7. Valuation Scenarios (Bull/Base/Bear) & Recommendation
     """
     return await research_service.generate_research_report(
-        company_or_ticker=request.company_name,
+        company_or_ticker=request.get_target_name(),
         country=request.country,
         section_by_section=request.section_by_section
     )
@@ -63,7 +73,7 @@ async def download_research_pdf(
     using ReportLab. Returns the binary PDF stream directly with download headers.
     """
     result = await research_service.generate_research_report(
-        company_or_ticker=request.company_name,
+        company_or_ticker=request.get_target_name(),
         country=request.country,
         section_by_section=request.section_by_section
     )

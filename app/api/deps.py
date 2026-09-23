@@ -70,7 +70,7 @@ def get_market_client() -> MarketDataClient:
 
 def get_search_engine() -> SearchEngine:
     """Provides the configured search engine instance (DuckDuckGo/Serper/Brave)."""
-    return SearchEngineFactory.create()
+    return SearchEngineFactory.get_search_engine()
 
 
 def get_scraper() -> WebScraper:

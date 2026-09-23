@@ -12,16 +12,20 @@ export interface SSESourcesPayload {
 }
 
 export interface SSETokenPayload {
-  text: string;
+  token?: string;
+  text?: string;
 }
 
 export interface SSECompletePayload {
   total_tokens?: number;
+  tokens_used?: number;
   latency?: number;
+  duration_seconds?: number;
   session_id?: string;
 }
 
 export interface SSEErrorPayload {
-  error: string;
+  message?: string;
+  error?: string;
   detail?: string;
 }

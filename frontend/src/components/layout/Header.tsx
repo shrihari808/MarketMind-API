@@ -30,7 +30,7 @@ export const Header: React.FC<HeaderProps> = ({
     { ticker: '^BSESN', name: 'SENSEX', price: 83190.20, change: 350.80, change_percent: 0.42, currency: 'INR' },
     { ticker: '^GSPC', name: 'S&P 500', price: 5715.40, change: -18.20, change_percent: -0.32, currency: 'USD' },
     { ticker: '^IXIC', name: 'NASDAQ 100', price: 17980.10, change: 85.40, change_percent: 0.48, currency: 'USD' },
-    { ticker: 'TATAMOTORS.NS', name: 'Tata Motors', price: 948.50, change: 12.80, change_percent: 1.37, currency: 'INR' },
+    { ticker: 'TCS.NS', name: 'Tata Consultancy Services', price: 4120.50, change: 25.80, change_percent: 0.63, currency: 'INR' },
     { ticker: 'RELIANCE.NS', name: 'Reliance Ind', price: 2985.00, change: -15.40, change_percent: -0.51, currency: 'INR' },
     { ticker: 'NVDA', name: 'NVIDIA Corp', price: 124.60, change: 3.20, change_percent: 2.64, currency: 'USD' },
     { ticker: 'AAPL', name: 'Apple Inc', price: 228.30, change: 1.10, change_percent: 0.48, currency: 'USD' },
