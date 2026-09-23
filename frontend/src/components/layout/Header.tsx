@@ -1,5 +1,5 @@
 import React from 'react';
-import { LayoutDashboard, Zap, Shield, Sparkles, Copy, Check } from 'lucide-react';
+import { LayoutDashboard, Shield, Sparkles, Copy, Check, Menu } from 'lucide-react';
 import { MarketIndexQuote } from '../../types/api';
 import { formatCurrency, formatPercent } from '../../lib/utils';
 
@@ -8,6 +8,7 @@ interface HeaderProps {
   activeView: string;
   onNavigateDashboard: () => void;
   clientId: string;
+  onToggleMobileSidebar?: () => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -15,6 +16,7 @@ export const Header: React.FC<HeaderProps> = ({
   activeView,
   onNavigateDashboard,
   clientId,
+  onToggleMobileSidebar,
 }) => {
   const [copied, setCopied] = React.useState(false);
 
@@ -37,15 +39,14 @@ export const Header: React.FC<HeaderProps> = ({
   ];
 
   const marqueeData = indices.length > 0 ? indices : defaultTickers;
-  // Duplicate for seamless loop
   const tickerItems = [...marqueeData, ...marqueeData];
 
   return (
-    <header className="sticky top-0 z-40 w-full bg-[#080C14]/95 backdrop-blur-md border-b border-slate-800/80">
+    <header className="sticky top-0 z-40 w-full bg-[#2B2D31]/95 backdrop-blur-md border-b border-[#383A40]">
       {/* 1. Market Marquee Ticker */}
-      <div className="w-full bg-[#0A101D] border-b border-slate-800/60 overflow-hidden py-1.5 px-4 text-xs font-mono">
+      <div className="w-full bg-[#1E1F22] border-b border-[#383A40] overflow-hidden py-1.5 px-3 sm:px-4 text-xs font-mono">
         <div className="flex items-center space-x-2">
-          <div className="flex items-center space-x-1.5 shrink-0 pr-3 border-r border-slate-700/60 font-sans font-semibold text-sky-400">
+          <div className="flex items-center space-x-1.5 shrink-0 pr-3 border-r border-[#383A40] font-sans font-semibold text-[#d8b4fe]">
             <span className="w-2 h-2 rounded-full bg-emerald-400 animate-live"></span>
             <span className="tracking-wide uppercase text-[10px]">LIVE FEED</span>
           </div>
@@ -76,47 +77,57 @@ export const Header: React.FC<HeaderProps> = ({
       </div>
 
       {/* 2. Top Action Bar */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-14 flex items-center justify-between">
-        {/* Left: Market Dashboard button if in chat or other view */}
-        <div className="flex items-center space-x-3">
+      <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 h-13 sm:h-14 flex items-center justify-between">
+        {/* Left: Mobile Toggle & Market Dashboard button */}
+        <div className="flex items-center space-x-2.5 sm:space-x-3">
+          {onToggleMobileSidebar && (
+            <button
+              onClick={onToggleMobileSidebar}
+              className="lg:hidden p-1.5 rounded-lg bg-[#1E1F22] hover:bg-[#383A40] border border-[#383A40] text-slate-300 transition"
+              title="Toggle Navigation Menu"
+            >
+              <Menu className="w-4 h-4" />
+            </button>
+          )}
+
           {activeView !== 'dashboard' ? (
             <button
               onClick={onNavigateDashboard}
-              className="flex items-center space-x-2 px-3 py-1.5 rounded-lg bg-sky-500/10 hover:bg-sky-500/20 text-sky-400 border border-sky-500/30 transition shadow-sm font-medium text-sm group"
+              className="flex items-center space-x-2 px-2.5 sm:px-3 py-1.5 rounded-lg bg-[#9013fe]/15 hover:bg-[#9013fe]/25 text-[#d8b4fe] border border-[#9013fe]/30 transition shadow-sm font-medium text-xs sm:text-sm group"
             >
-              <LayoutDashboard className="w-4 h-4 text-sky-400 group-hover:scale-110 transition-transform" />
+              <LayoutDashboard className="w-4 h-4 text-[#c084fc] group-hover:scale-110 transition-transform" />
               <span>Market Dashboard</span>
             </button>
           ) : (
             <div className="flex items-center space-x-2 text-slate-400 text-xs font-mono">
-              <span className="w-1.5 h-1.5 rounded-full bg-sky-400"></span>
+              <span className="w-1.5 h-1.5 rounded-full bg-[#9013fe]"></span>
               <span>TERMINAL OVERVIEW</span>
             </div>
           )}
         </div>
 
         {/* Right: Status Indicators & Anonymous UUID */}
-        <div className="flex items-center space-x-3 text-xs">
+        <div className="flex items-center space-x-2 sm:space-x-3 text-xs">
           {/* Rate Limiter Status */}
-          <div className="hidden sm:flex items-center space-x-1.5 px-2.5 py-1 rounded-md bg-slate-900 border border-slate-800 text-slate-300">
+          <div className="hidden sm:flex items-center space-x-1.5 px-2.5 py-1 rounded-md bg-[#1E1F22] border border-[#383A40] text-slate-300">
             <Shield className="w-3.5 h-3.5 text-emerald-400" />
             <span className="font-mono text-[11px]">25 req/min</span>
           </div>
 
           {/* Engine Badge */}
-          <div className="hidden md:flex items-center space-x-1.5 px-2.5 py-1 rounded-md bg-slate-900 border border-slate-800 text-slate-300">
-            <Sparkles className="w-3.5 h-3.5 text-amber-400" />
-            <span>Gemini 2.0 Flash</span>
+          <div className="hidden md:flex items-center space-x-1.5 px-2.5 py-1 rounded-md bg-[#1E1F22] border border-[#383A40] text-slate-300">
+            <Sparkles className="w-3.5 h-3.5 text-[#c084fc]" />
+            <span>Institutional AI</span>
           </div>
 
           {/* Anonymous Client ID Pill */}
           <button
             onClick={copyClientId}
             title={`Your anonymous client UUID: ${clientId} (Click to copy)`}
-            className="flex items-center space-x-1.5 px-2.5 py-1 rounded-md bg-slate-900 hover:bg-slate-800 border border-slate-800 text-slate-400 hover:text-slate-200 transition font-mono text-[11px]"
+            className="flex items-center space-x-1.5 px-2 sm:px-2.5 py-1 rounded-md bg-[#1E1F22] hover:bg-[#383A40] border border-[#383A40] text-slate-400 hover:text-slate-200 transition font-mono text-[11px]"
           >
-            <span>UUID:</span>
-            <span className="text-sky-400">{clientId.slice(0, 8)}...</span>
+            <span className="hidden xs:inline">UUID:</span>
+            <span className="text-[#d8b4fe]">{clientId.slice(0, 8)}...</span>
             {copied ? <Check className="w-3 h-3 text-emerald-400" /> : <Copy className="w-3 h-3" />}
           </button>
         </div>

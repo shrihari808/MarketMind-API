@@ -116,8 +116,12 @@ export const api = {
   getSessions: (clientId: string) =>
     request<ChatSessionSummary[]>('/api/v2/chat/sessions', {}, clientId),
 
-  getSessionMessages: (sessionId: string, clientId: string) =>
-    request<ChatMessageItem[]>(`/api/v2/chat/sessions/${encodeURIComponent(sessionId)}`, {}, clientId),
+  getSessionMessages: async (sessionId: string, clientId: string): Promise<ChatMessageItem[]> => {
+    const res = await request<any>(`/api/v2/chat/sessions/${encodeURIComponent(sessionId)}`, {}, clientId);
+    if (Array.isArray(res)) return res;
+    if (res && Array.isArray(res.messages)) return res.messages;
+    return [];
+  },
 
   deleteSession: (sessionId: string, clientId: string) =>
     request<{ success: boolean; message: string }>(`/api/v2/chat/sessions/${encodeURIComponent(sessionId)}`, {

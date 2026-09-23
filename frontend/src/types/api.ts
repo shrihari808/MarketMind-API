@@ -80,13 +80,15 @@ export interface ChatMessageItem {
 
 export interface RedditSentimentReport {
   topic: string;
-  sentiment: 'Bullish' | 'Bearish' | 'Neutral' | string;
-  sentiment_score: number;
-  bullish_arguments: string[];
-  bearish_arguments: string[];
-  summary: string;
-  threads_analyzed: number;
-  thread_links: string[];
+  sentiment?: 'Bullish' | 'Bearish' | 'Neutral' | string;
+  overall_sentiment?: string;
+  sentiment_score?: number | null;
+  bullish_arguments?: string[];
+  bearish_arguments?: string[];
+  summary?: string;
+  threads_analyzed?: number;
+  thread_links?: string[];
+  top_discussions?: SourceCitation[];
 }
 
 export interface DeepResearchReport {

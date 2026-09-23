@@ -9,8 +9,9 @@ import {
   PlusCircle,
   Trash2,
   Cpu,
-  Layers,
+  ChevronLeft,
   ChevronRight,
+  X,
 } from 'lucide-react';
 import { ChatSessionSummary } from '../../types/api';
 
@@ -22,6 +23,10 @@ interface SidebarProps {
   onSelectSession: (sessionId: string) => void;
   onNewChat: () => void;
   onDeleteSession: (sessionId: string, e: React.MouseEvent) => void;
+  isCollapsed?: boolean;
+  onToggleCollapse?: () => void;
+  isMobileOpen?: boolean;
+  onCloseMobile?: () => void;
 }
 
 export const Sidebar: React.FC<SidebarProps> = ({
@@ -32,6 +37,10 @@ export const Sidebar: React.FC<SidebarProps> = ({
   onSelectSession,
   onNewChat,
   onDeleteSession,
+  isCollapsed = false,
+  onToggleCollapse,
+  isMobileOpen = false,
+  onCloseMobile,
 }) => {
   const navItems = [
     { id: 'dashboard', label: 'Market Dashboard', icon: LayoutDashboard, badge: 'Live' },
@@ -42,42 +51,73 @@ export const Sidebar: React.FC<SidebarProps> = ({
     { id: 'stocks', label: 'Stock Inspector', icon: Search, badge: 'Realtime' },
   ];
 
-  return (
-    <aside className="w-64 sm:w-72 bg-[#090E18] border-r border-slate-800/80 flex flex-col h-screen select-none shrink-0 sticky top-0">
+  const sidebarContent = (
+    <div className="flex flex-col h-full bg-[#2B2D31] border-r border-[#383A40] select-none">
       {/* 1. Brand Logo */}
-      <div className="p-4 border-b border-slate-800/70 flex items-center justify-between">
-        <div className="flex items-center space-x-2.5">
-          <div className="w-8 h-8 rounded-lg bg-gradient-to-tr from-sky-600 to-indigo-500 flex items-center justify-center shadow-lg shadow-sky-500/20 text-white font-bold">
+      <div className="p-3.5 border-b border-[#383A40] flex items-center justify-between">
+        <div className="flex items-center space-x-2.5 overflow-hidden">
+          <div className="w-8 h-8 rounded-lg bg-[#9013fe] flex items-center justify-center shadow-md shadow-[#9013fe]/20 text-white font-bold shrink-0">
             <Cpu className="w-5 h-5" />
           </div>
-          <div>
-            <div className="flex items-center space-x-1.5">
-              <span className="font-bold tracking-tight text-white text-base">MarketMind</span>
-              <span className="text-[10px] uppercase font-mono px-1.5 py-0.5 rounded bg-sky-500/20 text-sky-400 font-semibold border border-sky-500/30">
-                v2.0
-              </span>
+          {!isCollapsed && (
+            <div className="min-w-0">
+              <div className="flex items-center space-x-1.5">
+                <span className="font-bold tracking-tight text-white text-sm truncate">MarketMind</span>
+                <span className="text-[9px] uppercase font-mono px-1.5 py-0.5 rounded bg-[#9013fe]/20 text-[#d8b4fe] font-semibold border border-[#9013fe]/30">
+                  v2.0
+                </span>
+              </div>
+              <p className="text-[10px] text-slate-400 truncate">Institutional AI Terminal</p>
             </div>
-            <p className="text-[11px] text-slate-400">Institutional AI Terminal</p>
-          </div>
+          )}
         </div>
+
+        {/* Mobile Close Button */}
+        {isMobileOpen && (
+          <button
+            onClick={onCloseMobile}
+            className="lg:hidden p-1 rounded-lg text-slate-400 hover:text-white hover:bg-[#383A40]"
+          >
+            <X className="w-5 h-5" />
+          </button>
+        )}
+
+        {/* Desktop Collapse Toggle */}
+        {!isMobileOpen && onToggleCollapse && (
+          <button
+            onClick={onToggleCollapse}
+            title={isCollapsed ? "Expand sidebar" : "Collapse sidebar"}
+            className="hidden lg:flex p-1 rounded-lg text-slate-400 hover:text-white hover:bg-[#383A40] transition"
+          >
+            {isCollapsed ? <ChevronRight className="w-4 h-4" /> : <ChevronLeft className="w-4 h-4" />}
+          </button>
+        )}
       </div>
 
       {/* 2. New Chat Action */}
-      <div className="p-3">
+      <div className="p-2.5">
         <button
-          onClick={onNewChat}
-          className="w-full flex items-center justify-center space-x-2 py-2 px-3 rounded-lg bg-gradient-to-r from-sky-500 to-blue-600 hover:from-sky-400 hover:to-blue-500 text-white font-semibold text-xs transition shadow-md shadow-sky-500/20 active:scale-[0.98]"
+          onClick={() => {
+            onNewChat();
+            if (isMobileOpen && onCloseMobile) onCloseMobile();
+          }}
+          title="New AI Conversation"
+          className={`w-full flex items-center justify-center space-x-2 py-2 px-2.5 rounded-lg bg-[#9013fe] hover:bg-[#7c0fd8] text-white font-semibold text-xs transition shadow-md shadow-[#9013fe]/20 active:scale-[0.98] ${
+            isCollapsed ? 'px-0' : ''
+          }`}
         >
-          <PlusCircle className="w-4 h-4" />
-          <span>New AI Conversation</span>
+          <PlusCircle className="w-4 h-4 shrink-0" />
+          {!isCollapsed && <span className="truncate">New AI Conversation</span>}
         </button>
       </div>
 
       {/* 3. Terminal Navigation Items */}
-      <div className="px-3 py-2">
-        <div className="text-[10px] font-mono uppercase tracking-wider text-slate-500 px-2 mb-1.5 font-semibold">
-          Terminal Views
-        </div>
+      <div className="px-2.5 py-2">
+        {!isCollapsed && (
+          <div className="text-[10px] font-mono uppercase tracking-wider text-slate-400 px-2 mb-1.5 font-semibold">
+            Terminal Views
+          </div>
+        )}
         <nav className="space-y-1">
           {navItems.map((item) => {
             const Icon = item.icon;
@@ -85,27 +125,31 @@ export const Sidebar: React.FC<SidebarProps> = ({
             return (
               <button
                 key={item.id}
-                onClick={() => onSelectView(item.id)}
-                className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-xs font-medium transition group ${
+                onClick={() => {
+                  onSelectView(item.id);
+                  if (isMobileOpen && onCloseMobile) onCloseMobile();
+                }}
+                title={item.label}
+                className={`w-full flex items-center justify-between px-2.5 py-2 rounded-lg text-xs font-medium transition group ${
                   isActive
-                    ? 'bg-sky-500/15 text-sky-400 border border-sky-500/30 shadow-sm'
-                    : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/60'
+                    ? 'bg-[#9013fe]/20 text-[#d8b4fe] border border-[#9013fe]/40 shadow-sm'
+                    : 'text-slate-300 hover:text-white hover:bg-[#383A40]'
                 }`}
               >
-                <div className="flex items-center space-x-2.5">
+                <div className="flex items-center space-x-2.5 min-w-0">
                   <Icon
-                    className={`w-4 h-4 ${
-                      isActive ? 'text-sky-400' : 'text-slate-400 group-hover:text-slate-200'
+                    className={`w-4 h-4 shrink-0 ${
+                      isActive ? 'text-[#c084fc]' : 'text-slate-400 group-hover:text-slate-200'
                     }`}
                   />
-                  <span>{item.label}</span>
+                  {!isCollapsed && <span className="truncate">{item.label}</span>}
                 </div>
-                {item.badge && (
+                {!isCollapsed && item.badge && (
                   <span
-                    className={`text-[9px] font-mono px-1.5 py-0.5 rounded ${
+                    className={`text-[9px] font-mono px-1.5 py-0.5 rounded shrink-0 ${
                       isActive
-                        ? 'bg-sky-400/20 text-sky-300'
-                        : 'bg-slate-800 text-slate-400 group-hover:text-slate-300'
+                        ? 'bg-[#9013fe]/30 text-[#d8b4fe]'
+                        : 'bg-[#1E1F22] text-slate-400 group-hover:text-slate-300'
                     }`}
                   >
                     {item.badge}
@@ -118,64 +162,95 @@ export const Sidebar: React.FC<SidebarProps> = ({
       </div>
 
       {/* 4. Chat History / Sessions Section */}
-      <div className="flex-1 flex flex-col min-h-0 px-3 py-2 border-t border-slate-800/60 mt-2">
-        <div className="flex items-center justify-between px-2 mb-1.5">
-          <span className="text-[10px] font-mono uppercase tracking-wider text-slate-500 font-semibold">
-            Recent Conversations
-          </span>
-          <span className="text-[10px] font-mono text-slate-600">{sessions.length}</span>
-        </div>
+      {!isCollapsed && (
+        <div className="flex-1 flex flex-col min-h-0 px-2.5 py-2 border-t border-[#383A40] mt-1">
+          <div className="flex items-center justify-between px-2 mb-1.5">
+            <span className="text-[10px] font-mono uppercase tracking-wider text-slate-400 font-semibold">
+              Recent Conversations
+            </span>
+            <span className="text-[10px] font-mono text-slate-500">{sessions.length}</span>
+          </div>
 
-        <div className="flex-1 overflow-y-auto space-y-1 pr-1">
-          {sessions.length === 0 ? (
-            <div className="px-3 py-6 text-center text-slate-500 text-xs">
-              <MessageSquare className="w-6 h-6 mx-auto mb-2 opacity-30 text-slate-400" />
-              <span>No past conversations</span>
-              <p className="text-[10px] text-slate-600 mt-1">Queries persist automatically</p>
-            </div>
-          ) : (
-            sessions.map((sess) => {
-              const isSelected = activeSessionId === sess.session_id;
-              return (
-                <div
-                  key={sess.session_id}
-                  onClick={() => onSelectSession(sess.session_id)}
-                  className={`group relative flex items-center justify-between px-2.5 py-2 rounded-lg cursor-pointer text-xs transition border ${
-                    isSelected
-                      ? 'bg-slate-800/80 text-sky-300 border-slate-700'
-                      : 'hover:bg-slate-800/40 text-slate-400 hover:text-slate-200 border-transparent'
-                  }`}
-                >
-                  <div className="flex items-center space-x-2 truncate pr-6">
-                    <MessageSquare className="w-3.5 h-3.5 shrink-0 opacity-60" />
-                    <span className="truncate">{sess.title || 'Conversation'}</span>
-                  </div>
-
-                  <button
-                    onClick={(e) => onDeleteSession(sess.session_id, e)}
-                    title="Delete conversation"
-                    className="absolute right-2 opacity-0 group-hover:opacity-100 p-1 hover:text-rose-400 text-slate-500 rounded transition"
+          <div className="flex-1 overflow-y-auto space-y-1 pr-1">
+            {sessions.length === 0 ? (
+              <div className="px-3 py-6 text-center text-slate-400 text-xs">
+                <MessageSquare className="w-5 h-5 mx-auto mb-1.5 opacity-40 text-slate-400" />
+                <span>No past conversations</span>
+                <p className="text-[10px] text-slate-500 mt-0.5">Queries persist automatically</p>
+              </div>
+            ) : (
+              sessions.map((sess) => {
+                const isSelected = activeSessionId === sess.session_id;
+                return (
+                  <div
+                    key={sess.session_id}
+                    onClick={() => {
+                      onSelectSession(sess.session_id);
+                      if (isMobileOpen && onCloseMobile) onCloseMobile();
+                    }}
+                    className={`group relative flex items-center justify-between px-2.5 py-2 rounded-lg cursor-pointer text-xs transition border ${
+                      isSelected
+                        ? 'bg-[#1E1F22] text-[#d8b4fe] border-[#383A40]'
+                        : 'hover:bg-[#383A40]/60 text-slate-300 hover:text-white border-transparent'
+                    }`}
                   >
-                    <Trash2 className="w-3.5 h-3.5" />
-                  </button>
-                </div>
-              );
-            })
-          )}
+                    <div className="flex items-center space-x-2 truncate pr-6">
+                      <MessageSquare className="w-3.5 h-3.5 shrink-0 opacity-60 text-slate-400" />
+                      <span className="truncate">{sess.title || 'Conversation'}</span>
+                    </div>
+
+                    <button
+                      onClick={(e) => onDeleteSession(sess.session_id, e)}
+                      title="Delete conversation"
+                      className="absolute right-2 opacity-0 group-hover:opacity-100 p-1 hover:text-rose-400 text-slate-400 rounded transition"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                );
+              })
+            )}
+          </div>
         </div>
-      </div>
+      )}
 
       {/* 5. Footer: System Info */}
-      <div className="p-3 border-t border-slate-800/70 bg-[#070B13] text-[11px] text-slate-500">
-        <div className="flex items-center justify-between mb-1">
+      <div className="p-3 border-t border-[#383A40] bg-[#1E1F22] text-[11px] text-slate-400 mt-auto">
+        <div className="flex items-center justify-between mb-0.5">
           <div className="flex items-center space-x-1.5">
-            <span className="w-2 h-2 rounded-full bg-emerald-400"></span>
-            <span className="text-slate-400">Free Tier Guard</span>
+            <span className="w-2 h-2 rounded-full bg-emerald-400 shrink-0"></span>
+            {!isCollapsed && <span className="text-slate-300 truncate">Free Tier Guard</span>}
           </div>
-          <span className="font-mono text-[10px] text-emerald-400">&lt;512 MB RAM</span>
+          {!isCollapsed && <span className="font-mono text-[10px] text-emerald-400 shrink-0">&lt;512 MB</span>}
         </div>
-        <p className="text-[10px] text-slate-600">Zero Login • Device UUID Isolated</p>
+        {!isCollapsed && <p className="text-[10px] text-slate-500 truncate">Zero Login • Device UUID</p>}
       </div>
-    </aside>
+    </div>
+  );
+
+  return (
+    <>
+      {/* Desktop Sidebar */}
+      <aside
+        className={`hidden lg:flex flex-col h-screen select-none shrink-0 sticky top-0 transition-all duration-200 z-30 ${
+          isCollapsed ? 'w-16' : 'w-64 xl:w-72'
+        }`}
+      >
+        {sidebarContent}
+      </aside>
+
+      {/* Mobile Offcanvas Drawer */}
+      {isMobileOpen && (
+        <div className="fixed inset-0 z-50 lg:hidden flex">
+          <div
+            className="fixed inset-0 bg-black/60 backdrop-blur-sm transition-opacity"
+            onClick={onCloseMobile}
+          />
+          <div className="relative w-72 max-w-[85vw] h-full shadow-2xl z-10 animate-in slide-in-from-left duration-200">
+            {sidebarContent}
+          </div>
+        </div>
+      )}
+    </>
   );
 };

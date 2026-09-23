@@ -8,9 +8,8 @@ import {
   ThumbsUp,
   ThumbsDown,
   AlertCircle,
-  HelpCircle,
 } from 'lucide-react';
-import { RedditSentimentReport } from '../../types/api';
+import { RedditSentimentReport, SourceCitation } from '../../types/api';
 import { api } from '../../lib/api';
 
 interface RedditSentimentViewProps {
@@ -38,18 +37,35 @@ export const RedditSentimentView: React.FC<RedditSentimentViewProps> = ({ client
     }
   };
 
-  const getSentimentColor = (sentiment: string) => {
-    if (sentiment.toLowerCase().includes('bull')) return 'text-emerald-400 bg-emerald-950/40 border-emerald-500/30';
-    if (sentiment.toLowerCase().includes('bear')) return 'text-rose-400 bg-rose-950/40 border-rose-500/30';
+  const getSentimentColor = (sentiment: string = 'Neutral') => {
+    const s = (sentiment || '').toLowerCase();
+    if (s.includes('bull')) return 'text-emerald-400 bg-emerald-950/40 border-emerald-500/30';
+    if (s.includes('bear')) return 'text-rose-400 bg-rose-950/40 border-rose-500/30';
     return 'text-amber-400 bg-amber-950/40 border-amber-500/30';
   };
+
+  const resolvedSentiment = report ? (report.overall_sentiment || report.sentiment || 'Neutral') : 'Neutral';
+  const resolvedScore = report && typeof report.sentiment_score === 'number' ? report.sentiment_score : 0;
+
+  // Normalize discussions from either top_discussions or thread_links
+  const discussions: Array<{ title: string; url: string }> = report
+    ? (report.top_discussions && report.top_discussions.length > 0
+        ? report.top_discussions.map((d: SourceCitation | any) => ({
+            title: d.title || d.url || 'Discussion Thread',
+            url: d.url || (typeof d === 'string' ? d : '#'),
+          }))
+        : (report.thread_links || []).map((link: string) => ({
+            title: link,
+            url: link,
+          })))
+    : [];
 
   return (
     <div className="space-y-6 pb-28 max-w-4xl mx-auto">
       {/* Header */}
-      <div className="pb-4 border-b border-slate-800">
+      <div className="pb-4 border-b border-[#383A40]">
         <div className="flex items-center space-x-2.5">
-          <div className="p-2 rounded-lg bg-orange-500/10 text-orange-400 border border-orange-500/20">
+          <div className="p-2 rounded-lg bg-[#9013fe]/10 text-[#d8b4fe] border border-[#9013fe]/30">
             <MessageSquare className="w-5 h-5" />
           </div>
           <div>
@@ -62,8 +78,8 @@ export const RedditSentimentView: React.FC<RedditSentimentViewProps> = ({ client
       </div>
 
       {/* Input Bar */}
-      <div className="p-4 rounded-xl bg-[#0E1626] border border-slate-800/80 shadow-md">
-        <div className="flex items-center space-x-2">
+      <div className="p-4 rounded-xl bg-[#2B2D31] border border-[#383A40] shadow-md">
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
           <input
             type="text"
             value={topic}
@@ -72,12 +88,12 @@ export const RedditSentimentView: React.FC<RedditSentimentViewProps> = ({ client
               if (e.key === 'Enter') handleAnalyze();
             }}
             placeholder="Enter stock name or ticker (e.g. Tata Motors, Nvidia, Reliance)..."
-            className="flex-1 bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-xs text-slate-200 focus:outline-none focus:border-sky-500"
+            className="flex-1 bg-[#1E1F22] border border-[#383A40] rounded-lg px-3 py-2 text-xs text-slate-200 placeholder-slate-500 focus:outline-none focus:border-[#9013fe]"
           />
           <button
             onClick={handleAnalyze}
             disabled={isLoading || !topic.trim()}
-            className="flex items-center space-x-1.5 px-4 py-2 rounded-lg bg-orange-600 hover:bg-orange-500 text-white font-semibold text-xs transition disabled:opacity-50 shadow-md shadow-orange-600/20"
+            className="flex items-center justify-center space-x-1.5 px-4 py-2 rounded-lg bg-[#9013fe] hover:bg-[#7c0fd8] text-white font-semibold text-xs transition disabled:opacity-50 shadow-md shadow-[#9013fe]/20"
           >
             {isLoading ? (
               <>
@@ -105,8 +121,8 @@ export const RedditSentimentView: React.FC<RedditSentimentViewProps> = ({ client
       {report && (
         <div className="space-y-4">
           {/* Sentiment Summary Card */}
-          <div className="p-5 rounded-xl bg-[#0E1626] border border-slate-800/80 shadow-lg">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-800">
+          <div className="p-5 rounded-xl bg-[#2B2D31] border border-[#383A40] shadow-lg">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-[#383A40]">
               <div>
                 <span className="text-[11px] font-mono text-slate-400 uppercase tracking-wider">
                   COMMUNITY CONSENSUS
@@ -117,29 +133,29 @@ export const RedditSentimentView: React.FC<RedditSentimentViewProps> = ({ client
               <div className="flex items-center space-x-3">
                 <div
                   className={`px-3 py-1.5 rounded-lg border font-mono font-bold text-xs uppercase flex items-center space-x-1.5 ${getSentimentColor(
-                    report.sentiment
+                    resolvedSentiment
                   )}`}
                 >
                   <TrendingUp className="w-4 h-4" />
-                  <span>{report.sentiment}</span>
+                  <span>{resolvedSentiment}</span>
                 </div>
 
-                <div className="px-3 py-1.5 rounded-lg bg-slate-900 border border-slate-700 font-mono text-xs text-slate-300">
-                  Score: <span className="font-bold text-sky-400">{report.sentiment_score.toFixed(2)}</span>
+                <div className="px-3 py-1.5 rounded-lg bg-[#1E1F22] border border-[#383A40] font-mono text-xs text-slate-300">
+                  Score: <span className="font-bold text-[#c084fc]">{resolvedScore.toFixed(2)}</span>
                 </div>
               </div>
             </div>
 
             {/* AI Summary */}
             <p className="text-xs text-slate-300 leading-relaxed font-sans mt-4">
-              {report.summary}
+              {report.summary || 'No narrative summary available.'}
             </p>
           </div>
 
           {/* Bull vs Bear Arguments Breakdown */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {/* Bullish */}
-            <div className="p-4 rounded-xl bg-[#0E1626] border border-slate-800/80">
+            <div className="p-4 rounded-xl bg-[#2B2D31] border border-[#383A40]">
               <div className="flex items-center space-x-2 text-emerald-400 font-semibold text-xs mb-3">
                 <ThumbsUp className="w-4 h-4" />
                 <span>Bullish Retail Arguments</span>
@@ -159,7 +175,7 @@ export const RedditSentimentView: React.FC<RedditSentimentViewProps> = ({ client
             </div>
 
             {/* Bearish */}
-            <div className="p-4 rounded-xl bg-[#0E1626] border border-slate-800/80">
+            <div className="p-4 rounded-xl bg-[#2B2D31] border border-[#383A40]">
               <div className="flex items-center space-x-2 text-rose-400 font-semibold text-xs mb-3">
                 <ThumbsDown className="w-4 h-4" />
                 <span>Bearish Retail Arguments</span>
@@ -180,21 +196,21 @@ export const RedditSentimentView: React.FC<RedditSentimentViewProps> = ({ client
           </div>
 
           {/* Scraped Thread Links */}
-          {report.thread_links && report.thread_links.length > 0 && (
-            <div className="p-4 rounded-xl bg-[#0E1626] border border-slate-800/80">
+          {discussions.length > 0 && (
+            <div className="p-4 rounded-xl bg-[#2B2D31] border border-[#383A40]">
               <div className="text-xs font-semibold text-slate-400 mb-2 font-mono uppercase tracking-wider">
-                Analyzed Discussion Threads ({report.threads_analyzed || report.thread_links.length})
+                Analyzed Discussion Threads ({report.threads_analyzed || discussions.length})
               </div>
               <div className="space-y-1.5">
-                {report.thread_links.map((link, idx) => (
+                {discussions.map((d, idx) => (
                   <a
                     key={idx}
-                    href={link}
+                    href={d.url}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="flex items-center justify-between p-2 rounded-lg bg-slate-900/60 hover:bg-slate-800 text-xs text-slate-300 hover:text-sky-400 transition"
+                    className="flex items-center justify-between p-2 rounded-lg bg-[#1E1F22] hover:bg-[#383A40] text-xs text-slate-300 hover:text-white transition"
                   >
-                    <span className="truncate max-w-xl">{link}</span>
+                    <span className="truncate max-w-xl">{d.title || d.url}</span>
                     <ExternalLink className="w-3 h-3 opacity-60 shrink-0 ml-2" />
                   </a>
                 ))}

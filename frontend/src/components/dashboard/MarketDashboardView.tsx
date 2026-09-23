@@ -4,7 +4,6 @@ import {
   TrendingDown,
   RefreshCw,
   Sparkles,
-  BarChart2,
   Globe2,
   Clock,
   ArrowUpRight,
@@ -29,13 +28,13 @@ export const MarketDashboardView: React.FC<MarketDashboardViewProps> = ({
   onSelectTicker,
 }) => {
   return (
-    <div className="space-y-6 pb-28">
+    <div className="space-y-6 pb-28 max-w-7xl mx-auto w-full">
       {/* 1. Header with Country Flag & Status */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-800/80">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-[#383A40]">
         <div>
           <div className="flex items-center space-x-3">
             <span className="text-2xl">{country === 'IN' ? '🇮🇳' : '🇺🇸'}</span>
-            <h1 className="text-2xl font-bold tracking-tight text-white">
+            <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-white">
               {country === 'IN' ? 'Indian Markets Dashboard' : 'US Markets Dashboard'}
             </h1>
             <span className="px-2 py-0.5 rounded text-[11px] font-mono font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
@@ -43,9 +42,9 @@ export const MarketDashboardView: React.FC<MarketDashboardViewProps> = ({
             </span>
           </div>
           <p className="text-xs text-slate-400 mt-1 flex items-center space-x-2">
-            <Globe2 className="w-3.5 h-3.5 text-slate-500" />
+            <Globe2 className="w-3.5 h-3.5 text-slate-400" />
             <span>
-              Real-time quotes via YFinance • Grounded AI Brief by Google Gemini 2.0 Flash
+              Real-time quotes via YFinance • Grounded Institutional AI Market Brief
             </span>
           </p>
         </div>
@@ -63,19 +62,19 @@ export const MarketDashboardView: React.FC<MarketDashboardViewProps> = ({
           <button
             onClick={onRefresh}
             disabled={isLoading}
-            className="flex items-center space-x-1.5 px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 text-xs font-medium transition disabled:opacity-50"
+            className="flex items-center space-x-1.5 px-3 py-1.5 rounded-lg bg-[#2B2D31] hover:bg-[#383A40] text-slate-200 border border-[#383A40] text-xs font-medium transition disabled:opacity-50"
           >
-            <RefreshCw className={`w-3.5 h-3.5 ${isLoading ? 'animate-spin text-sky-400' : ''}`} />
+            <RefreshCw className={`w-3.5 h-3.5 ${isLoading ? 'animate-spin text-[#c084fc]' : ''}`} />
             <span>{isLoading ? 'Refreshing...' : 'Refresh'}</span>
           </button>
         </div>
       </div>
 
       {/* 2. Benchmark Indices Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3 sm:gap-4">
         {isLoading && !dashboardData ? (
           [1, 2, 3, 4].map((i) => (
-            <div key={i} className="h-28 rounded-xl bg-slate-900/50 border border-slate-800 animate-pulse p-4" />
+            <div key={i} className="h-28 rounded-xl bg-[#2B2D31] border border-[#383A40] animate-pulse p-4" />
           ))
         ) : (dashboardData?.indices && dashboardData.indices.length > 0) ? (
           dashboardData.indices.map((idx, index) => {
@@ -83,10 +82,10 @@ export const MarketDashboardView: React.FC<MarketDashboardViewProps> = ({
             return (
               <div
                 key={idx.ticker || idx.name || `idx-${index}`}
-                className="rounded-xl bg-[#0E1626] border border-slate-800/80 p-4 hover:border-slate-700 transition shadow-sm"
+                className="rounded-xl bg-[#2B2D31] border border-[#383A40] p-4 hover:border-[#4E5058] transition shadow-sm"
               >
                 <div className="flex items-center justify-between text-xs text-slate-400 mb-1">
-                  <span className="font-semibold text-slate-300">{idx.name || idx.ticker}</span>
+                  <span className="font-semibold text-slate-200">{idx.name || idx.ticker}</span>
                   <span className="font-mono text-[10px] text-slate-500">{idx.ticker}</span>
                 </div>
 
@@ -118,19 +117,17 @@ export const MarketDashboardView: React.FC<MarketDashboardViewProps> = ({
       </div>
 
       {/* 3. AI Macro Brief Card */}
-      <div className="rounded-xl bg-gradient-to-br from-[#0E1626] to-[#0A101C] border border-sky-500/20 p-5 shadow-lg relative overflow-hidden">
-        <div className="absolute top-0 right-0 w-64 h-64 bg-sky-500/5 rounded-full blur-3xl pointer-events-none" />
-
-        <div className="flex items-center space-x-2 text-sky-400 font-semibold text-sm mb-3">
-          <Sparkles className="w-4 h-4 text-sky-400" />
-          <span>Gemini Intelligence • Daily Market Macro Brief</span>
+      <div className="rounded-xl bg-[#2B2D31] border border-[#383A40] p-5 shadow-lg relative overflow-hidden">
+        <div className="flex items-center space-x-2 text-[#d8b4fe] font-semibold text-sm mb-3">
+          <Sparkles className="w-4 h-4 text-[#c084fc]" />
+          <span>Market Intelligence • Daily Market Macro Brief</span>
         </div>
 
         {isLoading && !dashboardData ? (
           <div className="space-y-2 animate-pulse">
-            <div className="h-4 bg-slate-800 rounded w-3/4" />
-            <div className="h-4 bg-slate-800 rounded w-full" />
-            <div className="h-4 bg-slate-800 rounded w-5/6" />
+            <div className="h-4 bg-[#1E1F22] rounded w-3/4" />
+            <div className="h-4 bg-[#1E1F22] rounded w-full" />
+            <div className="h-4 bg-[#1E1F22] rounded w-5/6" />
           </div>
         ) : (
           <p className="text-sm text-slate-300 leading-relaxed font-sans">
@@ -141,9 +138,9 @@ export const MarketDashboardView: React.FC<MarketDashboardViewProps> = ({
       </div>
 
       {/* 4. Top Gainers & Losers Tables */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
         {/* Top Gainers */}
-        <div className="rounded-xl bg-[#0E1626] border border-slate-800/80 p-5">
+        <div className="rounded-xl bg-[#2B2D31] border border-[#383A40] p-4 sm:p-5">
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center space-x-2 text-emerald-400 font-semibold text-sm">
               <TrendingUp className="w-4 h-4" />
@@ -169,7 +166,7 @@ export const MarketDashboardView: React.FC<MarketDashboardViewProps> = ({
         </div>
 
         {/* Top Losers */}
-        <div className="rounded-xl bg-[#0E1626] border border-slate-800/80 p-5">
+        <div className="rounded-xl bg-[#2B2D31] border border-[#383A40] p-4 sm:p-5">
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center space-x-2 text-rose-400 font-semibold text-sm">
               <TrendingDown className="w-4 h-4" />
@@ -208,14 +205,14 @@ const StockMoverRow: React.FC<StockMoverRowProps> = ({ stock, isGain, onSelectTi
   return (
     <div
       onClick={() => onSelectTicker(stock.ticker)}
-      className="flex items-center justify-between p-2.5 rounded-lg bg-slate-900/60 hover:bg-slate-800 border border-slate-800/60 hover:border-slate-700 cursor-pointer transition group"
+      className="flex items-center justify-between p-2.5 rounded-lg bg-[#1E1F22] hover:bg-[#383A40] border border-[#383A40] hover:border-[#4E5058] cursor-pointer transition group"
     >
       <div>
         <div className="flex items-center space-x-2">
-          <span className="font-bold text-xs text-slate-200 group-hover:text-sky-400 transition font-mono">
+          <span className="font-bold text-xs text-slate-200 group-hover:text-[#d8b4fe] transition font-mono">
             {stock.ticker}
           </span>
-          <span className="text-[11px] text-slate-400 truncate max-w-[140px] sm:max-w-[200px]">
+          <span className="text-[11px] text-slate-400 truncate max-w-[130px] sm:max-w-[200px]">
             {stock.name}
           </span>
         </div>

@@ -27,19 +27,23 @@ export function App() {
   // 2. Active View State ('dashboard' is the landing view)
   const [activeView, setActiveView] = useState<string>('dashboard');
 
-  // 3. Market Dashboard State
+  // 3. Responsive Sidebar State
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+  const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
+
+  // 4. Market Dashboard State
   const [dashboardData, setDashboardData] = useState<MarketDashboardResponse | null>(null);
   const [isDashboardLoading, setIsDashboardLoading] = useState(false);
 
-  // 4. Chat & Conversation State
+  // 5. Chat & Conversation State
   const [sessions, setSessions] = useState<ChatSessionSummary[]>([]);
   const [activeSessionId, setActiveSessionId] = useState<string>(() => `session-${Date.now()}`);
   const [messages, setMessages] = useState<ChatMessageItem[]>([]);
 
-  // 5. Stock Inspector target ticker
+  // 6. Stock Inspector target ticker
   const [inspectedTicker, setInspectedTicker] = useState('RELIANCE.NS');
 
-  // 6. SSE Streaming Hook for Web RAG
+  // 7. SSE Streaming Hook for Web RAG
   const {
     isStreaming,
     statusMessage,
@@ -88,15 +92,12 @@ export function App() {
     loadDashboard(newCountry);
   };
 
-  // --- Handle Prompt Submission from Omnibar ---
-  // When user types or selects shortcut: Dashboard disappears, switches to chat view
+  // --- Handle Typed Prompt Submission from Omnibar (Stays in active chat) ---
   const handleSubmitPrompt = (promptText: string) => {
     if (!promptText.trim()) return;
 
-    // Transition view from dashboard to chat
     setActiveView('chat');
 
-    // Add user turn to UI immediately
     const userTurn: ChatMessageItem = {
       role: 'user',
       content: promptText,
@@ -104,7 +105,6 @@ export function App() {
     };
     setMessages((prev) => [...prev, userTurn]);
 
-    // Dispatch SSE stream to Web RAG endpoint
     startStream({
       endpoint: '/api/v2/rag/web',
       body: {
@@ -120,7 +120,41 @@ export function App() {
           created_at: new Date().toISOString(),
         };
         setMessages((prev) => [...prev, assistantTurn]);
-        // Refresh session list to reflect updated session
+        loadSessions();
+      },
+    });
+  };
+
+  // --- Handle Suggested Prompt Click (Spawns a brand new chat session) ---
+  const handleSuggestedPrompt = (promptText: string) => {
+    if (!promptText.trim()) return;
+
+    const newId = `session-${Date.now()}`;
+    setActiveSessionId(newId);
+    setActiveView('chat');
+
+    const userTurn: ChatMessageItem = {
+      role: 'user',
+      content: promptText,
+      created_at: new Date().toISOString(),
+    };
+    setMessages([userTurn]);
+
+    startStream({
+      endpoint: '/api/v2/rag/web',
+      body: {
+        query: promptText,
+        country: country,
+        session_id: newId,
+      },
+      onComplete: (fullText: string, finalSources: SourceCitation[]) => {
+        const assistantTurn: ChatMessageItem = {
+          role: 'assistant',
+          content: fullText,
+          sources: finalSources,
+          created_at: new Date().toISOString(),
+        };
+        setMessages((prev) => [...prev, assistantTurn]);
         loadSessions();
       },
     });
@@ -140,9 +174,10 @@ export function App() {
     setActiveView('chat');
     try {
       const history = await api.getSessionMessages(sessionId, clientId);
-      setMessages(history || []);
+      setMessages(Array.isArray(history) ? history : (history as any)?.messages || []);
     } catch (err) {
       console.error('Failed to load session messages:', err);
+      setMessages([]);
     }
   };
 
@@ -167,8 +202,8 @@ export function App() {
   };
 
   return (
-    <div className="flex h-screen w-screen overflow-hidden bg-[#080C14] text-slate-100 font-sans">
-      {/* 1. Persistent Sidebar (Always Present) */}
+    <div className="flex h-[100dvh] min-h-screen w-screen overflow-hidden bg-[#313338] text-slate-100 font-sans">
+      {/* 1. Persistent Responsive Sidebar */}
       <Sidebar
         activeView={activeView}
         onSelectView={setActiveView}
@@ -177,20 +212,25 @@ export function App() {
         onSelectSession={handleSelectSession}
         onNewChat={handleNewChat}
         onDeleteSession={handleDeleteSession}
+        isCollapsed={isSidebarCollapsed}
+        onToggleCollapse={() => setIsSidebarCollapsed((prev) => !prev)}
+        isMobileOpen={isMobileSidebarOpen}
+        onCloseMobile={() => setIsMobileSidebarOpen(false)}
       />
 
       {/* 2. Main Content Area */}
-      <div className="flex-1 flex flex-col h-full overflow-hidden relative">
+      <div className="flex-1 flex flex-col h-full overflow-hidden relative min-w-0">
         {/* Top Header with live ticker marquee & dynamic "Market Dashboard" button */}
         <Header
           indices={dashboardData?.indices}
           activeView={activeView}
           onNavigateDashboard={() => setActiveView('dashboard')}
           clientId={clientId}
+          onToggleMobileSidebar={() => setIsMobileSidebarOpen((prev) => !prev)}
         />
 
         {/* Viewport Content */}
-        <main className="flex-1 overflow-y-auto px-4 sm:px-6 lg:px-8 py-6 relative">
+        <main className="flex-1 overflow-y-auto px-3 sm:px-6 lg:px-8 py-4 sm:py-6 relative">
           {activeView === 'dashboard' && (
             <MarketDashboardView
               country={country}
@@ -209,7 +249,7 @@ export function App() {
               streamingStatus={statusMessage}
               streamingSources={streamingSources}
               streamingError={streamingError}
-              onSuggestionClick={handleSubmitPrompt}
+              onSuggestionClick={handleSuggestedPrompt}
             />
           )}
 
@@ -235,11 +275,12 @@ export function App() {
         </main>
 
         {/* 3. Omnibar Docked at the Bottom (with IN/US Country Dropdown) */}
-        <div className="absolute bottom-0 left-0 right-0 z-30 pointer-events-auto">
+        <div className="sticky bottom-0 left-0 right-0 z-30 pointer-events-auto">
           <Omnibar
             country={country}
             onSelectCountry={handleSelectCountry}
             onSubmitPrompt={handleSubmitPrompt}
+            onSelectSuggestion={handleSuggestedPrompt}
             isStreaming={isStreaming}
             onStopStreaming={stopStreaming}
           />

@@ -1,5 +1,5 @@
 import React, { Component, ErrorInfo, ReactNode } from 'react';
-import { AlertTriangle, RefreshCw, Home } from 'lucide-react';
+import { AlertTriangle, RefreshCw } from 'lucide-react';
 
 interface Props {
   children: ReactNode;
@@ -35,8 +35,8 @@ export class ErrorBoundary extends Component<Props, State> {
   public render() {
     if (this.state.hasError) {
       return (
-        <div className="min-h-screen w-screen bg-[#080C14] text-slate-100 flex items-center justify-center p-6 font-sans">
-          <div className="max-w-md w-full bg-[#0E1626] border border-rose-500/30 rounded-2xl p-6 shadow-2xl space-y-5">
+        <div className="min-h-screen w-screen bg-[#313338] text-slate-100 flex items-center justify-center p-6 font-sans">
+          <div className="max-w-md w-full bg-[#2B2D31] border border-[#383A40] rounded-2xl p-6 shadow-2xl space-y-5">
             <div className="flex items-center space-x-3 text-rose-400">
               <div className="p-2.5 rounded-xl bg-rose-500/10 border border-rose-500/20">
                 <AlertTriangle className="w-6 h-6 text-rose-400" />
@@ -47,7 +47,7 @@ export class ErrorBoundary extends Component<Props, State> {
               </div>
             </div>
 
-            <div className="bg-slate-900/80 rounded-xl p-3 border border-slate-800 font-mono text-[11px] text-slate-300 overflow-x-auto max-h-32">
+            <div className="bg-[#1E1F22] rounded-xl p-3 border border-[#383A40] font-mono text-[11px] text-slate-300 overflow-x-auto max-h-32">
               {this.state.error?.message || 'An unknown runtime error occurred.'}
             </div>
 
@@ -58,7 +58,7 @@ export class ErrorBoundary extends Component<Props, State> {
             <div className="flex items-center space-x-3 pt-2">
               <button
                 onClick={this.handleReset}
-                className="flex-1 flex items-center justify-center space-x-2 py-2.5 px-4 rounded-xl bg-sky-500 hover:bg-sky-400 text-slate-950 font-semibold text-xs transition shadow-md shadow-sky-500/20"
+                className="flex-1 flex items-center justify-center space-x-2 py-2.5 px-4 rounded-xl bg-[#9013fe] hover:bg-[#7c0fd8] text-white font-semibold text-xs transition shadow-md shadow-[#9013fe]/20"
               >
                 <RefreshCw className="w-3.5 h-3.5" />
                 <span>Reload Terminal</span>
@@ -68,7 +68,7 @@ export class ErrorBoundary extends Component<Props, State> {
                   localStorage.clear();
                   window.location.reload();
                 }}
-                className="py-2.5 px-4 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 font-medium text-xs border border-slate-700 transition"
+                className="py-2.5 px-4 rounded-xl bg-[#232428] hover:bg-[#383A40] text-slate-300 font-medium text-xs border border-[#383A40] transition"
               >
                 Reset Storage
               </button>
