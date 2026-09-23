@@ -55,10 +55,10 @@ export function App() {
   } = useSSEStream(clientId);
 
   // --- Fetch Dashboard Data ---
-  const loadDashboard = useCallback(async (targetCountry: 'IN' | 'US' = country) => {
+  const loadDashboard = useCallback(async (targetCountry: 'IN' | 'US' = country, forceRefresh: boolean = false) => {
     setIsDashboardLoading(true);
     try {
-      const data = await api.getDashboard(targetCountry, clientId);
+      const data = await api.getDashboard(targetCountry, forceRefresh, clientId);
       setDashboardData(data);
     } catch (err) {
       console.error('Failed to load dashboard:', err);
@@ -235,7 +235,7 @@ export function App() {
               onSelectCountry={handleSelectCountry}
               dashboardData={dashboardData}
               isLoading={isDashboardLoading}
-              onRefresh={() => loadDashboard(country)}
+              onRefresh={() => loadDashboard(country, true)}
               onSelectTicker={handleSelectTicker}
             />
           )}

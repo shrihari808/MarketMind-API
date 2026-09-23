@@ -65,8 +65,9 @@ async function request<T>(endpoint: string, options: RequestInit = {}, clientId?
 
 export const api = {
   // --- Market Dashboard ---
-  getDashboard: async (country: string = 'IN', clientId?: string): Promise<MarketDashboardResponse> => {
-    const raw = await request<any>(`/api/v2/dashboard?country=${encodeURIComponent(country)}`, {}, clientId);
+  getDashboard: async (country: string = 'IN', forceRefresh: boolean = false, clientId?: string): Promise<MarketDashboardResponse> => {
+    const refreshParam = forceRefresh ? '&force_refresh=true' : '';
+    const raw = await request<any>(`/api/v2/dashboard?country=${encodeURIComponent(country)}${refreshParam}`, {}, clientId);
     const snapshot = raw?.data || raw || {};
     const isIndia = (snapshot?.country || country).toUpperCase() === 'IN';
     const currency = isIndia ? 'INR' : 'USD';

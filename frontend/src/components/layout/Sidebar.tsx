@@ -68,16 +68,16 @@ export const Sidebar: React.FC<SidebarProps> = ({
   const sidebarContent = (
     <div className="flex flex-col h-full bg-[#221f23] border-r border-[#3d363f] select-none">
       {/* 1. Brand Logo */}
-      <div className="py-2.5 px-3 border-b border-[#3d363f] flex items-center justify-between">
-        <div className="flex items-center space-x-2.5 overflow-hidden">
+      <div className="py-2 px-3 border-b border-[#3d363f] flex items-center justify-between min-h-[64px]">
+        <div className="flex items-center space-x-3 overflow-hidden">
           <img
             src="/logo.png"
             alt="MarketMind Logo"
-            className="w-10 h-10 object-contain shrink-0"
+            className="w-12 h-12 sm:w-14 sm:h-14 object-contain shrink-0 drop-shadow"
           />
           {!isCollapsed && (
             <div className="min-w-0">
-              <span className="font-bold tracking-tight text-white text-base truncate block">
+              <span className="font-bold tracking-tight text-white text-lg truncate block leading-tight">
                 MarketMind
               </span>
             </div>

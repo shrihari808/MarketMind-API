@@ -95,6 +95,13 @@ class MarketDashboardService:
     async def _save_to_cache(self, country: str, snapshot: MarketDashboardSnapshot) -> None:
         """Persists or updates the snapshot in the database."""
         country_code = country.upper()
+
+        # Safeguard: do not persist empty or all-zero snapshots to cache
+        valid_indices = [idx for idx in snapshot.indices if idx.price > 0]
+        if not valid_indices:
+            logger.warning(f"Refusing to save all-zero dashboard snapshot to cache for {country_code}")
+            return
+
         data_str = snapshot.model_dump_json()
 
         try:
@@ -164,6 +171,15 @@ class MarketDashboardService:
             now_utc = datetime.utcnow()
             record_age_seconds = (now_utc - cached_record.updated_at).total_seconds()
             cached_data = json.loads(cached_record.data_json)
+            cached_indices = cached_data.get("indices", [])
+            has_valid_indices = any(idx.get("price", 0) > 0 for idx in cached_indices)
+
+            if not has_valid_indices:
+                logger.warning(
+                    f"Dashboard cache for {country_code} contained zeroed index quotes. Forcing fresh regeneration..."
+                )
+                snapshot = await self.revalidate_cache(country_code)
+                return {"enabled": True, "stale": False, "data": snapshot.model_dump()}
 
             if record_age_seconds < self.ttl_seconds:
                 # Fresh cache hit

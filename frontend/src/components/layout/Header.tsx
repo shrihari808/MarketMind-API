@@ -24,7 +24,8 @@ export const Header: React.FC<HeaderProps> = ({
     { ticker: 'AAPL', name: 'Apple Inc', price: 228.30, change: 1.10, change_percent: 0.48, currency: 'USD' },
   ];
 
-  const marqueeData = indices.length > 0 ? indices : defaultTickers;
+  const validIndices = (indices || []).filter((idx) => (idx.price ?? 0) > 0);
+  const marqueeData = validIndices.length > 0 ? validIndices : defaultTickers;
   const tickerItems = [...marqueeData, ...marqueeData];
 
   return (

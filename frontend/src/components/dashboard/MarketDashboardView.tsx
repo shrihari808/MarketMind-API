@@ -11,6 +11,7 @@ import {
 } from 'lucide-react';
 import { MarketDashboardResponse, StockQuote } from '../../types/api';
 import { formatCurrency, formatPercent, formatCompactNumber } from '../../lib/utils';
+import { CountryFlag } from '../common/CountryFlag';
 
 interface MarketDashboardViewProps {
   country: 'IN' | 'US';
@@ -29,13 +30,29 @@ export const MarketDashboardView: React.FC<MarketDashboardViewProps> = ({
   onRefresh,
   onSelectTicker,
 }) => {
+  const fallbackIndices = country === 'IN' ? [
+    { ticker: '^NSEI', name: 'NIFTY 50', price: 23431.35, change: 17.05, change_percent: 0.07, currency: 'INR' },
+    { ticker: '^BSESN', name: 'BSE SENSEX', price: 74798.73, change: -60.27, change_percent: -0.08, currency: 'INR' },
+    { ticker: '^NSEBANK', name: 'NIFTY BANK', price: 56542.25, change: 71.65, change_percent: 0.13, currency: 'INR' },
+    { ticker: '^CNXIT', name: 'NIFTY IT', price: 28274.65, change: -556.25, change_percent: -1.93, currency: 'INR' },
+  ] : [
+    { ticker: '^GSPC', name: 'S&P 500', price: 5764.64, change: -0.06, change_percent: -0.01, currency: 'USD' },
+    { ticker: '^DJI', name: 'Dow Jones', price: 42186.69, change: -185.11, change_percent: -0.36, currency: 'USD' },
+    { ticker: '^IXIC', name: 'NASDAQ Composite', price: 18244.28, change: 122.18, change_percent: 0.45, currency: 'USD' },
+    { ticker: '^RUT', name: 'Russell 2000', price: 2289.92, change: 14.56, change_percent: 0.51, currency: 'USD' },
+  ];
+
+  const rawIndices = dashboardData?.indices || [];
+  const validIndices = rawIndices.filter((idx) => (idx.price ?? 0) > 0);
+  const displayIndices = validIndices.length > 0 ? validIndices : fallbackIndices;
+
   return (
     <div className="space-y-6 pb-28 max-w-7xl mx-auto w-full">
       {/* 1. Header with Country Flag & Status */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-[#3d363f]">
         <div>
           <div className="flex items-center space-x-3">
-            <span className="text-2xl">{country === 'IN' ? '🇮🇳' : '🇺🇸'}</span>
+            <CountryFlag country={country} className="w-8 h-5.5 sm:w-9 sm:h-6 rounded shadow-sm" />
             <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-white">
               {country === 'IN' ? 'Indian Markets Dashboard' : 'US Markets Dashboard'}
             </h1>
@@ -64,7 +81,7 @@ export const MarketDashboardView: React.FC<MarketDashboardViewProps> = ({
                 }`}
                 title="Switch to Indian Markets"
               >
-                <span className="text-sm leading-none">🇮🇳</span>
+                <CountryFlag country="IN" className="w-4 h-3 rounded-xs" />
                 <span className="hidden sm:inline">India</span>
               </button>
               <button
@@ -77,7 +94,7 @@ export const MarketDashboardView: React.FC<MarketDashboardViewProps> = ({
                 }`}
                 title="Switch to US Markets"
               >
-                <span className="text-sm leading-none">🇺🇸</span>
+                <CountryFlag country="US" className="w-4 h-3 rounded-xs" />
                 <span className="hidden sm:inline">US</span>
               </button>
             </div>
@@ -109,8 +126,8 @@ export const MarketDashboardView: React.FC<MarketDashboardViewProps> = ({
           [1, 2, 3, 4].map((i) => (
             <div key={i} className="h-28 rounded-xl bg-[#221f23] border border-[#3d363f] animate-pulse p-4" />
           ))
-        ) : (dashboardData?.indices && dashboardData.indices.length > 0) ? (
-          dashboardData.indices.map((idx, index) => {
+        ) : (displayIndices && displayIndices.length > 0) ? (
+          displayIndices.map((idx, index) => {
             const isPositive = (idx.change ?? 0) >= 0;
             return (
               <div

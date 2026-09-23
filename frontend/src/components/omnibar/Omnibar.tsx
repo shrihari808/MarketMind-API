@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Send, Square, Sparkles, ChevronDown, Check } from 'lucide-react';
+import { CountryFlag } from '../common/CountryFlag';
 
 interface OmnibarProps {
   country: 'IN' | 'US';
@@ -102,7 +103,7 @@ export const Omnibar: React.FC<OmnibarProps> = ({
               className="flex items-center space-x-1.5 px-2.5 sm:px-3 py-2 rounded-lg bg-[#1d1a1e] hover:bg-[#3d363f] border border-[#3d363f] text-sm font-semibold text-slate-200 transition"
               title="Select Market Region"
             >
-              <span className="text-base leading-none">{country === 'IN' ? '🇮🇳' : '🇺🇸'}</span>
+              <CountryFlag country={country} className="w-5 h-3.5 rounded-xs" />
               <ChevronDown className="w-3.5 h-3.5 text-slate-400" />
             </button>
 
@@ -118,7 +119,7 @@ export const Omnibar: React.FC<OmnibarProps> = ({
                   }`}
                 >
                   <span className="flex items-center space-x-2">
-                    <span className="text-base">🇮🇳</span>
+                    <CountryFlag country="IN" className="w-5 h-3.5 rounded-xs" />
                     <span>India</span>
                   </span>
                   {country === 'IN' && <Check className="w-3.5 h-3.5 text-[#c084fc]" />}
@@ -134,7 +135,7 @@ export const Omnibar: React.FC<OmnibarProps> = ({
                   }`}
                 >
                   <span className="flex items-center space-x-2">
-                    <span className="text-base">🇺🇸</span>
+                    <CountryFlag country="US" className="w-5 h-3.5 rounded-xs" />
                     <span>United States</span>
                   </span>
                   {country === 'US' && <Check className="w-3.5 h-3.5 text-[#c084fc]" />}
