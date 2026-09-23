@@ -56,7 +56,7 @@ export const DeepResearchView: React.FC<DeepResearchViewProps> = ({ clientId }) 
   return (
     <div className="space-y-6 pb-28 max-w-5xl mx-auto">
       {/* Header */}
-      <div className="pb-4 border-b border-[#383A40]">
+      <div className="pb-4 border-b border-[#3d363f]">
         <div className="flex items-center space-x-2.5">
           <div className="p-2 rounded-lg bg-[#9013fe]/10 text-[#d8b4fe] border border-[#9013fe]/30">
             <BarChart3 className="w-5 h-5" />
@@ -71,7 +71,7 @@ export const DeepResearchView: React.FC<DeepResearchViewProps> = ({ clientId }) 
       </div>
 
       {/* Control Panel */}
-      <div className="p-4 rounded-xl bg-[#2B2D31] border border-[#383A40] shadow-md">
+      <div className="p-4 rounded-xl bg-[#221f23] border border-[#3d363f] shadow-md">
         <div className="grid grid-cols-1 sm:grid-cols-4 gap-3 items-end">
           <div>
             <label className="block text-[11px] font-mono text-slate-400 mb-1">MARKET REGION</label>
@@ -83,7 +83,7 @@ export const DeepResearchView: React.FC<DeepResearchViewProps> = ({ clientId }) 
                 if (c === 'IN' && ticker === 'NVDA') setTicker('RELIANCE.NS');
                 if (c === 'US' && ticker === 'RELIANCE.NS') setTicker('NVDA');
               }}
-              className="w-full bg-[#1E1F22] border border-[#383A40] rounded-lg px-3 py-2 text-xs text-slate-200 focus:outline-none focus:border-[#9013fe]"
+              className="w-full bg-[#1d1a1e] border border-[#3d363f] rounded-lg px-3 py-2 text-xs text-slate-200 focus:outline-none focus:border-[#9013fe]"
             >
               <option value="IN">🇮🇳 India (NSE / BSE)</option>
               <option value="US">🇺🇸 United States (NYSE / NASDAQ)</option>
@@ -97,7 +97,7 @@ export const DeepResearchView: React.FC<DeepResearchViewProps> = ({ clientId }) 
               value={ticker}
               onChange={(e) => setTicker(e.target.value.toUpperCase())}
               placeholder="e.g. RELIANCE.NS, NVDA, AAPL"
-              className="w-full bg-[#1E1F22] border border-[#383A40] rounded-lg px-3 py-2 text-xs text-slate-200 font-mono focus:outline-none focus:border-[#9013fe] uppercase placeholder-slate-500"
+              className="w-full bg-[#1d1a1e] border border-[#3d363f] rounded-lg px-3 py-2 text-xs text-slate-200 font-mono focus:outline-none focus:border-[#9013fe] uppercase placeholder-slate-500"
             />
           </div>
 
@@ -107,7 +107,7 @@ export const DeepResearchView: React.FC<DeepResearchViewProps> = ({ clientId }) 
               id="sectionBySection"
               checked={sectionBySection}
               onChange={(e) => setSectionBySection(e.target.checked)}
-              className="rounded bg-[#1E1F22] border-[#383A40] text-[#9013fe] focus:ring-[#9013fe] w-4 h-4 cursor-pointer"
+              className="rounded bg-[#1d1a1e] border-[#3d363f] text-[#9013fe] focus:ring-[#9013fe] w-4 h-4 cursor-pointer"
             />
             <label htmlFor="sectionBySection" className="text-xs text-slate-300 cursor-pointer select-none">
               Modular 7-Pass Mode
@@ -145,9 +145,9 @@ export const DeepResearchView: React.FC<DeepResearchViewProps> = ({ clientId }) 
 
       {/* Report Display */}
       {report ? (
-        <div className="rounded-xl bg-[#2B2D31] border border-[#383A40] p-6 space-y-6 shadow-xl">
+        <div className="rounded-xl bg-[#221f23] border border-[#3d363f] p-6 space-y-6 shadow-xl">
           {/* Header Metadata */}
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-[#383A40]">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-[#3d363f]">
             <div>
               <div className="flex items-center space-x-3">
                 <span className="font-mono text-xs px-2.5 py-0.5 rounded bg-[#9013fe]/10 text-[#d8b4fe] font-bold border border-[#9013fe]/30">
@@ -185,7 +185,7 @@ export const DeepResearchView: React.FC<DeepResearchViewProps> = ({ clientId }) 
         </div>
       ) : (
         !isGenerating && (
-          <div className="p-12 text-center border border-dashed border-[#383A40] rounded-xl bg-[#1E1F22] text-slate-400 text-xs">
+          <div className="p-12 text-center border border-dashed border-[#3d363f] rounded-xl bg-[#1d1a1e] text-slate-400 text-xs">
             <FileText className="w-8 h-8 mx-auto mb-2 opacity-40 text-slate-400" />
             <p className="font-medium text-slate-300">No report generated yet</p>
             <p className="text-[11px] text-slate-400 mt-1">

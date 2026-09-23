@@ -8,7 +8,6 @@ import {
   Search,
   PlusCircle,
   Trash2,
-  Cpu,
   ChevronLeft,
   ChevronRight,
   X,
@@ -52,13 +51,15 @@ export const Sidebar: React.FC<SidebarProps> = ({
   ];
 
   const sidebarContent = (
-    <div className="flex flex-col h-full bg-[#2B2D31] border-r border-[#383A40] select-none">
+    <div className="flex flex-col h-full bg-[#221f23] border-r border-[#3d363f] select-none">
       {/* 1. Brand Logo */}
-      <div className="p-3.5 border-b border-[#383A40] flex items-center justify-between">
+      <div className="p-3.5 border-b border-[#3d363f] flex items-center justify-between">
         <div className="flex items-center space-x-2.5 overflow-hidden">
-          <div className="w-8 h-8 rounded-lg bg-[#9013fe] flex items-center justify-center shadow-md shadow-[#9013fe]/20 text-white font-bold shrink-0">
-            <Cpu className="w-5 h-5" />
-          </div>
+          <img
+            src="/logo.png"
+            alt="MarketMind Logo"
+            className="w-8 h-8 rounded-lg object-contain shrink-0 shadow-md shadow-[#9013fe]/20"
+          />
           {!isCollapsed && (
             <div className="min-w-0">
               <div className="flex items-center space-x-1.5">
@@ -76,7 +77,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
         {isMobileOpen && (
           <button
             onClick={onCloseMobile}
-            className="lg:hidden p-1 rounded-lg text-slate-400 hover:text-white hover:bg-[#383A40]"
+            className="lg:hidden p-1 rounded-lg text-slate-400 hover:text-white hover:bg-[#3d363f]"
           >
             <X className="w-5 h-5" />
           </button>
@@ -87,7 +88,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
           <button
             onClick={onToggleCollapse}
             title={isCollapsed ? "Expand sidebar" : "Collapse sidebar"}
-            className="hidden lg:flex p-1 rounded-lg text-slate-400 hover:text-white hover:bg-[#383A40] transition"
+            className="hidden lg:flex p-1 rounded-lg text-slate-400 hover:text-white hover:bg-[#3d363f] transition"
           >
             {isCollapsed ? <ChevronRight className="w-4 h-4" /> : <ChevronLeft className="w-4 h-4" />}
           </button>
@@ -133,7 +134,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 className={`w-full flex items-center justify-between px-2.5 py-2 rounded-lg text-xs font-medium transition group ${
                   isActive
                     ? 'bg-[#9013fe]/20 text-[#d8b4fe] border border-[#9013fe]/40 shadow-sm'
-                    : 'text-slate-300 hover:text-white hover:bg-[#383A40]'
+                    : 'text-slate-300 hover:text-white hover:bg-[#3d363f]'
                 }`}
               >
                 <div className="flex items-center space-x-2.5 min-w-0">
@@ -149,7 +150,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                     className={`text-[9px] font-mono px-1.5 py-0.5 rounded shrink-0 ${
                       isActive
                         ? 'bg-[#9013fe]/30 text-[#d8b4fe]'
-                        : 'bg-[#1E1F22] text-slate-400 group-hover:text-slate-300'
+                        : 'bg-[#1d1a1e] text-slate-400 group-hover:text-slate-300'
                     }`}
                   >
                     {item.badge}
@@ -163,7 +164,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
       {/* 4. Chat History / Sessions Section */}
       {!isCollapsed && (
-        <div className="flex-1 flex flex-col min-h-0 px-2.5 py-2 border-t border-[#383A40] mt-1">
+        <div className="flex-1 flex flex-col min-h-0 px-2.5 py-2 border-t border-[#3d363f] mt-1">
           <div className="flex items-center justify-between px-2 mb-1.5">
             <span className="text-[10px] font-mono uppercase tracking-wider text-slate-400 font-semibold">
               Recent Conversations
@@ -190,8 +191,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
                     }}
                     className={`group relative flex items-center justify-between px-2.5 py-2 rounded-lg cursor-pointer text-xs transition border ${
                       isSelected
-                        ? 'bg-[#1E1F22] text-[#d8b4fe] border-[#383A40]'
-                        : 'hover:bg-[#383A40]/60 text-slate-300 hover:text-white border-transparent'
+                        ? 'bg-[#1d1a1e] text-[#d8b4fe] border-[#3d363f]'
+                        : 'hover:bg-[#3d363f]/60 text-slate-300 hover:text-white border-transparent'
                     }`}
                   >
                     <div className="flex items-center space-x-2 truncate pr-6">
@@ -215,7 +216,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
       )}
 
       {/* 5. Footer: System Info */}
-      <div className="p-3 border-t border-[#383A40] bg-[#1E1F22] text-[11px] text-slate-400 mt-auto">
+      <div className="p-3 border-t border-[#3d363f] bg-[#1d1a1e] text-[11px] text-slate-400 mt-auto">
         <div className="flex items-center justify-between mb-0.5">
           <div className="flex items-center space-x-1.5">
             <span className="w-2 h-2 rounded-full bg-emerald-400 shrink-0"></span>

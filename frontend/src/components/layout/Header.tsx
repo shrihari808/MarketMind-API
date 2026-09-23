@@ -42,11 +42,11 @@ export const Header: React.FC<HeaderProps> = ({
   const tickerItems = [...marqueeData, ...marqueeData];
 
   return (
-    <header className="sticky top-0 z-40 w-full bg-[#2B2D31]/95 backdrop-blur-md border-b border-[#383A40]">
+    <header className="sticky top-0 z-40 w-full bg-[#221f23]/95 backdrop-blur-md border-b border-[#3d363f]">
       {/* 1. Market Marquee Ticker */}
-      <div className="w-full bg-[#1E1F22] border-b border-[#383A40] overflow-hidden py-1.5 px-3 sm:px-4 text-xs font-mono">
+      <div className="w-full bg-[#1d1a1e] border-b border-[#3d363f] overflow-hidden py-1.5 px-3 sm:px-4 text-xs font-mono">
         <div className="flex items-center space-x-2">
-          <div className="flex items-center space-x-1.5 shrink-0 pr-3 border-r border-[#383A40] font-sans font-semibold text-[#d8b4fe]">
+          <div className="flex items-center space-x-1.5 shrink-0 pr-3 border-r border-[#3d363f] font-sans font-semibold text-[#d8b4fe]">
             <span className="w-2 h-2 rounded-full bg-emerald-400 animate-live"></span>
             <span className="tracking-wide uppercase text-[10px]">LIVE FEED</span>
           </div>
@@ -83,7 +83,7 @@ export const Header: React.FC<HeaderProps> = ({
           {onToggleMobileSidebar && (
             <button
               onClick={onToggleMobileSidebar}
-              className="lg:hidden p-1.5 rounded-lg bg-[#1E1F22] hover:bg-[#383A40] border border-[#383A40] text-slate-300 transition"
+              className="lg:hidden p-1.5 rounded-lg bg-[#1d1a1e] hover:bg-[#3d363f] border border-[#3d363f] text-slate-300 transition"
               title="Toggle Navigation Menu"
             >
               <Menu className="w-4 h-4" />
@@ -109,13 +109,13 @@ export const Header: React.FC<HeaderProps> = ({
         {/* Right: Status Indicators & Anonymous UUID */}
         <div className="flex items-center space-x-2 sm:space-x-3 text-xs">
           {/* Rate Limiter Status */}
-          <div className="hidden sm:flex items-center space-x-1.5 px-2.5 py-1 rounded-md bg-[#1E1F22] border border-[#383A40] text-slate-300">
+          <div className="hidden sm:flex items-center space-x-1.5 px-2.5 py-1 rounded-md bg-[#1d1a1e] border border-[#3d363f] text-slate-300">
             <Shield className="w-3.5 h-3.5 text-emerald-400" />
             <span className="font-mono text-[11px]">25 req/min</span>
           </div>
 
           {/* Engine Badge */}
-          <div className="hidden md:flex items-center space-x-1.5 px-2.5 py-1 rounded-md bg-[#1E1F22] border border-[#383A40] text-slate-300">
+          <div className="hidden md:flex items-center space-x-1.5 px-2.5 py-1 rounded-md bg-[#1d1a1e] border border-[#3d363f] text-slate-300">
             <Sparkles className="w-3.5 h-3.5 text-[#c084fc]" />
             <span>Institutional AI</span>
           </div>
@@ -124,7 +124,7 @@ export const Header: React.FC<HeaderProps> = ({
           <button
             onClick={copyClientId}
             title={`Your anonymous client UUID: ${clientId} (Click to copy)`}
-            className="flex items-center space-x-1.5 px-2 sm:px-2.5 py-1 rounded-md bg-[#1E1F22] hover:bg-[#383A40] border border-[#383A40] text-slate-400 hover:text-slate-200 transition font-mono text-[11px]"
+            className="flex items-center space-x-1.5 px-2 sm:px-2.5 py-1 rounded-md bg-[#1d1a1e] hover:bg-[#3d363f] border border-[#3d363f] text-slate-400 hover:text-slate-200 transition font-mono text-[11px]"
           >
             <span className="hidden xs:inline">UUID:</span>
             <span className="text-[#d8b4fe]">{clientId.slice(0, 8)}...</span>

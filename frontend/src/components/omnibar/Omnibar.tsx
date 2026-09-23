@@ -73,7 +73,7 @@ export const Omnibar: React.FC<OmnibarProps> = ({
       ];
 
   return (
-    <div className="w-full bg-[#313338]/95 backdrop-blur-xl border-t border-[#383A40] p-3 sm:p-4 transition-all">
+    <div className="w-full bg-[#2a262b]/95 backdrop-blur-xl border-t border-[#3d363f] p-3 sm:p-4 transition-all">
       <div className="max-w-4xl mx-auto">
         {/* Suggestion Shortcuts */}
         <div className="flex items-center space-x-2 overflow-x-auto pb-2 scrollbar-none text-xs">
@@ -85,7 +85,7 @@ export const Omnibar: React.FC<OmnibarProps> = ({
             <button
               key={idx}
               onClick={() => handleSuggestionClick(item.query)}
-              className="shrink-0 px-2.5 py-1 rounded-full bg-[#1E1F22] hover:bg-[#383A40] border border-[#383A40] hover:border-[#9013fe]/60 text-slate-300 hover:text-white transition text-xs font-medium"
+              className="shrink-0 px-2.5 py-1 rounded-full bg-[#1d1a1e] hover:bg-[#3d363f] border border-[#3d363f] hover:border-[#9013fe]/60 text-slate-300 hover:text-white transition text-xs font-medium"
             >
               {item.label}
             </button>
@@ -93,13 +93,13 @@ export const Omnibar: React.FC<OmnibarProps> = ({
         </div>
 
         {/* Input Bar with Country Selector */}
-        <div className="relative flex items-center rounded-xl bg-[#2B2D31] border border-[#383A40] focus-within:border-[#9013fe] focus-within:ring-2 focus-within:ring-[#9013fe]/20 shadow-lg transition-all p-1.5">
+        <div className="relative flex items-center rounded-xl bg-[#221f23] border border-[#3d363f] focus-within:border-[#9013fe] focus-within:ring-2 focus-within:ring-[#9013fe]/20 shadow-lg transition-all p-1.5">
           {/* Country Dropdown */}
           <div className="relative shrink-0" ref={dropdownRef}>
             <button
               type="button"
               onClick={() => setIsCountryDropdownOpen(!isCountryDropdownOpen)}
-              className="flex items-center space-x-1.5 px-2.5 sm:px-3 py-2 rounded-lg bg-[#1E1F22] hover:bg-[#383A40] border border-[#383A40] text-xs font-semibold text-slate-200 transition"
+              className="flex items-center space-x-1.5 px-2.5 sm:px-3 py-2 rounded-lg bg-[#1d1a1e] hover:bg-[#3d363f] border border-[#3d363f] text-xs font-semibold text-slate-200 transition"
               title="Select Market Region"
             >
               <span>{country === 'IN' ? '🇮🇳 IN' : '🇺🇸 US'}</span>
@@ -107,14 +107,14 @@ export const Omnibar: React.FC<OmnibarProps> = ({
             </button>
 
             {isCountryDropdownOpen && (
-              <div className="absolute bottom-full mb-2 left-0 w-36 rounded-lg bg-[#1E1F22] border border-[#383A40] shadow-xl overflow-hidden z-50 py-1 text-xs">
+              <div className="absolute bottom-full mb-2 left-0 w-36 rounded-lg bg-[#1d1a1e] border border-[#3d363f] shadow-xl overflow-hidden z-50 py-1 text-xs">
                 <button
                   onClick={() => {
                     onSelectCountry('IN');
                     setIsCountryDropdownOpen(false);
                   }}
-                  className={`w-full flex items-center justify-between px-3 py-2 text-left hover:bg-[#2B2D31] transition ${
-                    country === 'IN' ? 'text-[#d8b4fe] font-bold bg-[#2B2D31]/80' : 'text-slate-300'
+                  className={`w-full flex items-center justify-between px-3 py-2 text-left hover:bg-[#221f23] transition ${
+                    country === 'IN' ? 'text-[#d8b4fe] font-bold bg-[#221f23]/80' : 'text-slate-300'
                   }`}
                 >
                   <span className="flex items-center space-x-2">
@@ -129,8 +129,8 @@ export const Omnibar: React.FC<OmnibarProps> = ({
                     onSelectCountry('US');
                     setIsCountryDropdownOpen(false);
                   }}
-                  className={`w-full flex items-center justify-between px-3 py-2 text-left hover:bg-[#2B2D31] transition ${
-                    country === 'US' ? 'text-[#d8b4fe] font-bold bg-[#2B2D31]/80' : 'text-slate-300'
+                  className={`w-full flex items-center justify-between px-3 py-2 text-left hover:bg-[#221f23] transition ${
+                    country === 'US' ? 'text-[#d8b4fe] font-bold bg-[#221f23]/80' : 'text-slate-300'
                   }`}
                 >
                   <span className="flex items-center space-x-2">

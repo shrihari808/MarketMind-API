@@ -202,7 +202,7 @@ export function App() {
   };
 
   return (
-    <div className="flex h-[100dvh] min-h-screen w-screen overflow-hidden bg-[#313338] text-slate-100 font-sans">
+    <div className="flex h-[100dvh] min-h-screen w-screen overflow-hidden bg-[#2a262b] text-slate-100 font-sans">
       {/* 1. Persistent Responsive Sidebar */}
       <Sidebar
         activeView={activeView}

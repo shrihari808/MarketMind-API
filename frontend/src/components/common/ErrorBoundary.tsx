@@ -35,8 +35,8 @@ export class ErrorBoundary extends Component<Props, State> {
   public render() {
     if (this.state.hasError) {
       return (
-        <div className="min-h-screen w-screen bg-[#313338] text-slate-100 flex items-center justify-center p-6 font-sans">
-          <div className="max-w-md w-full bg-[#2B2D31] border border-[#383A40] rounded-2xl p-6 shadow-2xl space-y-5">
+        <div className="min-h-screen w-screen bg-[#2a262b] text-slate-100 flex items-center justify-center p-6 font-sans">
+          <div className="max-w-md w-full bg-[#221f23] border border-[#3d363f] rounded-2xl p-6 shadow-2xl space-y-5">
             <div className="flex items-center space-x-3 text-rose-400">
               <div className="p-2.5 rounded-xl bg-rose-500/10 border border-rose-500/20">
                 <AlertTriangle className="w-6 h-6 text-rose-400" />
@@ -47,7 +47,7 @@ export class ErrorBoundary extends Component<Props, State> {
               </div>
             </div>
 
-            <div className="bg-[#1E1F22] rounded-xl p-3 border border-[#383A40] font-mono text-[11px] text-slate-300 overflow-x-auto max-h-32">
+            <div className="bg-[#1d1a1e] rounded-xl p-3 border border-[#3d363f] font-mono text-[11px] text-slate-300 overflow-x-auto max-h-32">
               {this.state.error?.message || 'An unknown runtime error occurred.'}
             </div>
 
@@ -68,7 +68,7 @@ export class ErrorBoundary extends Component<Props, State> {
                   localStorage.clear();
                   window.location.reload();
                 }}
-                className="py-2.5 px-4 rounded-xl bg-[#232428] hover:bg-[#383A40] text-slate-300 font-medium text-xs border border-[#383A40] transition"
+                className="py-2.5 px-4 rounded-xl bg-[#1d1a1e] hover:bg-[#3d363f] text-slate-300 font-medium text-xs border border-[#3d363f] transition"
               >
                 Reset Storage
               </button>

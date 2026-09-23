@@ -57,7 +57,7 @@ export const StockInspectorView: React.FC<StockInspectorViewProps> = ({
   return (
     <div className="space-y-6 pb-28 max-w-5xl mx-auto">
       {/* Header */}
-      <div className="pb-4 border-b border-[#383A40]">
+      <div className="pb-4 border-b border-[#3d363f]">
         <div className="flex items-center space-x-2.5">
           <div className="p-2 rounded-lg bg-[#9013fe]/10 text-[#d8b4fe] border border-[#9013fe]/30">
             <Search className="w-5 h-5" />
@@ -72,7 +72,7 @@ export const StockInspectorView: React.FC<StockInspectorViewProps> = ({
       </div>
 
       {/* Ticker Search Box */}
-      <div className="p-4 rounded-xl bg-[#2B2D31] border border-[#383A40] shadow-md">
+      <div className="p-4 rounded-xl bg-[#221f23] border border-[#3d363f] shadow-md">
         <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
           <input
             type="text"
@@ -82,7 +82,7 @@ export const StockInspectorView: React.FC<StockInspectorViewProps> = ({
               if (e.key === 'Enter') handleSearch(ticker);
             }}
             placeholder="Enter ticker (e.g. RELIANCE.NS, TCS.NS, NVDA, AAPL)..."
-            className="flex-1 bg-[#1E1F22] border border-[#383A40] rounded-lg px-3 py-2 text-xs text-slate-200 font-mono uppercase placeholder-slate-500 focus:outline-none focus:border-[#9013fe]"
+            className="flex-1 bg-[#1d1a1e] border border-[#3d363f] rounded-lg px-3 py-2 text-xs text-slate-200 font-mono uppercase placeholder-slate-500 focus:outline-none focus:border-[#9013fe]"
           />
           <button
             onClick={() => handleSearch(ticker)}
@@ -113,7 +113,7 @@ export const StockInspectorView: React.FC<StockInspectorViewProps> = ({
                 setTicker(t);
                 handleSearch(t);
               }}
-              className="px-2.5 py-0.5 rounded bg-[#1E1F22] hover:bg-[#383A40] border border-[#383A40] text-slate-300 font-mono text-[11px] transition shrink-0"
+              className="px-2.5 py-0.5 rounded bg-[#1d1a1e] hover:bg-[#3d363f] border border-[#3d363f] text-slate-300 font-mono text-[11px] transition shrink-0"
             >
               {t}
             </button>
@@ -132,8 +132,8 @@ export const StockInspectorView: React.FC<StockInspectorViewProps> = ({
       {profile && (
         <div className="space-y-6">
           {/* Quote Overview Card */}
-          <div className="p-6 rounded-xl bg-[#2B2D31] border border-[#383A40] shadow-lg">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-[#383A40]">
+          <div className="p-6 rounded-xl bg-[#221f23] border border-[#3d363f] shadow-lg">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-[#3d363f]">
               <div>
                 <div className="flex items-center space-x-3">
                   <span className="font-mono text-sm px-2.5 py-0.5 rounded bg-[#9013fe]/10 text-[#d8b4fe] font-bold border border-[#9013fe]/30">
@@ -168,21 +168,21 @@ export const StockInspectorView: React.FC<StockInspectorViewProps> = ({
 
             {/* Quick Stats Grid */}
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4 pt-4 text-xs font-mono">
-              <div className="p-3 rounded-lg bg-[#1E1F22] border border-[#383A40]">
+              <div className="p-3 rounded-lg bg-[#1d1a1e] border border-[#3d363f]">
                 <span className="text-slate-400 text-[10px] block">DAY RANGE</span>
                 <span className="text-slate-200 font-semibold truncate block">
                   {formatCurrency(quote?.day_low, quote?.currency)} - {formatCurrency(quote?.day_high, quote?.currency)}
                 </span>
               </div>
-              <div className="p-3 rounded-lg bg-[#1E1F22] border border-[#383A40]">
+              <div className="p-3 rounded-lg bg-[#1d1a1e] border border-[#3d363f]">
                 <span className="text-slate-400 text-[10px] block">VOLUME</span>
                 <span className="text-slate-200 font-semibold block">{formatCompactNumber(quote?.volume)}</span>
               </div>
-              <div className="p-3 rounded-lg bg-[#1E1F22] border border-[#383A40]">
+              <div className="p-3 rounded-lg bg-[#1d1a1e] border border-[#3d363f]">
                 <span className="text-slate-400 text-[10px] block">MARKET CAP</span>
                 <span className="text-slate-200 font-semibold block">{formatCompactNumber(funds?.market_cap)}</span>
               </div>
-              <div className="p-3 rounded-lg bg-[#1E1F22] border border-[#383A40]">
+              <div className="p-3 rounded-lg bg-[#1d1a1e] border border-[#3d363f]">
                 <span className="text-slate-400 text-[10px] block">CURRENCY</span>
                 <span className="text-slate-200 font-semibold block">{quote?.currency || funds?.currency || 'INR'}</span>
               </div>
@@ -224,7 +224,7 @@ export const StockInspectorView: React.FC<StockInspectorViewProps> = ({
           </div>
 
           {/* Action Trigger: Ask AI */}
-          <div className="p-4 sm:p-5 rounded-xl bg-[#2B2D31] border border-[#383A40] flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-md">
+          <div className="p-4 sm:p-5 rounded-xl bg-[#221f23] border border-[#3d363f] flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-md">
             <div className="flex items-center space-x-3">
               <div className="p-2.5 rounded-lg bg-[#9013fe]/10 border border-[#9013fe]/20 text-[#d8b4fe]">
                 <Sparkles className="w-5 h-5 text-[#c084fc]" />
@@ -255,7 +255,7 @@ const MetricCard: React.FC<{ title: string; value: string; subtext: string }> = 
   value,
   subtext,
 }) => (
-  <div className="p-4 rounded-xl bg-[#2B2D31] border border-[#383A40]">
+  <div className="p-4 rounded-xl bg-[#221f23] border border-[#3d363f]">
     <div className="text-slate-400 text-xs font-medium mb-1">{title}</div>
     <div className="text-lg font-bold font-mono text-white mb-1">{value}</div>
     <div className="text-[10px] text-slate-500 leading-snug">{subtext}</div>

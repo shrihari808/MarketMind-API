@@ -13,12 +13,12 @@ export default {
       },
       colors: {
         terminal: {
-          bg: '#313338',
-          sidebar: '#2B2D31',
-          panel: '#2B2D31',
-          panelBorder: '#383A40',
-          card: '#232428',
-          cardBorder: '#383A40',
+          bg: '#2a262b',
+          sidebar: '#221f23',
+          panel: '#221f23',
+          panelBorder: '#3d363f',
+          card: '#1d1a1e',
+          cardBorder: '#3d363f',
           accent: '#9013fe',
           accentHover: '#7c0fd8',
           accentLight: '#a855f7',
