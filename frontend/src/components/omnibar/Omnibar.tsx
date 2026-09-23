@@ -99,15 +99,15 @@ export const Omnibar: React.FC<OmnibarProps> = ({
             <button
               type="button"
               onClick={() => setIsCountryDropdownOpen(!isCountryDropdownOpen)}
-              className="flex items-center space-x-1.5 px-2.5 sm:px-3 py-2 rounded-lg bg-[#1d1a1e] hover:bg-[#3d363f] border border-[#3d363f] text-xs font-semibold text-slate-200 transition"
+              className="flex items-center space-x-1.5 px-2.5 sm:px-3 py-2 rounded-lg bg-[#1d1a1e] hover:bg-[#3d363f] border border-[#3d363f] text-sm font-semibold text-slate-200 transition"
               title="Select Market Region"
             >
-              <span>{country === 'IN' ? '🇮🇳 IN' : '🇺🇸 US'}</span>
+              <span className="text-base leading-none">{country === 'IN' ? '🇮🇳' : '🇺🇸'}</span>
               <ChevronDown className="w-3.5 h-3.5 text-slate-400" />
             </button>
 
             {isCountryDropdownOpen && (
-              <div className="absolute bottom-full mb-2 left-0 w-36 rounded-lg bg-[#1d1a1e] border border-[#3d363f] shadow-xl overflow-hidden z-50 py-1 text-xs">
+              <div className="absolute bottom-full mb-2 left-0 w-38 rounded-lg bg-[#1d1a1e] border border-[#3d363f] shadow-xl overflow-hidden z-50 py-1 text-xs">
                 <button
                   onClick={() => {
                     onSelectCountry('IN');
@@ -118,8 +118,8 @@ export const Omnibar: React.FC<OmnibarProps> = ({
                   }`}
                 >
                   <span className="flex items-center space-x-2">
-                    <span>🇮🇳</span>
-                    <span>India (IN)</span>
+                    <span className="text-base">🇮🇳</span>
+                    <span>India</span>
                   </span>
                   {country === 'IN' && <Check className="w-3.5 h-3.5 text-[#c084fc]" />}
                 </button>
@@ -134,8 +134,8 @@ export const Omnibar: React.FC<OmnibarProps> = ({
                   }`}
                 >
                   <span className="flex items-center space-x-2">
-                    <span>🇺🇸</span>
-                    <span>United States (US)</span>
+                    <span className="text-base">🇺🇸</span>
+                    <span>United States</span>
                   </span>
                   {country === 'US' && <Check className="w-3.5 h-3.5 text-[#c084fc]" />}
                 </button>

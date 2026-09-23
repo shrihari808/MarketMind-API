@@ -108,6 +108,7 @@ export function useSSEStream(clientId: string) {
         const reader = response.body.getReader();
         const decoder = new TextDecoder('utf-8');
         let buffer = '';
+        let currentEvent = 'message';
 
         while (true) {
           const { done, value } = await reader.read();
@@ -116,8 +117,6 @@ export function useSSEStream(clientId: string) {
           buffer += decoder.decode(value, { stream: true });
           const lines = buffer.split('\n');
           buffer = lines.pop() || ''; // Keep trailing incomplete line in buffer
-
-          let currentEvent = 'message';
 
           for (const line of lines) {
             const trimmed = line.trim();
@@ -135,57 +134,60 @@ export function useSSEStream(clientId: string) {
               try {
                 const parsed = JSON.parse(rawData);
 
-                switch (currentEvent) {
-                  case 'status': {
-                    const statusPayload = parsed as SSEStatusPayload;
+                // 1. Token chunk detection (by event or payload fields)
+                if (currentEvent === 'token' || parsed.token !== undefined || parsed.text !== undefined) {
+                  const tokenStr = parsed.token ?? parsed.text ?? (typeof parsed === 'string' ? parsed : '');
+                  accumulatedText += tokenStr;
+                  setStreamState((prev) => ({
+                    ...prev,
+                    streamedText: accumulatedText,
+                    statusMessage: '', // Clear status when tokens start arriving
+                  }));
+                  if (onToken) onToken(tokenStr, accumulatedText);
+                }
+                // 2. Sources metadata detection
+                else if (currentEvent === 'sources' || parsed.sources !== undefined) {
+                  const sourcesList = parsed.sources || (Array.isArray(parsed) ? parsed : []);
+                  if (Array.isArray(sourcesList)) {
+                    accumulatedSources = sourcesList;
                     setStreamState((prev) => ({
                       ...prev,
-                      statusStep: statusPayload.step || 'processing',
-                      statusMessage: statusPayload.message || 'Processing query...',
+                      sources: accumulatedSources,
                     }));
-                    break;
-                  }
-
-                  case 'sources': {
-                    const sourcesPayload = parsed as SSESourcesPayload;
-                    if (sourcesPayload.sources && Array.isArray(sourcesPayload.sources)) {
-                      accumulatedSources = sourcesPayload.sources;
-                      setStreamState((prev) => ({
-                        ...prev,
-                        sources: accumulatedSources,
-                      }));
-                    }
-                    break;
-                  }
-
-                  case 'token': {
-                    const tokenPayload = parsed as SSETokenPayload;
-                    const tokenStr = tokenPayload.token ?? tokenPayload.text ?? '';
-                    accumulatedText += tokenStr;
-                    setStreamState((prev) => ({
-                      ...prev,
-                      streamedText: accumulatedText,
-                      statusMessage: '', // Clear status when tokens start arriving
-                    }));
-                    if (onToken) onToken(tokenStr, accumulatedText);
-                    break;
-                  }
-
-                  case 'complete': {
-                    // Stream completed normally
-                    break;
-                  }
-
-                  case 'error': {
-                    const errorPayload = parsed as SSEErrorPayload;
-                    throw new Error(errorPayload.message || errorPayload.error || errorPayload.detail || 'Streaming error');
                   }
                 }
+                // 3. Status stepper detection
+                else if (currentEvent === 'status' || parsed.step !== undefined) {
+                  const statusPayload = parsed as SSEStatusPayload;
+                  setStreamState((prev) => ({
+                    ...prev,
+                    statusStep: statusPayload.step || 'processing',
+                    statusMessage: statusPayload.message || 'Processing query...',
+                  }));
+                }
+                // 4. Complete event detection
+                else if (currentEvent === 'complete' || parsed.tokens_used !== undefined) {
+                  // Stream completed normally
+                }
+                // 5. Error event detection
+                else if (currentEvent === 'error' || parsed.error !== undefined) {
+                  const errorPayload = parsed as SSEErrorPayload;
+                  throw new Error(errorPayload.message || errorPayload.error || errorPayload.detail || 'Streaming error');
+                }
               } catch (e: any) {
-                // If it's a JSON parse error on non-json data, treat as raw token
+                // If it's a re-thrown streaming error from above, bubble up
+                if (e.message && (currentEvent === 'error' || e.message.includes('Streaming error') || e.message.includes('Generation error'))) {
+                  throw e;
+                }
+                // If it's a JSON parse error on non-json plain text stream, treat as raw token
                 if (currentEvent === 'token' || currentEvent === 'message') {
                   accumulatedText += rawData;
-                  setStreamState((prev) => ({ ...prev, streamedText: accumulatedText }));
+                  setStreamState((prev) => ({
+                    ...prev,
+                    streamedText: accumulatedText,
+                    statusMessage: '',
+                  }));
+                  if (onToken) onToken(rawData, accumulatedText);
                 }
               }
             }

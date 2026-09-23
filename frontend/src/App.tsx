@@ -212,6 +212,7 @@ export function App() {
         onSelectSession={handleSelectSession}
         onNewChat={handleNewChat}
         onDeleteSession={handleDeleteSession}
+        clientId={clientId}
         isCollapsed={isSidebarCollapsed}
         onToggleCollapse={() => setIsSidebarCollapsed((prev) => !prev)}
         isMobileOpen={isMobileSidebarOpen}
@@ -220,12 +221,9 @@ export function App() {
 
       {/* 2. Main Content Area */}
       <div className="flex-1 flex flex-col h-full overflow-hidden relative min-w-0">
-        {/* Top Header with live ticker marquee & dynamic "Market Dashboard" button */}
+        {/* Top Header with live ticker marquee */}
         <Header
           indices={dashboardData?.indices}
-          activeView={activeView}
-          onNavigateDashboard={() => setActiveView('dashboard')}
-          clientId={clientId}
           onToggleMobileSidebar={() => setIsMobileSidebarOpen((prev) => !prev)}
         />
 
@@ -234,6 +232,7 @@ export function App() {
           {activeView === 'dashboard' && (
             <MarketDashboardView
               country={country}
+              onSelectCountry={handleSelectCountry}
               dashboardData={dashboardData}
               isLoading={isDashboardLoading}
               onRefresh={() => loadDashboard(country)}

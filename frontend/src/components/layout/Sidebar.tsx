@@ -11,6 +11,8 @@ import {
   ChevronLeft,
   ChevronRight,
   X,
+  Copy,
+  Check,
 } from 'lucide-react';
 import { ChatSessionSummary } from '../../types/api';
 
@@ -22,6 +24,7 @@ interface SidebarProps {
   onSelectSession: (sessionId: string) => void;
   onNewChat: () => void;
   onDeleteSession: (sessionId: string, e: React.MouseEvent) => void;
+  clientId?: string;
   isCollapsed?: boolean;
   onToggleCollapse?: () => void;
   isMobileOpen?: boolean;
@@ -36,11 +39,23 @@ export const Sidebar: React.FC<SidebarProps> = ({
   onSelectSession,
   onNewChat,
   onDeleteSession,
+  clientId,
   isCollapsed = false,
   onToggleCollapse,
   isMobileOpen = false,
   onCloseMobile,
 }) => {
+  const [copied, setCopied] = React.useState(false);
+
+  const copyClientId = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (clientId) {
+      navigator.clipboard.writeText(clientId);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    }
+  };
+
   const navItems = [
     { id: 'dashboard', label: 'Market Dashboard', icon: LayoutDashboard, badge: 'Live' },
     { id: 'chat', label: 'AI Search & Chat', icon: MessageSquare, badge: 'SSE' },
@@ -53,22 +68,18 @@ export const Sidebar: React.FC<SidebarProps> = ({
   const sidebarContent = (
     <div className="flex flex-col h-full bg-[#221f23] border-r border-[#3d363f] select-none">
       {/* 1. Brand Logo */}
-      <div className="p-3.5 border-b border-[#3d363f] flex items-center justify-between">
+      <div className="py-2.5 px-3 border-b border-[#3d363f] flex items-center justify-between">
         <div className="flex items-center space-x-2.5 overflow-hidden">
           <img
             src="/logo.png"
             alt="MarketMind Logo"
-            className="w-8 h-8 rounded-lg object-contain shrink-0 shadow-md shadow-[#9013fe]/20"
+            className="w-10 h-10 object-contain shrink-0"
           />
           {!isCollapsed && (
             <div className="min-w-0">
-              <div className="flex items-center space-x-1.5">
-                <span className="font-bold tracking-tight text-white text-sm truncate">MarketMind</span>
-                <span className="text-[9px] uppercase font-mono px-1.5 py-0.5 rounded bg-[#9013fe]/20 text-[#d8b4fe] font-semibold border border-[#9013fe]/30">
-                  v2.0
-                </span>
-              </div>
-              <p className="text-[10px] text-slate-400 truncate">Institutional AI Terminal</p>
+              <span className="font-bold tracking-tight text-white text-base truncate block">
+                MarketMind
+              </span>
             </div>
           )}
         </div>
@@ -215,16 +226,31 @@ export const Sidebar: React.FC<SidebarProps> = ({
         </div>
       )}
 
-      {/* 5. Footer: System Info */}
+      {/* 5. Footer: System Info & Device UUID */}
       <div className="p-3 border-t border-[#3d363f] bg-[#1d1a1e] text-[11px] text-slate-400 mt-auto">
-        <div className="flex items-center justify-between mb-0.5">
+        <div className="flex items-center justify-between mb-1">
           <div className="flex items-center space-x-1.5">
             <span className="w-2 h-2 rounded-full bg-emerald-400 shrink-0"></span>
             {!isCollapsed && <span className="text-slate-300 truncate">Free Tier Guard</span>}
           </div>
           {!isCollapsed && <span className="font-mono text-[10px] text-emerald-400 shrink-0">&lt;512 MB</span>}
         </div>
-        {!isCollapsed && <p className="text-[10px] text-slate-500 truncate">Zero Login • Device UUID</p>}
+        {!isCollapsed && (
+          <div className="flex items-center justify-between text-[10px] text-slate-400 pt-1 border-t border-[#3d363f]/50">
+            <span className="text-slate-400 truncate">Zero Login • Device UUID</span>
+            {clientId && (
+              <button
+                type="button"
+                onClick={copyClientId}
+                title={`Device UUID: ${clientId} (Click to copy)`}
+                className="font-mono text-[#d8b4fe] hover:text-white flex items-center space-x-1 transition ml-1 shrink-0 bg-[#221f23] px-1.5 py-0.5 rounded border border-[#3d363f]/60 hover:border-[#9013fe]"
+              >
+                <span>{clientId.slice(0, 8)}...</span>
+                {copied ? <Check className="w-2.5 h-2.5 text-emerald-400" /> : <Copy className="w-2.5 h-2.5 text-slate-400" />}
+              </button>
+            )}
+          </div>
+        )}
       </div>
     </div>
   );

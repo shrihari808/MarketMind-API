@@ -39,6 +39,7 @@ export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({
     <div className="relative text-slate-200 text-sm leading-relaxed font-sans max-w-none break-words">
       <ReactMarkdown
         remarkPlugins={[remarkGfm]}
+        urlTransform={(url) => url}
         components={{
           h1: ({ children }) => (
             <h1 className="text-lg sm:text-xl font-bold text-white mt-5 mb-3 pb-2 border-b border-[#3d363f] tracking-tight">

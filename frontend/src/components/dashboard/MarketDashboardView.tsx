@@ -14,6 +14,7 @@ import { formatCurrency, formatPercent, formatCompactNumber } from '../../lib/ut
 
 interface MarketDashboardViewProps {
   country: 'IN' | 'US';
+  onSelectCountry?: (country: 'IN' | 'US') => void;
   dashboardData: MarketDashboardResponse | null;
   isLoading: boolean;
   onRefresh: () => void;
@@ -22,6 +23,7 @@ interface MarketDashboardViewProps {
 
 export const MarketDashboardView: React.FC<MarketDashboardViewProps> = ({
   country,
+  onSelectCountry,
   dashboardData,
   isLoading,
   onRefresh,
@@ -49,9 +51,40 @@ export const MarketDashboardView: React.FC<MarketDashboardViewProps> = ({
           </p>
         </div>
 
-        <div className="flex items-center space-x-3">
+        <div className="flex items-center space-x-2.5 sm:space-x-3">
+          {onSelectCountry && (
+            <div className="flex items-center bg-[#1d1a1e] p-0.5 rounded-lg border border-[#3d363f]">
+              <button
+                type="button"
+                onClick={() => onSelectCountry('IN')}
+                className={`px-2.5 py-1 rounded-md text-xs font-semibold flex items-center space-x-1.5 transition ${
+                  country === 'IN'
+                    ? 'bg-[#9013fe] text-white shadow-xs'
+                    : 'text-slate-400 hover:text-white'
+                }`}
+                title="Switch to Indian Markets"
+              >
+                <span className="text-sm leading-none">🇮🇳</span>
+                <span className="hidden sm:inline">India</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => onSelectCountry('US')}
+                className={`px-2.5 py-1 rounded-md text-xs font-semibold flex items-center space-x-1.5 transition ${
+                  country === 'US'
+                    ? 'bg-[#9013fe] text-white shadow-xs'
+                    : 'text-slate-400 hover:text-white'
+                }`}
+                title="Switch to US Markets"
+              >
+                <span className="text-sm leading-none">🇺🇸</span>
+                <span className="hidden sm:inline">US</span>
+              </button>
+            </div>
+          )}
+
           {dashboardData?.last_updated && (
-            <div className="flex items-center space-x-1.5 text-xs text-slate-400 font-mono">
+            <div className="hidden md:flex items-center space-x-1.5 text-xs text-slate-400 font-mono">
               <Clock className="w-3.5 h-3.5 text-slate-500" />
               <span>
                 Updated: {new Date(dashboardData.last_updated).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
