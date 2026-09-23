@@ -36,10 +36,11 @@ export const Header: React.FC<HeaderProps> = ({
           {onToggleMobileSidebar && (
             <button
               onClick={onToggleMobileSidebar}
-              className="lg:hidden p-1 mr-1 rounded bg-[#221f23] hover:bg-[#3d363f] border border-[#3d363f] text-slate-300 transition shrink-0"
-              title="Toggle Navigation Menu"
+              className="lg:hidden flex items-center justify-center w-7 h-7 mr-1 rounded-md bg-[#9013fe] hover:bg-[#7c0fd8] text-white shadow-sm shadow-[#9013fe]/40 border border-[#a855f7]/60 active:scale-95 transition shrink-0"
+              title="Open Navigation Menu"
+              aria-label="Open Navigation Menu"
             >
-              <Menu className="w-3.5 h-3.5" />
+              <Menu className="w-4 h-4 stroke-[2.5]" />
             </button>
           )}
 

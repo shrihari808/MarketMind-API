@@ -74,10 +74,10 @@ export const Omnibar: React.FC<OmnibarProps> = ({
       ];
 
   return (
-    <div className="w-full bg-[#2a262b]/95 backdrop-blur-xl border-t border-[#3d363f] p-3 sm:p-4 transition-all">
+    <div className="w-full bg-[#2a262b]/95 backdrop-blur-xl border-t border-[#3d363f] px-3 py-2 sm:px-4 sm:py-3 pb-[max(0.6rem,env(safe-area-inset-bottom))] sm:pb-3 transition-all">
       <div className="max-w-4xl mx-auto">
         {/* Suggestion Shortcuts */}
-        <div className="flex items-center space-x-2 overflow-x-auto pb-2 scrollbar-none text-xs">
+        <div className="flex items-center space-x-2 overflow-x-auto pb-1.5 scrollbar-none text-xs">
           <span className="text-[11px] font-mono text-slate-400 uppercase tracking-wider shrink-0 flex items-center space-x-1">
             <Sparkles className="w-3 h-3 text-[#c084fc] inline" />
             <span>Shortcuts:</span>
@@ -178,8 +178,8 @@ export const Omnibar: React.FC<OmnibarProps> = ({
         </div>
 
         <div className="flex items-center justify-between mt-1 px-1 text-[11px] text-slate-400 font-mono">
-          <span>Press Enter ↵ to search</span>
-          <span>MarketMind Intelligence • Live Web RAG</span>
+          <span className="hidden sm:inline">Press Enter ↵ to search</span>
+          <span className="text-[10px] sm:text-[11px] text-slate-400 truncate">MarketMind Intelligence • Live Web RAG</span>
         </div>
       </div>
     </div>

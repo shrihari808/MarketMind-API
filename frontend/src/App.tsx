@@ -202,7 +202,7 @@ export function App() {
   };
 
   return (
-    <div className="flex h-[100dvh] min-h-screen w-screen overflow-hidden bg-[#2a262b] text-slate-100 font-sans">
+    <div className="flex h-[100dvh] w-screen overflow-hidden bg-[#2a262b] text-slate-100 font-sans fixed inset-0">
       {/* 1. Persistent Responsive Sidebar */}
       <Sidebar
         activeView={activeView}
@@ -220,7 +220,7 @@ export function App() {
       />
 
       {/* 2. Main Content Area */}
-      <div className="flex-1 flex flex-col h-full overflow-hidden relative min-w-0">
+      <div className="flex-1 flex flex-col h-full min-h-0 overflow-hidden relative min-w-0">
         {/* Top Header with live ticker marquee */}
         <Header
           indices={dashboardData?.indices}
@@ -228,7 +228,7 @@ export function App() {
         />
 
         {/* Viewport Content */}
-        <main className="flex-1 overflow-y-auto px-3 sm:px-6 lg:px-8 py-4 sm:py-6 relative">
+        <main className="flex-1 min-h-0 overflow-y-auto px-3 sm:px-6 lg:px-8 py-3 sm:py-6 relative">
           {activeView === 'dashboard' && (
             <MarketDashboardView
               country={country}
@@ -274,7 +274,7 @@ export function App() {
         </main>
 
         {/* 3. Omnibar Docked at the Bottom (with IN/US Country Dropdown) */}
-        <div className="sticky bottom-0 left-0 right-0 z-30 pointer-events-auto">
+        <div className="shrink-0 w-full z-30 pointer-events-auto bg-[#2a262b]">
           <Omnibar
             country={country}
             onSelectCountry={handleSelectCountry}
