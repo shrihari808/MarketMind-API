@@ -14,8 +14,9 @@ name: Demo Mode Keep-Alive Ping
 
 on:
   schedule:
-    # Runs every 10 minutes (Render spins down after 15 mins of inactivity)
-    - cron: '*/10 * * * *'
+    # Runs every 8 minutes (Render spins down after 15 mins of inactivity)
+    # Staggered interval provides a buffer against GitHub Actions scheduling queue delays
+    - cron: '*/8 * * * *'
   workflow_dispatch:
     inputs:
       force_ping:
@@ -32,19 +33,24 @@ jobs:
       - name: Evaluate Demo Mode Flag
         id: check_status
         run: |
-          # Read repository variable (defaults to false if not configured yet)
+          # Read repository variable (defaults to active unless explicitly set to false)
           DEMO_VAR="${{ vars.DEMO_KEEP_ALIVE }}"
           MANUAL_OVERRIDE="${{ github.event.inputs.force_ping }}"
 
           echo "Repository Variable DEMO_KEEP_ALIVE: '$DEMO_VAR'"
           echo "Manual Override: '$MANUAL_OVERRIDE'"
 
-          if [ "$DEMO_VAR" = "true" ] || [ "$DEMO_VAR" = "True" ] || [ "$MANUAL_OVERRIDE" = "true" ]; then
-            echo "SHOULD_PING=true" >> $GITHUB_OUTPUT
-            echo "::notice ::Demo Keep-Alive is ACTIVE. Proceeding to ping Render."
+          if [ "$DEMO_VAR" = "false" ] || [ "$DEMO_VAR" = "False" ]; then
+            if [ "$MANUAL_OVERRIDE" = "true" ]; then
+              echo "SHOULD_PING=true" >> $GITHUB_OUTPUT
+              echo "::notice ::Manual override active. Proceeding to ping Render."
+            else
+              echo "SHOULD_PING=false" >> $GITHUB_OUTPUT
+              echo "::notice ::Demo Keep-Alive is explicitly INACTIVE (DEMO_KEEP_ALIVE=false). Skipping ping."
+            fi
           else
-            echo "SHOULD_PING=false" >> $GITHUB_OUTPUT
-            echo "::notice ::Demo Keep-Alive is INACTIVE. Skipping ping to conserve Render free hours."
+            echo "SHOULD_PING=true" >> $GITHUB_OUTPUT
+            echo "::notice ::Demo Keep-Alive is ACTIVE (default). Proceeding to ping Render."
           fi
 
       - name: Ping Render Backend Health Endpoint

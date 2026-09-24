@@ -23,7 +23,7 @@ class RateLimitConfigRequest(BaseModel):
     reset_history: bool = Field(default=False, description="Clear active IP sliding window request counters")
 
 
-@router.get("/health", summary="System Health & Readiness Check")
+@router.api_route("/health", methods=["GET", "HEAD"], summary="System Health & Readiness Check")
 async def health_check(db: AsyncSession = Depends(get_db)) -> Dict[str, Any]:
     """
     Returns API version, system status, active providers, and verifies database connectivity.
@@ -51,7 +51,7 @@ async def health_check(db: AsyncSession = Depends(get_db)) -> Dict[str, Any]:
     }
 
 
-@router.get("/health/rate-limit", summary="Inspect Active Rate Limit Configuration")
+@router.api_route("/health/rate-limit", methods=["GET", "HEAD"], summary="Inspect Active Rate Limit Configuration")
 async def get_rate_limit_config() -> Dict[str, Any]:
     """
     Returns current rate limiting state: whether active and current requests-per-minute threshold.

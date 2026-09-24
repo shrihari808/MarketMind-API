@@ -131,7 +131,7 @@ if os.path.exists(frontend_assets_dir):
 
 
 # --- 8. Root Landing Endpoint ---
-@app.get("/", tags=["Root"], summary="MarketMind v2 API Gateway Welcome & Web Terminal")
+@app.api_route("/", methods=["GET", "HEAD"], tags=["Root"], summary="MarketMind v2 API Gateway Welcome & Web Terminal")
 async def root_gateway(request: Request):
     accept_header = request.headers.get("accept", "")
     index_file = os.path.join(frontend_dist_dir, "index.html")
