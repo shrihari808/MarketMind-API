@@ -193,10 +193,26 @@ class GeminiLLMClient(LLMClient):
             batch = texts[b_idx:b_idx + effective_batch_size]
             logger.debug(f"[GeminiLLMClient] Embedding batch {b_idx // effective_batch_size + 1}/{total_batches} ({len(batch)} texts)...")
 
-            response = await client.aio.models.embed_content(
-                model=self.embedding_model_name,
-                contents=batch,
-            )
+            model_to_use = self.embedding_model_name
+            if "text-embedding-004" in model_to_use:
+                model_to_use = "gemini-embedding-001"
+
+            try:
+                response = await client.aio.models.embed_content(
+                    model=model_to_use,
+                    contents=batch,
+                    config=types.EmbedContentConfig(output_dimensionality=768)
+                )
+            except Exception as e:
+                if model_to_use != "gemini-embedding-001":
+                    logger.warning(f"[GeminiLLMClient] Model '{model_to_use}' failed ({e}). Falling back to 'gemini-embedding-001'.")
+                    response = await client.aio.models.embed_content(
+                        model="gemini-embedding-001",
+                        contents=batch,
+                        config=types.EmbedContentConfig(output_dimensionality=768)
+                    )
+                else:
+                    raise e
 
             if response and response.embeddings:
                 for emb in response.embeddings:

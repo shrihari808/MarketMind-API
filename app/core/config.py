@@ -33,7 +33,7 @@ class Settings(BaseSettings):
     # Google Gemini Configuration
     GEMINI_API_KEY: Optional[str] = Field(default=None, description="Google AI Studio Gemini API Key")
     GEMINI_MODEL: str = Field(default="gemini-2.0-flash", description="Default model for synthesis")
-    GEMINI_EMBEDDING_MODEL: str = Field(default="text-embedding-004", description="Default embedding model")
+    GEMINI_EMBEDDING_MODEL: str = Field(default="gemini-embedding-001", description="Default embedding model")
     LLM_TEMPERATURE: float = Field(default=0.2, description="Default temperature for LLM generation")
     EMBEDDING_BATCH_SIZE: int = Field(default=32, description="Batch size for generating embeddings")
 
