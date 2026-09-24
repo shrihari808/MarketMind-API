@@ -1,0 +1,70 @@
+name: Demo Mode Keep-Alive Ping
+
+# ==============================================================================
+# MarketMind API - Scheduled Warm-Up Ping for Render Free Tier
+#
+# Controlled dynamically by the GitHub Repository Variable:
+#   Repository Settings -> Secrets and variables -> Actions -> Variables -> DEMO_KEEP_ALIVE
+#
+#   DEMO_KEEP_ALIVE = true   -> Pings Render every 10 mins (keeps backend 100% warm for demos)
+#   DEMO_KEEP_ALIVE = false  -> Immediately skips ping (preserves Render 750h free tier hours)
+#
+# Can also be triggered manually anytime via the "Run workflow" button in Actions tab.
+# ==============================================================================
+
+on:
+  schedule:
+    # Runs every 10 minutes (Render spins down after 15 mins of inactivity)
+    - cron: '*/10 * * * *'
+  workflow_dispatch:
+    inputs:
+      force_ping:
+        description: 'Force ping immediately regardless of DEMO_KEEP_ALIVE value'
+        type: boolean
+        required: true
+        default: true
+
+jobs:
+  keepalive:
+    name: Check & Ping Backend
+    runs-on: ubuntu-latest
+    steps:
+      - name: Evaluate Demo Mode Flag
+        id: check_status
+        run: |
+          # Read repository variable (defaults to false if not configured yet)
+          DEMO_VAR="${{ vars.DEMO_KEEP_ALIVE }}"
+          MANUAL_OVERRIDE="${{ github.event.inputs.force_ping }}"
+
+          echo "Repository Variable DEMO_KEEP_ALIVE: '$DEMO_VAR'"
+          echo "Manual Override: '$MANUAL_OVERRIDE'"
+
+          if [ "$DEMO_VAR" = "true" ] || [ "$DEMO_VAR" = "True" ] || [ "$MANUAL_OVERRIDE" = "true" ]; then
+            echo "SHOULD_PING=true" >> $GITHUB_OUTPUT
+            echo "::notice ::Demo Keep-Alive is ACTIVE. Proceeding to ping Render."
+          else
+            echo "SHOULD_PING=false" >> $GITHUB_OUTPUT
+            echo "::notice ::Demo Keep-Alive is INACTIVE. Skipping ping to conserve Render free hours."
+          fi
+
+      - name: Ping Render Backend Health Endpoint
+        if: steps.check_status.outputs.SHOULD_PING == 'true'
+        run: |
+          TARGET_URL="https://marketmind-api-508r.onrender.com/api/v2/health"
+          echo "Sending HTTP GET probe to: $TARGET_URL"
+
+          START_TIME=$(date +%s)
+          HTTP_CODE=$(curl -s -o /tmp/response.json -w "%{http_code}" --max-time 60 "$TARGET_URL" || echo "000")
+          END_TIME=$(date +%s)
+          ELAPSED=$((END_TIME - START_TIME))
+
+          echo "HTTP Response Status Code: $HTTP_CODE (Elapsed: ${ELAPSED}s)"
+
+          if [ "$HTTP_CODE" = "200" ]; then
+            echo "Backend successfully validated and kept warm:"
+            cat /tmp/response.json | jq . || cat /tmp/response.json
+          elif [ "$HTTP_CODE" = "000" ]; then
+            echo "Warning: Health probe timed out or failed to connect (likely booting from cold start)."
+          else
+            echo "Received HTTP $HTTP_CODE from health probe."
+          fi

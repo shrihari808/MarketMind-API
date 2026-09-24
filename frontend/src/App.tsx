@@ -12,12 +12,25 @@ import { StockInspectorView } from './components/stocks/StockInspectorView';
 import { useClientIdentity } from './hooks/useClientIdentity';
 import { useSSEStream } from './hooks/useSSEStream';
 import { api } from './lib/api';
+import { ColdStartNotification } from './components/common/ColdStartNotification';
 import {
   MarketDashboardResponse,
   ChatSessionSummary,
   ChatMessageItem,
   SourceCitation,
 } from './types/api';
+
+const CACHE_KEY_PREFIX = 'marketmind_dashboard_cache_';
+
+function getCachedDashboard(c: 'IN' | 'US'): MarketDashboardResponse | null {
+  try {
+    const raw = localStorage.getItem(`${CACHE_KEY_PREFIX}${c}`);
+    if (raw) return JSON.parse(raw);
+  } catch {
+    // ignore
+  }
+  return null;
+}
 
 export function App() {
   // 1. Client Identity & Region State
@@ -32,8 +45,26 @@ export function App() {
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
 
   // 4. Market Dashboard State
-  const [dashboardData, setDashboardData] = useState<MarketDashboardResponse | null>(null);
+  const [dashboardData, setDashboardData] = useState<MarketDashboardResponse | null>(() => getCachedDashboard('IN'));
   const [isDashboardLoading, setIsDashboardLoading] = useState(false);
+
+  // Cold Start Detection State
+  const [isColdStarting, setIsColdStarting] = useState(false);
+  const [coldStartSeconds, setColdStartSeconds] = useState(0);
+  const [isBackendConnected, setIsBackendConnected] = useState(false);
+  const isBackendConnectedRef = React.useRef(false);
+  const retryTimeoutRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
+  const coldStartTimerRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
+  const elapsedIntervalRef = React.useRef<ReturnType<typeof setInterval> | null>(null);
+
+  const markBackendConnected = useCallback(() => {
+    isBackendConnectedRef.current = true;
+    setIsBackendConnected(true);
+    setIsColdStarting(false);
+    if (coldStartTimerRef.current) clearTimeout(coldStartTimerRef.current);
+    if (elapsedIntervalRef.current) clearInterval(elapsedIntervalRef.current);
+    if (retryTimeoutRef.current) clearTimeout(retryTimeoutRef.current);
+  }, []);
 
   // 5. Chat & Conversation State
   const [sessions, setSessions] = useState<ChatSessionSummary[]>([]);
@@ -54,18 +85,65 @@ export function App() {
     stopStreaming,
   } = useSSEStream(clientId);
 
+  const loadDashboardRef = React.useRef<(targetCountry?: 'IN' | 'US', forceRefresh?: boolean) => Promise<void>>(() => Promise.resolve());
+
   // --- Fetch Dashboard Data ---
   const loadDashboard = useCallback(async (targetCountry: 'IN' | 'US' = country, forceRefresh: boolean = false) => {
     setIsDashboardLoading(true);
     try {
       const data = await api.getDashboard(targetCountry, forceRefresh, clientId);
       setDashboardData(data);
+      try {
+        localStorage.setItem(`${CACHE_KEY_PREFIX}${targetCountry}`, JSON.stringify(data));
+      } catch {
+        // ignore storage errors
+      }
+      markBackendConnected();
     } catch (err) {
       console.error('Failed to load dashboard:', err);
+      // Auto-retry after 5s if backend is still booting from cold sleep
+      if (!isBackendConnectedRef.current) {
+        if (retryTimeoutRef.current) clearTimeout(retryTimeoutRef.current);
+        retryTimeoutRef.current = setTimeout(() => {
+          loadDashboardRef.current(targetCountry, false);
+        }, 5000);
+      }
     } finally {
       setIsDashboardLoading(false);
     }
-  }, [country, clientId]);
+  }, [country, clientId, markBackendConnected]);
+
+  useEffect(() => {
+    loadDashboardRef.current = loadDashboard;
+  }, [loadDashboard]);
+
+  // Initial Cold Start Probe & Elapsed Timer
+  useEffect(() => {
+    // If not responded within 2.5s, activate cold start indicator
+    coldStartTimerRef.current = setTimeout(() => {
+      if (!isBackendConnectedRef.current) {
+        setIsColdStarting(true);
+        elapsedIntervalRef.current = setInterval(() => {
+          setColdStartSeconds((prev) => prev + 1);
+        }, 1000);
+      }
+    }, 2500);
+
+    // Fast health ping alongside dashboard call
+    api.getHealth()
+      .then(() => {
+        markBackendConnected();
+      })
+      .catch(() => {
+        // Expected during deep cold start; loadDashboard retry loop handles reconnection
+      });
+
+    return () => {
+      if (coldStartTimerRef.current) clearTimeout(coldStartTimerRef.current);
+      if (elapsedIntervalRef.current) clearInterval(elapsedIntervalRef.current);
+      if (retryTimeoutRef.current) clearTimeout(retryTimeoutRef.current);
+    };
+  }, [markBackendConnected]);
 
   // Load dashboard on initial mount & country switch
   useEffect(() => {
@@ -89,6 +167,10 @@ export function App() {
   // --- Handle Country Selection ---
   const handleSelectCountry = (newCountry: 'IN' | 'US') => {
     setCountry(newCountry);
+    const cached = getCachedDashboard(newCountry);
+    if (cached) {
+      setDashboardData(cached);
+    }
     loadDashboard(newCountry);
   };
 
@@ -225,6 +307,14 @@ export function App() {
         <Header
           indices={dashboardData?.indices}
           onToggleMobileSidebar={() => setIsMobileSidebarOpen((prev) => !prev)}
+        />
+
+        {/* Cold Start Status Notification */}
+        <ColdStartNotification
+          isColdStarting={isColdStarting}
+          elapsedSeconds={coldStartSeconds}
+          isBackendConnected={isBackendConnected}
+          hasCachedData={dashboardData !== null}
         />
 
         {/* Viewport Content */}
