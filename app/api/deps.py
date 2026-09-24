@@ -25,6 +25,7 @@ from app.services.document_rag import DocumentRAGService
 from app.services.reddit_rag import RedditRAGService
 from app.services.dashboard import MarketDashboardService
 from app.services.deep_research import DeepResearchService
+from app.services.filings_vault import DocumentVaultService
 
 
 # --- Anonymous Client Identity Dependency ---
@@ -139,3 +140,10 @@ def get_deep_research_service(
         search_engine=search,
         scraper=scraper
     )
+
+
+def get_document_vault_service(
+    llm: LLMClient = Depends(get_llm_client)
+) -> DocumentVaultService:
+    """Injects configured DocumentVaultService backed by LanceDB."""
+    return DocumentVaultService(llm_client=llm)

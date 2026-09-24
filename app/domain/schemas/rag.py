@@ -95,3 +95,49 @@ class DeepResearchResult(BaseModel):
     sources: List[SourceCitation] = Field(default_factory=list)
     created_at: str = Field(default="")
     pdf_available: bool = False
+
+
+class VaultDocumentItem(BaseModel):
+    """Metadata of an indexed historical filing or document in the vault."""
+    doc_id: str = Field(..., description="Unique document identifier")
+    ticker: str = Field(..., description="Associated company ticker symbol")
+    title: str = Field(..., description="Document title or description")
+    doc_type: str = Field(default="general", description="10-K | 10-Q | annual_report | transcript | presentation | general")
+    fiscal_year: Optional[int] = Field(default=None, description="Fiscal year (e.g. 2024)")
+    quarter: Optional[str] = Field(default=None, description="Quarter if applicable (e.g. Q1, Q2, Q3, Q4)")
+    file_name: str = Field(default="", description="Original file name")
+    total_chunks: int = Field(default=0, description="Number of indexed passage vectors")
+    created_at: str = Field(default="", description="ISO timestamp of indexing")
+
+
+class VaultQueryRequest(BaseModel):
+    """Query request for historical filings vault."""
+    query: str = Field(..., min_length=2, max_length=1000, description="Financial research or filing question")
+    ticker: Optional[str] = Field(default=None, description="Filter by company ticker (e.g. TATAMOTORS.NS, NVDA)")
+    doc_type: Optional[str] = Field(default=None, description="Filter by document type (e.g. 10-K, 10-Q, annual_report, transcript)")
+    fiscal_year: Optional[int] = Field(default=None, description="Filter by fiscal year (e.g. 2024)")
+    top_k: int = Field(default=6, description="Number of passage chunks to retrieve")
+    session_id: Optional[str] = Field(default=None)
+    client_id: Optional[str] = Field(default=None)
+
+
+class VaultPassageResult(BaseModel):
+    """Passage chunk retrieved from the filings vault."""
+    doc_id: str
+    ticker: str
+    title: str
+    doc_type: str
+    fiscal_year: Optional[int] = None
+    quarter: Optional[str] = None
+    page_number: Optional[int] = None
+    text: str
+    score: float = 0.0
+
+
+class VaultRAGResult(BaseModel):
+    """Non-streaming response from the historical document vault."""
+    query: str
+    answer: str
+    passages: List[VaultPassageResult] = []
+    tokens_used: int = 0
+    duration_seconds: float = 0.0

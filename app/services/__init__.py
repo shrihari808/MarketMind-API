@@ -9,6 +9,7 @@ from app.services.document_rag import DocumentRAGService
 from app.services.reddit_rag import RedditRAGService
 from app.services.dashboard import MarketDashboardService
 from app.services.deep_research import DeepResearchService
+from app.services.filings_vault import DocumentVaultService
 
 __all__ = [
     "BM25Reranker",
@@ -16,6 +17,7 @@ __all__ = [
     "QueryAnalyzer",
     "WebRAGService",
     "DocumentRAGService",
+    "DocumentVaultService",
     "RedditRAGService",
     "MarketDashboardService",
     "DeepResearchService",

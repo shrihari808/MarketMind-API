@@ -8,6 +8,10 @@ from app.domain.schemas.rag import (
     ScrapedDocument,
     RAGResult,
     SSEMessage,
+    VaultDocumentItem,
+    VaultQueryRequest,
+    VaultPassageResult,
+    VaultRAGResult,
 )
 from app.domain.schemas.market import (
     StockQuote,
@@ -23,6 +27,10 @@ __all__ = [
     "ScrapedDocument",
     "RAGResult",
     "SSEMessage",
+    "VaultDocumentItem",
+    "VaultQueryRequest",
+    "VaultPassageResult",
+    "VaultRAGResult",
     "StockQuote",
     "MarketIndex",
     "StockMover",

@@ -60,8 +60,12 @@ class Settings(BaseSettings):
     BRAVE_API_KEY: Optional[str] = Field(default=None, description="Brave Search API Key")
     TAVILY_API_KEY: Optional[str] = Field(default=None, description="Tavily API Key")
 
-    # Vector Store
+    # Vector Store & LanceDB
     CHROMA_PERSIST_DIRECTORY: str = "./data/chroma"
+    LANCEDB_URI: str = Field(default="./data/lancedb", description="Local directory path for LanceDB vector storage")
+    SEMANTIC_CACHE_ENABLED: bool = Field(default=True, description="Enable semantic caching for web news RAG")
+    SEMANTIC_CACHE_TTL_HOURS: float = Field(default=24.0, description="Semantic cache expiration in hours")
+    SEMANTIC_CACHE_SIMILARITY_THRESHOLD: float = Field(default=0.80, description="Minimum cosine similarity for cache hit (0.0 to 1.0)")
 
     # Market Dashboard Configuration
     DASHBOARD_ENABLED: bool = Field(default=True, description="Enable or disable market dashboard services")

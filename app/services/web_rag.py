@@ -26,12 +26,13 @@ from app.infrastructure.llm.gemini import GeminiLLMClient
 from app.infrastructure.market.yfinance_client import YFinanceMarketClient
 from app.infrastructure.scrapers.web_scraper import TrafilaturaWebScraper
 from app.infrastructure.search.factory import SearchEngineFactory
+from app.infrastructure.vector_store.lance_store import LanceVectorStore
 from app.services.query_analyzer import QueryAnalyzer
 from app.services.reranker import BM25Reranker, HybridReranker
 
 
 class WebRAGService:
-    """End-to-end financial Web RAG service adhering to Clean Architecture."""
+    """End-to-end financial Web RAG service adhering to Clean Architecture with LanceDB semantic caching."""
 
     def __init__(
         self,
@@ -39,6 +40,7 @@ class WebRAGService:
         search_engine: Optional[SearchEngine] = None,
         scraper: Optional[WebScraper] = None,
         market_client: Optional[MarketDataClient] = None,
+        vector_store: Optional[LanceVectorStore] = None,
         use_hybrid_reranker: bool = False
     ):
         settings = get_settings()
@@ -46,6 +48,7 @@ class WebRAGService:
         self.search_engine = search_engine or SearchEngineFactory.get_search_engine()
         self.scraper = scraper or TrafilaturaWebScraper(timeout_seconds=settings.SCRAPER_TIMEOUT_SECONDS)
         self.market = market_client or YFinanceMarketClient()
+        self.vector_store = vector_store or LanceVectorStore(llm_client=self.llm)
         self.query_analyzer = QueryAnalyzer(llm_client=self.llm, market_client=self.market)
 
         if use_hybrid_reranker:
@@ -151,83 +154,156 @@ class WebRAGService:
             logger.info(f"[WebRAGService] Ticker '{analysis.detected_ticker}' detected. Dispatching live quote fetch.")
             quote_task = asyncio.create_task(self.market.get_quote(analysis.detected_ticker))
 
-        # Step 3: Multi-Query Search
-        yield SSEMessage(event="status", data={"step": "searching", "message": "Searching financial news and web..."})
-        search_queries = analysis.sub_queries or [request.query]
-        max_search = settings.MAX_SEARCH_RESULTS
-        per_query_limit = max(2, max_search // len(search_queries) + 1)
-        logger.info(f"[WebRAGService] Dispatching search across {len(search_queries)} sub-queries (per_query_limit={per_query_limit})...")
+        # Step 2.5: Check LanceDB Semantic News Cache
+        cached_passages: List[PassageChunk] = []
+        is_cache_hit = False
 
-        search_tasks = [
-            self.search_engine.search_news(q, max_results=per_query_limit, country=request.country)
-            for q in search_queries[:2]
-        ] + [
-            self.search_engine.search(search_queries[-1], max_results=per_query_limit, country=request.country)
-        ]
-        search_results_nested = await asyncio.gather(*search_tasks, return_exceptions=True)
+        if settings.SEMANTIC_CACHE_ENABLED and self.vector_store:
+            try:
+                min_time = time.time() - (settings.SEMANTIC_CACHE_TTL_HOURS * 3600)
+                max_dist = 1.0 - settings.SEMANTIC_CACHE_SIMILARITY_THRESHOLD
+                cache_results = await self.vector_store.query_news_cache(
+                    query=request.query,
+                    min_timestamp=min_time,
+                    ticker=analysis.detected_ticker,
+                    top_k=5,
+                    max_distance=max_dist
+                )
+                if cache_results and len(cache_results) >= 2:
+                    logger.info(f"[WebRAGService] Semantic Cache HIT! Found {len(cache_results)} matching passage(s).")
+                    yield SSEMessage(
+                        event="status",
+                        data={"step": "cache_hit", "message": f"Retrieved {len(cache_results)} verified passage(s) from semantic news cache..."}
+                    )
+                    top_citations = []
+                    for idx, cr in enumerate(cache_results, start=1):
+                        url = cr.get("url") or f"https://cached.news/{idx}"
+                        cit = SourceCitation(
+                            id=idx,
+                            title=cr.get("title") or "Cached Financial News",
+                            url=url,
+                            domain=cr.get("domain") or BM25Reranker.extract_domain(url),
+                            snippet=cr.get("text", "")[:200]
+                        )
+                        top_citations.append(cit)
+                        cached_passages.append(
+                            PassageChunk(
+                                text=cr.get("text", ""),
+                                source=cit,
+                                score=cr.get("score", 0.9),
+                                chunk_index=idx
+                            )
+                        )
 
-        all_citations: List[SourceCitation] = []
-        seen_urls = set()
-        for res in search_results_nested:
-            if isinstance(res, list):
-                for item in res:
-                    if item.url not in seen_urls:
-                        seen_urls.add(item.url)
-                        all_citations.append(item)
+                    yield SSEMessage(
+                        event="sources",
+                        data={"sources": [c.model_dump() for c in top_citations]}
+                    )
+                    selected_passages = cached_passages
+                    is_cache_hit = True
+            except Exception as e:
+                logger.warning(f"[WebRAGService] News cache check error: {e}")
 
-        # Cap citations and re-index
-        top_citations = all_citations[:max_search]
-        for idx, cit in enumerate(top_citations, start=1):
-            cit.id = idx
+        if not is_cache_hit:
+            # Step 3: Multi-Query Search
+            yield SSEMessage(event="status", data={"step": "searching", "message": "Searching financial news and web..."})
+            search_queries = analysis.sub_queries or [request.query]
+            max_search = settings.MAX_SEARCH_RESULTS
+            per_query_limit = max(2, max_search // len(search_queries) + 1)
+            logger.info(f"[WebRAGService] Dispatching search across {len(search_queries)} sub-queries (per_query_limit={per_query_limit})...")
 
-        citations_map = {c.url: c for c in top_citations}
-        logger.info(f"[WebRAGService] Found {len(all_citations)} unique search results. Filtered to top {len(top_citations)} citations.")
+            search_tasks = [
+                self.search_engine.search_news(q, max_results=per_query_limit, country=request.country)
+                for q in search_queries[:2]
+            ] + [
+                self.search_engine.search(search_queries[-1], max_results=per_query_limit, country=request.country)
+            ]
+            search_results_nested = await asyncio.gather(*search_tasks, return_exceptions=True)
 
-        # Step 4: Emit Citations to Client Early
-        yield SSEMessage(
-            event="sources",
-            data={"sources": [c.model_dump() for c in top_citations]}
-        )
+            all_citations: List[SourceCitation] = []
+            seen_urls = set()
+            for res in search_results_nested:
+                if isinstance(res, list):
+                    for item in res:
+                        if item.url not in seen_urls:
+                            seen_urls.add(item.url)
+                            all_citations.append(item)
 
-        # Step 5: Concurrently Scrape Top URLs
-        yield SSEMessage(event="status", data={"step": "reading_sources", "message": "Scraping and analyzing source articles..."})
-        urls_to_scrape = [c.url for c in top_citations]
-        logger.info(f"[WebRAGService] Scraping {len(urls_to_scrape)} URLs...")
-        scraped_docs = await self.scraper.scrape_many(urls_to_scrape)
+            # Cap citations and re-index
+            top_citations = all_citations[:max_search]
+            for idx, cit in enumerate(top_citations, start=1):
+                cit.id = idx
 
-        # Step 6: Passage Extraction and BM25 Reranking
-        passages = self._extract_passages(scraped_docs, citations_map)
-        
-        # If scraper failed to extract full text, build fallback passages from search snippets
-        if not passages and top_citations:
-            logger.info("[WebRAGService] No article bodies extracted. Falling back to search snippets for passage pool.")
-            for c in top_citations:
-                if c.snippet:
-                    passages.append(
-                        PassageChunk(
-                            text=f"Title: {c.title}\n{c.snippet}",
-                            source=c,
-                            score=1.0,
-                            chunk_index=0
+            citations_map = {c.url: c for c in top_citations}
+            logger.info(f"[WebRAGService] Found {len(all_citations)} unique search results. Filtered to top {len(top_citations)} citations.")
+
+            # Step 4: Emit Citations to Client Early
+            yield SSEMessage(
+                event="sources",
+                data={"sources": [c.model_dump() for c in top_citations]}
+            )
+
+            # Step 5: Concurrently Scrape Top URLs
+            yield SSEMessage(event="status", data={"step": "reading_sources", "message": "Scraping and analyzing source articles..."})
+            urls_to_scrape = [c.url for c in top_citations]
+            logger.info(f"[WebRAGService] Scraping {len(urls_to_scrape)} URLs...")
+            scraped_docs = await self.scraper.scrape_many(urls_to_scrape)
+
+            # Step 6: Passage Extraction and BM25 Reranking
+            passages = self._extract_passages(scraped_docs, citations_map)
+            
+            # If scraper failed to extract full text, build fallback passages from search snippets
+            if not passages and top_citations:
+                logger.info("[WebRAGService] No article bodies extracted. Falling back to search snippets for passage pool.")
+                for c in top_citations:
+                    if c.snippet:
+                        passages.append(
+                            PassageChunk(
+                                text=f"Title: {c.title}\n{c.snippet}",
+                                source=c,
+                                score=1.0,
+                                chunk_index=0
+                            )
+                        )
+
+            # Rerank and diversify passages
+            logger.info(f"[WebRAGService] Reranking {len(passages)} passages...")
+            if isinstance(self.reranker, HybridReranker):
+                selected_passages = await self.reranker.rerank(
+                    query=request.query,
+                    passages=passages,
+                    top_k=5,
+                    max_per_domain=2
+                )
+            else:
+                selected_passages = self.reranker.rerank(
+                    query=request.query,
+                    passages=passages,
+                    top_k=5,
+                    max_per_domain=2
+                )
+
+            # Background Caching into LanceDB
+            if settings.SEMANTIC_CACHE_ENABLED and self.vector_store and selected_passages:
+                try:
+                    passages_to_cache = [
+                        {
+                            "text": p.text,
+                            "url": p.source.url,
+                            "title": p.source.title,
+                            "domain": p.source.domain or "",
+                            "snippet": p.source.snippet or "",
+                        }
+                        for p in selected_passages
+                    ]
+                    asyncio.create_task(
+                        self.vector_store.add_news_passages(
+                            passages=passages_to_cache,
+                            ticker=analysis.detected_ticker
                         )
                     )
-
-        # Rerank and diversify passages
-        logger.info(f"[WebRAGService] Reranking {len(passages)} passages...")
-        if isinstance(self.reranker, HybridReranker):
-            selected_passages = await self.reranker.rerank(
-                query=request.query,
-                passages=passages,
-                top_k=5,
-                max_per_domain=2
-            )
-        else:
-            selected_passages = self.reranker.rerank(
-                query=request.query,
-                passages=passages,
-                top_k=5,
-                max_per_domain=2
-            )
+                except Exception as e:
+                    logger.warning(f"[WebRAGService] Background caching dispatch failed: {e}")
 
         # Await real-time quote if initiated
         live_quote: Optional[StockQuote] = None
