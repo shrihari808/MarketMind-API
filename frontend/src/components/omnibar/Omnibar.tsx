@@ -103,7 +103,7 @@ export const Omnibar: React.FC<OmnibarProps> = ({
         </div>
 
         {/* Input Bar with Country Selector */}
-        <div className="relative flex items-center rounded-xl bg-[#221f23] border border-[#3d363f] focus-within:border-[#9013fe] focus-within:ring-2 focus-within:ring-[#9013fe]/20 shadow-lg transition-all p-1.5">
+        <div className="relative flex items-center rounded-xl bg-[#221f23] border border-[#9013fe] focus-within:ring-2 focus-within:ring-[#9013fe]/20 shadow-lg transition-all p-1.5">
           {/* Country Dropdown */}
           <div className="relative shrink-0" ref={dropdownRef}>
             <button

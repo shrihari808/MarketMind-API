@@ -59,10 +59,10 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
   const navItems = [
     { id: 'dashboard', label: 'Market Dashboard', icon: LayoutDashboard, badge: 'Live' },
-    { id: 'chat', label: 'AI Search & Chat', icon: MessageSquare, badge: 'SSE' },
+    { id: 'chat', label: 'AI Search & Chat', icon: MessageSquare },
     { id: 'document', label: 'Document Analyzer', icon: FileText, badge: 'Multimodal' },
-    { id: 'research', label: 'Deep Equity Research', icon: BarChart3, badge: 'PDF' },
-    { id: 'sentiment', label: 'Reddit Sentiment', icon: TrendingUp, badge: 'Keyless' },
+    { id: 'research', label: 'Deep Equity Research', icon: BarChart3 },
+    { id: 'sentiment', label: 'Reddit Sentiment', icon: TrendingUp },
     { id: 'stocks', label: 'Stock Inspector', icon: Search, badge: 'Realtime' },
   ];
 
