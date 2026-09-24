@@ -232,9 +232,11 @@ stock_output.json
 dashboard_output.json
 response.txt
 api/dashboard/outputs/
+v1/api/dashboard/outputs/
 .vscode/
 timeline.json
 /logs/
+v1/logs/
 graph_output.json
 output.pdf
 data/

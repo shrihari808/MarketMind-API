@@ -1,237 +1,151 @@
-# App Service - Financial Markets API
+# MarketMind API (v2)
 
-A comprehensive FastAPI-based service for financial market analysis, news aggregation, and AI-powered research tools.
+[![FastAPI](https://img.shields.io/badge/FastAPI-v0.115+-009688.svg?logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com)
+[![Python 3.11+](https://img.shields.io/badge/Python-3.11+-3776AB.svg?logo=python&logoColor=white)](https://www.python.org/)
+[![Google Gemini](https://img.shields.io/badge/Google_Gemini-2.0_Flash-4285F4.svg?logo=google&logoColor=white)](https://ai.google.dev/)
+[![React 19](https://img.shields.io/badge/React-19-61DAFB.svg?logo=react&logoColor=black)](https://react.dev/)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5.x-3178C6.svg?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
+[![Vite](https://img.shields.io/badge/Vite-6.x-646CFF.svg?logo=vite&logoColor=white)](https://vitejs.dev/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-## Prerequisites
+**MarketMind API** is an institutional-grade, full-stack financial intelligence application and API engine. Re-engineered from the ground up for strict **512 MB RAM footprint** and **$0 free-tier cloud deployment** (Render + Vercel + Neon/Supabase), MarketMind combines real-time equity market data, streaming Web RAG, native multimodal document analysis, keyless retail sentiment discovery, and downloadable institutional equity research reports.
 
-- Python 3.8 or higher
-- Node.js and PM2 (for process management)
-- PostgreSQL database
-- Virtual environment support
+---
 
-## Installation
+## 🏛️ Repository Organization
 
-### 1. Clone the Repository
+Following the completion of the v2 modernization phase, the repository is organized into distinct, modular layers:
 
-```bash
-git clone <repository-url>
-cd app_service
+```
+MarketMind-API/
+├── app/                  # Modernized Clean Architecture backend (MarketMind API v2)
+│   ├── api/              # RESTful route controllers & v2 master router
+│   ├── core/             # Configuration, logging, database, and rate limiting
+│   ├── domain/           # Business entities, Pydantic schemas, and abstract interfaces
+│   ├── infrastructure/   # Pluggable adapters (Gemini, LanceDB, YFinance, Scrapers, Search)
+│   └── services/         # Domain services (Web RAG, Document RAG, Reddit RAG, Dashboard, Research)
+├── frontend/             # Modern web terminal (Vite, React 19, TypeScript, Tailwind CSS)
+│   ├── src/              # React components, hooks, API clients, and theme styles
+│   └── dist/             # Production build distribution (embeddable in FastAPI)
+├── tests/                # Automated unit & integration tests (pytest + pytest-asyncio)
+├── v1/                   # 🗄️ Legacy Version 1 Archive (Prototypes, legacy files & original docs)
+│   ├── api/              # Legacy API endpoints (Pinecone, ChromaDB, LangChain, Neo4j)
+│   ├── streaming/        # Legacy streaming routes & socket handlers
+│   ├── static/           # Legacy prototype HTML/JS user interface
+│   ├── config.py         # Legacy configuration module
+│   ├── disclaimer.py     # Legacy disclaimer constants
+│   ├── token_logger.py   # Legacy token logger
+│   ├── run_pipeline.py   # Legacy knowledge graph pipeline script
+│   ├── run_financial_event_pipeline.py # Legacy financial event pipeline
+│   ├── Developer Guide.md# Legacy v1 developer guide
+│   └── README.md         # Legacy v1 README documentation
+├── main.py               # Root application entrypoint (delegates to app.main:app)
+├── Dockerfile            # Multi-stage production container build (Render-ready)
+├── render.yaml           # Infrastructure-as-Code Blueprint for Render cloud service
+├── requirements.txt      # Lean, categorized Python dependencies
+├── pytest.ini            # Pytest configuration with automatic pythonpath resolution
+└── dev_checklist.md      # Detailed v2 modernization transformation checklist
 ```
 
-### 2. Create Virtual Environment
+---
+
+## ✨ Features (v2)
+
+- **Streaming Web RAG with Typed SSE**: Real-time multi-angle financial retrieval with concurrent scraping, lightweight BM25 reranking, and citation tracking (`status`, `sources`, `token`, `complete`).
+- **Native Multimodal Document RAG**: Direct PDF ingestion leveraging Gemini's native 1M+ token context window—no heavy OCR, no vectorization bottlenecks, with visual balance sheet & chart analysis.
+- **Live Market Dashboard (SWR Cached)**: Real-time benchmark indices (Nifty 50, Sensex, S&P 500, Nasdaq), standout gainers/losers, and AI daily macro briefs with Stale-While-Revalidate caching in PostgreSQL/SQLite.
+- **Embedded LanceDB Semantic News Cache & Document Vault**: High-speed Apache Arrow columnar vector store running completely in-process (<30 MB RAM overhead).
+- **Keyless Retail Community Sentiment**: Reddit discussion extraction via JSON endpoints without requiring paid Reddit API credentials.
+- **Deep Equity Research & In-Memory PDF Export**: Automated 7-section institutional research generator producing downloadable PDF reports via ReportLab.
+- **Sliding-Window IP Rate Limiter**: 25 req/min protection with dynamic runtime inspection endpoints (`/api/v2/health/rate-limit`).
+- **Anonymous Device Sessions**: Multi-turn conversation persistence isolated by browser client UUID (`X-Client-ID`).
+
+---
+
+## 🚀 Quick Start
+
+### 1. Prerequisites
+
+- Python 3.11+
+- Node.js 18+ (for frontend development)
+- Free Google AI Studio API key (`GEMINI_API_KEY`)
+
+### 2. Backend Setup
 
 ```bash
-python3 -m venv .venv
-```
+# Clone the repository
+git clone https://github.com/shrihari808/MarketMind-API.git
+cd MarketMind-API
 
-### 3. Activate Virtual Environment
-
-**On Linux/Mac:**
-```bash
-source .venv/bin/activate
-```
-
-**On Windows:**
-```bash
+# Create and activate virtual environment
+python -m venv .venv
+# On Windows:
 .venv\Scripts\activate
-```
-
-### 4. Install Dependencies
-
-```bash
-pip install -r requirements.txt
-```
-
-**Note:** Some dependencies may require additional system libraries. If you encounter issues, you may need to install:
-- `build-essential` (Linux)
-- `python3-dev` (Linux)
-- Other system dependencies as needed
-
-### 5. Environment Variables Setup
-
-Create a `.env` file in the project root directory with the following required variables:
-
-```env
-# Database Configuration
-DATABASE_URL=postgresql://user:password@host:port/database
-PG_IP_ADDRESS=your_postgres_ip
-
-# OpenAI Configuration
-OPENAI_API_KEY=your_openai_api_key
-OPENAI_API_TYPE=openai  # or "azure" for Azure OpenAI
-OPENAI_CHAT_MODEL=gpt-4o
-
-# Azure OpenAI (if OPENAI_API_TYPE=azure)
-AZURE_OPENAI_ENDPOINT=your_azure_endpoint
-AZURE_OPENAI_API_KEY=your_azure_key
-OPENAI_API_VERSION=2024-02-15-preview
-AZURE_OPENAI_DEPLOYMENT_NAME=your_deployment_name
-AZURE_OPENAI_EMBEDDING_DEPLOYMENT_NAME=your_embedding_deployment
-
-# Vector Database
-PINECONE_API_KEY=your_pinecone_api_key
-PINECONE_INDEX_NAME=market-data-index
-
-# Search APIs
-BRAVE_API_KEY=your_brave_api_key
-SERPER_API_KEY=your_serper_api_key
-
-# Reddit API (for Reddit RAG)
-REDDIT_CLIENT_ID=your_reddit_client_id
-REDDIT_CLIENT_SECRET=your_reddit_client_secret
-REDDIT_USER_AGENT=your_user_agent
-
-# YouTube API
-youtube_api_key=your_youtube_api_key
-rapid_key=your_rapidapi_key
-
-# Other Services
-GROQ_API_KEY=your_groq_api_key
-HUGGINGFACEHUB_API_TOKEN=your_huggingface_token
-CMOTS_BEARER_TOKEN=your_cmots_token
-node_key=your_node_key
-
-# AWS S3 (for document storage)
-access_key=your_aws_access_key
-sect_access_key=your_aws_secret_key
-content_bucket=your_s3_bucket_name
-
-# ChromaDB
-CHROMA_HOST=localhost
-
-# API Security
-AI_KEY=your_ai_key
-```
-
-### 6. PM2 Configuration
-
-The project uses PM2 for process management. The configuration is defined in `ecosystem.config.js`.
-
-**Install PM2 globally (if not already installed):**
-```bash
-npm install -g pm2
-```
-
-**Update ecosystem.config.js paths:**
-Before running PM2, update the paths in `ecosystem.config.js` to match your system:
-- Update the virtual environment path (`.venv/bin/uvicorn` and `.venv/bin/python`)
-- Update the working directory path (`cwd`)
-
-**Start services with PM2:**
-```bash
-pm2 start ecosystem.config.js
-```
-
-This will start two processes:
-1. **app_service** - The main FastAPI application on port 8000
-2. **chroma_db** - ChromaDB server on port 9001
-
-**Useful PM2 commands:**
-```bash
-# Restart all services
-pm2 restart all
-
-# Stop all services
-pm2 stop all
-
-# View logs
-pm2 logs
-
-# View status
-pm2 status
-
-# Delete all processes
-pm2 delete all
-```
-
-### 7. Verify Installation
-
-Once the services are running, you can verify the installation by:
-
-1. **Check if the API is running:**
-   ```bash
-   curl http://localhost:8000/
-   ```
-
-2. **Access API documentation:**
-   - Swagger UI: http://localhost:8000/docs
-   - ReDoc: http://localhost:8000/redoc
-
-3. **Check ChromaDB:**
-   ```bash
-   curl http://localhost:9001/api/v1/heartbeat
-   ```
-
-## Running Without PM2
-
-If you prefer to run the application directly without PM2:
-
-```bash
-# Activate virtual environment
+# On Linux/macOS:
 source .venv/bin/activate
 
-# Start ChromaDB (in a separate terminal)
-chroma run --path ./chromadb --port 9001
+# Install dependencies
+pip install -r requirements.txt
 
-# Start FastAPI application (in another terminal)
-uvicorn main:app --host 0.0.0.0 --port 8000 --reload
+# Configure environment variables
+cp .env.example .env
+# Edit .env and supply your GEMINI_API_KEY
 ```
 
-## API Authentication
+### 3. Run the Backend
 
-Most endpoints require an API key. Include it in the request header:
-
-```
-X-API-Key: your_api_key_here
-```
-
-The API key is configured in `config.py` via the `VALID_API_KEY` variable.
-
-## Project Structure
-
-```
-app_service/
-├── api/                    # API endpoint modules
-│   ├── chatbot.py          # Main chatbot endpoint
-│   ├── tracker.py          # Contract tracking
-│   ├── dashboard/          # Dashboard endpoints
-│   ├── market_content/     # Market content endpoints
-│   ├── doc_rag/            # Document RAG endpoints
-│   ├── deep_research/      # Deep research pipeline
-│   └── ...
-├── streaming/              # Streaming RAG endpoints
-├── main.py                 # FastAPI application entry point
-├── config.py               # Configuration and environment setup
-├── requirements.txt        # Python dependencies
-├── ecosystem.config.js     # PM2 configuration
-└── .env                    # Environment variables (create this)
+```bash
+# Run with Uvicorn
+uvicorn main:app --reload --port 8000
+# or direct execution:
+python main.py
 ```
 
-## Troubleshooting
+FastAPI Interactive Docs will be accessible at: `http://localhost:8000/docs`
 
-### Database Connection Issues
-- Ensure PostgreSQL is running and accessible
-- Verify `DATABASE_URL` is correctly formatted
-- Check database credentials and network connectivity
+### 4. Frontend Setup
 
-### ChromaDB Issues
-- Ensure ChromaDB service is running on port 9001
-- Check if the `chromadb` directory has proper permissions
-- Verify ChromaDB is installed: `pip show chromadb`
+```bash
+cd frontend
+npm install
+npm run dev
+```
 
-### PM2 Issues
-- Ensure paths in `ecosystem.config.js` are correct
-- Check PM2 logs: `pm2 logs app_service`
-- Verify Python interpreter path is correct
+The Web Terminal will be available at: `http://localhost:5173`
 
-### Missing Dependencies
-- Reinstall dependencies: `pip install -r requirements.txt --upgrade`
-- Some packages may require system libraries (e.g., `lxml` requires `libxml2-dev`)
+---
 
-## Additional Notes
+## 🧪 Testing
 
-- The application uses scheduled tasks for data aggregation (configured in `main.py`)
-- Vector stores are initialized on startup
-- API documentation is available at `/docs` endpoint
-- CORS is enabled for all origins (configure in `main.py` if needed)
+Run the automated test suite using `pytest`:
 
+```bash
+pytest
+```
+
+---
+
+## 📡 API Endpoints (v2)
+
+| Method | Endpoint | Description |
+|---|---|---|
+| `GET` | `/` | API Gateway status or serves Web Terminal |
+| `GET` | `/api/v2/health` | System health, provider statuses & DB latency |
+| `GET` | `/api/v2/health/rate-limit` | Dynamic rate limiter status & configuration |
+| `POST` | `/api/v2/rag/web` | Streaming Financial Web RAG with SSE |
+| `POST` | `/api/v2/rag/document` | Multimodal PDF Document Q&A stream |
+| `POST` | `/api/v2/rag/document/summary` | Executive summary generation for uploaded PDF |
+| `POST` | `/api/v2/rag/reddit` | Retail community sentiment & thesis analysis |
+| `GET` | `/api/v2/dashboard` | Live market indices, gainers/losers & AI brief |
+| `GET` | `/api/v2/stocks/{ticker}` | Consolidated stock quote and fundamentals |
+| `POST` | `/api/v2/research` | Comprehensive 7-section equity report (Markdown) |
+| `POST` | `/api/v2/research/pdf` | Downloadable equity report (Binary PDF) |
+| `GET` | `/api/v2/chat/sessions` | List anonymous client conversation sessions |
+
+---
+
+## 📦 Cloud Deployment
+
+- **Backend (Render Free Tier)**: Uses `Dockerfile` and `render.yaml`. Deploys automatically on `git push origin main` with a built-in health check probe.
+- **Keep-Alive Cron**: Automated GitHub Actions workflow (`.github/workflows/demo_keepalive.yml`) prevents Render 15-minute idle spindown during demo periods.
+- **Frontend (Vercel)**: Configured via `frontend/vercel.json` for single-page routing and asset caching.

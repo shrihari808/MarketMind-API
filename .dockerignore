@@ -19,6 +19,7 @@ __pycache__/
 # Ignore local scratch scripts, tests, and temporary data
 scratch/
 tests/
+v1/
 data/
 *.sqlite
 *.db
