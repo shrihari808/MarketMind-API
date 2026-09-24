@@ -44,7 +44,7 @@ MarketMind-API/
 ├── render.yaml           # Infrastructure-as-Code Blueprint for Render cloud service
 ├── requirements.txt      # Lean, categorized Python dependencies
 ├── pytest.ini            # Pytest configuration with automatic pythonpath resolution
-└── dev_checklist.md      # Detailed v2 modernization transformation checklist
+└── DEVELOPER_GUIDE.md   # Comprehensive architecture and developer navigation guide
 ```
 
 ---

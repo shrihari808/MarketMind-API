@@ -29,5 +29,5 @@ data/
 .env.*
 
 # Ignore docs and metadata not needed in production container
-dev_checklist.md
+DEVELOPER_GUIDE.md
 *.log
