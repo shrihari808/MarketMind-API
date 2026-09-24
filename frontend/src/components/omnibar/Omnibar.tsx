@@ -88,7 +88,7 @@ export const Omnibar: React.FC<OmnibarProps> = ({
         <div className="flex items-center space-x-2 overflow-x-auto pb-1.5 scrollbar-none text-xs">
           <span className="text-[11px] font-mono text-slate-400 uppercase tracking-wider shrink-0 flex items-center space-x-1">
             <Sparkles className="w-3 h-3 text-[#c084fc] inline" />
-            <span>Shortcuts:</span>
+            <span>Suggestions:</span>
           </span>
           {activeSuggestions.map((item, idx) => (
             <button
