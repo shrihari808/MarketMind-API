@@ -6,7 +6,6 @@
 [![React 19](https://img.shields.io/badge/React-19-61DAFB.svg?logo=react&logoColor=black)](https://react.dev/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.x-3178C6.svg?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
 [![Vite](https://img.shields.io/badge/Vite-6.x-646CFF.svg?logo=vite&logoColor=white)](https://vitejs.dev/)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 **MarketMind API** is an institutional-grade, full-stack financial intelligence application and API engine. Re-engineered from the ground up for strict **512 MB RAM footprint** and **$0 free-tier cloud deployment** (Render + Vercel + Neon/Supabase), MarketMind combines real-time equity market data, streaming Web RAG, native multimodal document analysis, keyless retail sentiment discovery, and downloadable institutional equity research reports.
 
@@ -28,7 +27,7 @@ MarketMind-API/
 │   ├── src/              # React components, hooks, API clients, and theme styles
 │   └── dist/             # Production build distribution (embeddable in FastAPI)
 ├── tests/                # Automated unit & integration tests (pytest + pytest-asyncio)
-├── v1/                   # 🗄️ Legacy Version 1 Archive (Prototypes, legacy files & original docs)
+├── v1/                   #  Legacy Version 1 Archive (Prototypes, legacy files & original docs)
 │   ├── api/              # Legacy API endpoints (Pinecone, ChromaDB, LangChain, Neo4j)
 │   ├── streaming/        # Legacy streaming routes & socket handlers
 │   ├── static/           # Legacy prototype HTML/JS user interface
@@ -49,7 +48,7 @@ MarketMind-API/
 
 ---
 
-## ✨ Features (v2)
+##  Features (v2)
 
 - **Streaming Web RAG with Typed SSE**: Real-time multi-angle financial retrieval with concurrent scraping, lightweight BM25 reranking, and citation tracking (`status`, `sources`, `token`, `complete`).
 - **Native Multimodal Document RAG**: Direct PDF ingestion leveraging Gemini's native 1M+ token context window—no heavy OCR, no vectorization bottlenecks, with visual balance sheet & chart analysis.
@@ -62,7 +61,7 @@ MarketMind-API/
 
 ---
 
-## 🚀 Quick Start
+##  Quick Start
 
 ### 1. Prerequisites
 
@@ -115,7 +114,7 @@ The Web Terminal will be available at: `http://localhost:5173`
 
 ---
 
-## 🧪 Testing
+##  Testing
 
 Run the automated test suite using `pytest`:
 
@@ -144,7 +143,7 @@ pytest
 
 ---
 
-## 📦 Cloud Deployment
+##  Cloud Deployment
 
 - **Backend (Render Free Tier)**: Uses `Dockerfile` and `render.yaml`. Deploys automatically on `git push origin main` with a built-in health check probe.
 - **Keep-Alive Cron**: Automated GitHub Actions workflow (`.github/workflows/demo_keepalive.yml`) prevents Render 15-minute idle spindown during demo periods.
