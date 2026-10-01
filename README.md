@@ -11,7 +11,7 @@
 
 ---
 
-## 🏛️ Repository Organization
+## Repository Organization
 
 Following the completion of the v2 modernization phase, the repository is organized into distinct, modular layers:
 
@@ -61,7 +61,7 @@ MarketMind-API/
 
 ---
 
-## ⏱️ Freshness-Aware Web RAG & Dynamic Recency Scoring
+## Freshness-Aware Web RAG & Dynamic Recency Scoring
 
 In financial intelligence, retrieving context from months or years ago (e.g. outdated quarterly earnings or stale guidance) directly degrades synthesis quality. MarketMind v2 employs a multi-tier freshness architecture that systematically prioritizes up-to-date sources:
 
