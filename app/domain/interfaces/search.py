@@ -4,7 +4,7 @@ Defines the contract for all external search providers (DuckDuckGo, Tavily, Brav
 """
 
 from abc import ABC, abstractmethod
-from typing import List
+from typing import List, Optional
 from app.domain.schemas.rag import SourceCitation
 
 
@@ -16,7 +16,8 @@ class SearchEngine(ABC):
         self,
         query: str,
         max_results: int = 5,
-        country: str = "IN"
+        country: str = "IN",
+        timelimit: Optional[str] = None
     ) -> List[SourceCitation]:
         """Performs a general web search."""
         pass
@@ -26,7 +27,8 @@ class SearchEngine(ABC):
         self,
         query: str,
         max_results: int = 5,
-        country: str = "IN"
+        country: str = "IN",
+        timelimit: Optional[str] = None
     ) -> List[SourceCitation]:
         """Performs a recency-focused news search."""
         pass

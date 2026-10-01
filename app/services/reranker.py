@@ -6,11 +6,14 @@ hybrid semantic booster using Gemini embeddings without loading local neural mod
 
 import math
 import re
+from datetime import datetime, timedelta, timezone
+from email.utils import parsedate_to_datetime
 from typing import List, Optional, Dict
 from urllib.parse import urlparse
+from app.core.config import get_settings
 from app.core.logging import logger
 from app.domain.interfaces.llm import LLMClient
-from app.domain.schemas.rag import PassageChunk
+from app.domain.schemas.rag import PassageChunk, SourceCitation
 
 
 class BM25Reranker:
@@ -135,6 +138,180 @@ class BM25Reranker:
         return diversified
 
 
+class FreshnessReranker(BM25Reranker):
+    """
+    Freshness-aware BM25 passage reranker using rational time-decay scoring.
+    Blends keyword relevance with article age without brittle keyword flags.
+    """
+
+    def __init__(
+        self,
+        k1: float = 1.5,
+        b: float = 0.75,
+        half_life_days: Optional[float] = None,
+        relevance_floor: Optional[float] = None
+    ):
+        super().__init__(k1=k1, b=b)
+        settings = get_settings()
+        self.half_life_days = half_life_days if half_life_days is not None else settings.RAG_HALF_LIFE_DAYS
+        self.relevance_floor = relevance_floor if relevance_floor is not None else settings.RAG_RELEVANCE_FLOOR
+
+    @staticmethod
+    def parse_date(date_str: Optional[str]) -> Optional[datetime]:
+        """Parses ISO, RFC, relative ('X days ago'), or standard date strings with timezone awareness."""
+        if not date_str:
+            return None
+        clean = str(date_str).strip()
+
+        # Relative formats: "3 days ago", "5 hours ago", "1 week ago", "2 months ago"
+        rel_match = re.match(r"(\d+)\s+(minute|hour|day|week|month)s?\s+ago", clean, re.IGNORECASE)
+        if rel_match:
+            val = int(rel_match.group(1))
+            unit = rel_match.group(2).lower()
+            now = datetime.now(timezone.utc)
+            if unit == "minute":
+                delta = timedelta(minutes=val)
+            elif unit == "hour":
+                delta = timedelta(hours=val)
+            elif unit == "day":
+                delta = timedelta(days=val)
+            elif unit == "week":
+                delta = timedelta(weeks=val)
+            elif unit == "month":
+                delta = timedelta(days=val * 30)
+            else:
+                delta = timedelta(0)
+            return now - delta
+
+        # ISO 8601
+        try:
+            return datetime.fromisoformat(clean.replace("Z", "+00:00"))
+        except (ValueError, TypeError):
+            pass
+
+        # RFC 2822
+        try:
+            return parsedate_to_datetime(clean)
+        except Exception:
+            pass
+
+        # Standard date formats
+        for fmt in ("%Y-%m-%d", "%b %d, %Y", "%d %b %Y", "%B %d, %Y", "%Y/%m/%d"):
+            try:
+                date_part = clean[:10] if fmt in ("%Y-%m-%d", "%Y/%m/%d") else clean
+                return datetime.strptime(date_part, fmt).replace(tzinfo=timezone.utc)
+            except ValueError:
+                continue
+        return None
+
+    def calculate_freshness(self, date_str: Optional[str]) -> float:
+        """
+        Calculates rational decay multiplier in [0.0, 1.0].
+        Formula: 1 / (1 + age_days / half_life_days)
+        Unknown/missing dates receive a neutral baseline prior (0.35).
+        """
+        dt = self.parse_date(date_str)
+        if not dt:
+            return 0.35
+
+        now = datetime.now(timezone.utc)
+        if dt.tzinfo is None:
+            dt = dt.replace(tzinfo=timezone.utc)
+
+        age_days = max(0.0, (now - dt).total_seconds() / 86400.0)
+        return 1.0 / (1.0 + (age_days / self.half_life_days))
+
+    def pre_filter_citations(
+        self,
+        query: str,
+        citations: List[SourceCitation],
+        top_k: int = 5
+    ) -> List[SourceCitation]:
+        """
+        Pre-filters search citations down to top_k URLs to scrape
+        using Snippet BM25 relevance blended with freshness decay.
+        """
+        if len(citations) <= top_k:
+            return citations
+
+        query_tokens = set(self.tokenize(query))
+        scored = []
+        for c in citations:
+            text = f"{c.title} {c.snippet or ''}"
+            tokens = self.tokenize(text)
+            overlap = sum(1 for t in tokens if t in query_tokens)
+            rel_score = overlap / max(len(query_tokens), 1)
+
+            freshness = self.calculate_freshness(c.publication_date)
+            combined = rel_score * (self.relevance_floor + (1.0 - self.relevance_floor) * freshness)
+            scored.append((combined, c))
+
+        scored.sort(key=lambda x: x[0], reverse=True)
+        filtered = [c for _, c in scored[:top_k]]
+        logger.info(
+            f"[FreshnessReranker] Pre-filtered {len(citations)} citations down to {len(filtered)} scrape targets."
+        )
+        return filtered
+
+    def rerank(
+        self,
+        query: str,
+        passages: List[PassageChunk],
+        top_k: int = 5,
+        max_per_domain: int = 2
+    ) -> List[PassageChunk]:
+        """
+        Reranks passage chunks by combining BM25 relevance with rational time decay.
+        Score = BM25_rel * (floor + (1 - floor) * Freshness)
+        """
+        if not passages:
+            return []
+
+        # 1. Compute BM25 scores without domain cap
+        bm25_scored = super().rerank(
+            query=query,
+            passages=passages,
+            top_k=len(passages),
+            max_per_domain=999
+        )
+
+        max_bm25 = max([p.score for p in bm25_scored] or [1.0])
+        if max_bm25 <= 0:
+            max_bm25 = 1.0
+
+        # 2. Multiplicative Freshness Decay
+        freshness_scored: List[PassageChunk] = []
+        for p in bm25_scored:
+            norm_bm25 = p.score / max_bm25
+            pub_date = p.source.publication_date if p.source else None
+            freshness = self.calculate_freshness(pub_date)
+
+            final_score = norm_bm25 * (self.relevance_floor + (1.0 - self.relevance_floor) * freshness)
+            scored = p.model_copy(update={"score": round(final_score, 4)})
+            freshness_scored.append(scored)
+
+        freshness_scored.sort(key=lambda x: x.score, reverse=True)
+
+        # 3. Domain Diversification
+        diversified: List[PassageChunk] = []
+        domain_counts: Dict[str, int] = {}
+        for p in freshness_scored:
+            domain = self.extract_domain(p.source.url if p.source else "")
+            count = domain_counts.get(domain, 0)
+            if count < max_per_domain:
+                diversified.append(p)
+                domain_counts[domain] = count + 1
+            if len(diversified) >= top_k:
+                break
+
+        top_score = diversified[0].score if diversified else 0.0
+        logger.info(
+            f"[FreshnessReranker] Selected top {len(diversified)} passages across {len(domain_counts)} domains "
+            f"(top score={top_score}, domains={list(domain_counts.keys())})"
+        )
+        return diversified
+
+
 class HybridReranker:
     """
     Hybrid reranker combining lexical BM25 with dense Gemini API embeddings.
@@ -147,7 +324,7 @@ class HybridReranker:
             llm_client: LLMClient instance supporting get_embeddings.
             alpha: Weight for BM25 lexical score (1 - alpha is semantic weight).
         """
-        self.bm25 = BM25Reranker()
+        self.bm25 = FreshnessReranker()
         self.llm_client = llm_client
         self.alpha = alpha
 
@@ -170,7 +347,7 @@ class HybridReranker:
         max_per_domain: int = 2
     ) -> List[PassageChunk]:
         """
-        Performs hybrid reranking using BM25 and Gemini text-embedding-004 over the API.
+        Performs hybrid reranking using BM25, Gemini embeddings, and rational freshness decay.
         Falls back seamlessly to BM25 if embedding API is unavailable.
         """
         if not passages:
@@ -210,11 +387,17 @@ class HybridReranker:
                 max_bm25 = 1.0
 
             hybrid_scored: List[PassageChunk] = []
+            floor = self.bm25.relevance_floor
             for passage, p_emb in zip(candidate_pool, passage_embs):
                 sim = self._cosine_similarity(query_emb, p_emb)
                 norm_bm25 = passage.score / max_bm25
-                hybrid_score = (self.alpha * norm_bm25) + ((1.0 - self.alpha) * sim)
-                scored = passage.model_copy(update={"score": round(hybrid_score, 4)})
+                hybrid_rel = (self.alpha * norm_bm25) + ((1.0 - self.alpha) * sim)
+
+                pub_date = passage.source.publication_date if passage.source else None
+                freshness = self.bm25.calculate_freshness(pub_date)
+                final_score = hybrid_rel * (floor + (1.0 - floor) * freshness)
+
+                scored = passage.model_copy(update={"score": round(final_score, 4)})
                 hybrid_scored.append(scored)
 
             hybrid_scored.sort(key=lambda x: x.score, reverse=True)

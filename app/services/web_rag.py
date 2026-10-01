@@ -28,7 +28,7 @@ from app.infrastructure.scrapers.web_scraper import TrafilaturaWebScraper
 from app.infrastructure.search.factory import SearchEngineFactory
 from app.infrastructure.vector_store.lance_store import LanceVectorStore
 from app.services.query_analyzer import QueryAnalyzer
-from app.services.reranker import BM25Reranker, HybridReranker
+from app.services.reranker import BM25Reranker, HybridReranker, FreshnessReranker
 
 
 class WebRAGService:
@@ -54,7 +54,7 @@ class WebRAGService:
         if use_hybrid_reranker:
             self.reranker = HybridReranker(llm_client=self.llm)
         else:
-            self.reranker = BM25Reranker()
+            self.reranker = FreshnessReranker()
 
     @staticmethod
     def _chunk_text(text: str, chunk_size: Optional[int] = None, overlap: Optional[int] = None) -> List[str]:
@@ -99,8 +99,11 @@ class WebRAGService:
                     id=len(citations_map) + 1,
                     title=doc.title or "Web Source",
                     url=doc.url,
+                    publication_date=doc.published_date,
                     domain=BM25Reranker.extract_domain(doc.url)
                 )
+            elif not citation.publication_date and doc.published_date:
+                citation.publication_date = doc.published_date
 
             chunks = self._chunk_text(doc.content, chunk_size=settings.RAG_CHUNK_SIZE, overlap=settings.RAG_CHUNK_OVERLAP)
             for idx, text_chunk in enumerate(chunks[:8]):  # Cap at top 8 chunks per document
@@ -205,18 +208,22 @@ class WebRAGService:
                 logger.warning(f"[WebRAGService] News cache check error: {e}")
 
         if not is_cache_hit:
-            # Step 3: Multi-Query Search
+            # Step 3: Multi-Query Search with Candidate Expansion
             yield SSEMessage(event="status", data={"step": "searching", "message": "Searching financial news and web..."})
             search_queries = analysis.sub_queries or [request.query]
-            max_search = settings.MAX_SEARCH_RESULTS
-            per_query_limit = max(2, max_search // len(search_queries) + 1)
-            logger.info(f"[WebRAGService] Dispatching search across {len(search_queries)} sub-queries (per_query_limit={per_query_limit})...")
+            total_candidates = settings.MAX_SEARCH_CANDIDATES
+            per_query_limit = max(3, total_candidates // len(search_queries) + 1)
+            timelimit = settings.SEARCH_TIMELIMIT
+            logger.info(
+                f"[WebRAGService] Dispatching search across {len(search_queries)} sub-queries "
+                f"(per_query_limit={per_query_limit}, timelimit={timelimit})..."
+            )
 
             search_tasks = [
-                self.search_engine.search_news(q, max_results=per_query_limit, country=request.country)
+                self.search_engine.search_news(q, max_results=per_query_limit, country=request.country, timelimit=timelimit)
                 for q in search_queries[:2]
             ] + [
-                self.search_engine.search(search_queries[-1], max_results=per_query_limit, country=request.country)
+                self.search_engine.search(search_queries[-1], max_results=per_query_limit, country=request.country, timelimit=timelimit)
             ]
             search_results_nested = await asyncio.gather(*search_tasks, return_exceptions=True)
 
@@ -229,33 +236,54 @@ class WebRAGService:
                             seen_urls.add(item.url)
                             all_citations.append(item)
 
-            # Cap citations and re-index
-            top_citations = all_citations[:max_search]
-            for idx, cit in enumerate(top_citations, start=1):
+            logger.info(f"[WebRAGService] Found {len(all_citations)} unique search candidates.")
+
+            # Step 3.5: Pre-filter candidates by relevance & freshness before scraping
+            max_to_scrape = settings.MAX_SCRAPED_SOURCES
+            if hasattr(self.reranker, "pre_filter_citations"):
+                citations_to_scrape = self.reranker.pre_filter_citations(
+                    query=request.query,
+                    citations=all_citations,
+                    top_k=max_to_scrape
+                )
+            else:
+                citations_to_scrape = all_citations[:max_to_scrape]
+
+            # Re-index citations for clean [1], [2] referencing
+            for idx, cit in enumerate(citations_to_scrape, start=1):
                 cit.id = idx
 
-            citations_map = {c.url: c for c in top_citations}
-            logger.info(f"[WebRAGService] Found {len(all_citations)} unique search results. Filtered to top {len(top_citations)} citations.")
+            citations_map = {c.url: c for c in citations_to_scrape}
+            logger.info(
+                f"[WebRAGService] Pre-filtered {len(all_citations)} candidates down to "
+                f"{len(citations_to_scrape)} scrape targets (MAX_SCRAPED_SOURCES={max_to_scrape})."
+            )
 
             # Step 4: Emit Citations to Client Early
             yield SSEMessage(
                 event="sources",
-                data={"sources": [c.model_dump() for c in top_citations]}
+                data={"sources": [c.model_dump() for c in citations_to_scrape]}
             )
 
             # Step 5: Concurrently Scrape Top URLs
             yield SSEMessage(event="status", data={"step": "reading_sources", "message": "Scraping and analyzing source articles..."})
-            urls_to_scrape = [c.url for c in top_citations]
+            urls_to_scrape = [c.url for c in citations_to_scrape]
             logger.info(f"[WebRAGService] Scraping {len(urls_to_scrape)} URLs...")
             scraped_docs = await self.scraper.scrape_many(urls_to_scrape)
 
-            # Step 6: Passage Extraction and BM25 Reranking
+            # Step 5.5: Propagate any discovered metadata dates back to citations
+            for doc in scraped_docs:
+                if doc.published_date and doc.url in citations_map:
+                    if not citations_map[doc.url].publication_date:
+                        citations_map[doc.url].publication_date = doc.published_date
+
+            # Step 6: Passage Extraction and Freshness Reranking
             passages = self._extract_passages(scraped_docs, citations_map)
             
             # If scraper failed to extract full text, build fallback passages from search snippets
-            if not passages and top_citations:
+            if not passages and citations_to_scrape:
                 logger.info("[WebRAGService] No article bodies extracted. Falling back to search snippets for passage pool.")
-                for c in top_citations:
+                for c in citations_to_scrape:
                     if c.snippet:
                         passages.append(
                             PassageChunk(
@@ -267,7 +295,7 @@ class WebRAGService:
                         )
 
             # Rerank and diversify passages
-            logger.info(f"[WebRAGService] Reranking {len(passages)} passages...")
+            logger.info(f"[WebRAGService] Reranking {len(passages)} passages with freshness decay...")
             if isinstance(self.reranker, HybridReranker):
                 selected_passages = await self.reranker.rerank(
                     query=request.query,
@@ -327,8 +355,11 @@ class WebRAGService:
             context_parts.append(quote_text)
 
         for p in selected_passages:
+            pub_date = p.source.publication_date if p.source and p.source.publication_date else "Unknown Date"
             context_parts.append(
-                f"[Source {p.source.id}]: {p.source.title} ({p.source.url})\n{p.text}"
+                f"[Source {p.source.id}]: {p.source.title} ({p.source.url})\n"
+                f"Published: {pub_date}\n"
+                f"{p.text}"
             )
 
         full_context = "\n\n---\n\n".join(context_parts)
@@ -341,10 +372,11 @@ class WebRAGService:
             "STRICT CITATION RULES:\n"
             "1. Every factual claim, number, date, or assertion MUST be supported by a citation tag corresponding "
             "to the source, e.g. [1], [2], or [1, 3].\n"
-            "2. Never hallucinate numbers, prices, or percentages not provided in the context.\n"
-            "3. If real-time market data is provided, highlight the current price and day change prominently.\n"
-            "4. Organize your response with clear Markdown headings, bullet points for key takeaways, and a concise summary conclusion.\n"
-            "5. Maintain an objective, institutional tone."
+            "2. When conflicting facts, financial metrics, or guidance arise across sources, prioritize the more recently published information.\n"
+            "3. Never hallucinate numbers, prices, or percentages not provided in the context.\n"
+            "4. If real-time market data is provided, highlight the current price and day change prominently.\n"
+            "5. Organize your response with clear Markdown headings, bullet points for key takeaways, and a concise summary conclusion.\n"
+            "6. Maintain an objective, institutional tone."
         )
 
         user_prompt = f"""Question: {request.query}

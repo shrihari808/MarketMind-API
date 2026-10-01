@@ -49,11 +49,43 @@ class Settings(BaseSettings):
         description="Search provider to use: 'duckduckgo', 'serper', or 'brave'"
     )
     DEFAULT_COUNTRY: str = "IN"
-    MAX_SEARCH_RESULTS: int = Field(default=7, description="Maximum search results retrieved per query")
-    MAX_SCRAPED_SOURCES: int = 5
+
+    # Search Freshness Horizon / Time Limit:
+    # -------------------------------------------------------------------------
+    # Value | Description | DuckDuckGo | Brave Search | Google Serper
+    # ------|-------------|------------|--------------|--------------
+    # 'd'   | Past 24h    | timelimit=d| freshness=pd | tbs=qdr:d
+    # 'w'   | Past week   | timelimit=w| freshness=pw | tbs=qdr:w (Default)
+    # 'm'   | Past month  | timelimit=m| freshness=pm | tbs=qdr:m
+    # 'y'   | Past year   | timelimit=y| freshness=py | tbs=qdr:y
+    # None  | All-time    | None       | None         | None
+    # -------------------------------------------------------------------------
+    SEARCH_TIMELIMIT: Optional[str] = Field(
+        default="w",
+        description="Search freshness horizon: 'd' (day), 'w' (week), 'm' (month), 'y' (year), or None (all-time)"
+    )
+    MAX_SEARCH_CANDIDATES: int = Field(
+        default=15,
+        description="Raw search results retrieved prior to pre-filtering"
+    )
+    MAX_SEARCH_RESULTS: int = Field(default=7, description="Maximum search citations retained in final context")
+    MAX_SCRAPED_SOURCES: int = Field(
+        default=5,
+        description="Maximum number of candidate URLs scraped concurrently by Trafilatura"
+    )
     SCRAPER_TIMEOUT_SECONDS: int = 8
     RAG_CHUNK_SIZE: int = Field(default=400, description="Word chunk size for document passages")
     RAG_CHUNK_OVERLAP: int = Field(default=50, description="Overlap between consecutive passage chunks")
+
+    # RAG Freshness & Decay Scoring Parameters
+    RAG_HALF_LIFE_DAYS: float = Field(
+        default=7.0,
+        description="Characteristic half-life (in days) for rational time-decay scoring"
+    )
+    RAG_RELEVANCE_FLOOR: float = Field(
+        default=0.25,
+        description="Baseline relevance floor (0.0 to 1.0) so authoritative older articles retain score"
+    )
     
     # Search Engine API Keys
     SERPER_API_KEY: Optional[str] = Field(default=None, description="Serper.dev API Key")

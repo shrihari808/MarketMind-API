@@ -54,6 +54,19 @@ def _parse_serper_date(date_str: Optional[str]) -> Optional[str]:
     return date_str
 
 
+def _map_serper_tbs(timelimit: Optional[str]) -> Optional[str]:
+    """Maps standard timelimit ('d', 'w', 'm', 'y') to Google Serper tbs ('qdr:d', 'qdr:w', 'qdr:m', 'qdr:y')."""
+    if not timelimit:
+        return None
+    mapping = {
+        "d": "qdr:d",
+        "w": "qdr:w",
+        "m": "qdr:m",
+        "y": "qdr:y",
+    }
+    return mapping.get(timelimit.lower())
+
+
 class SerperSearcher(SearchEngine):
     """Google Search provider via Serper.dev API."""
 
@@ -75,12 +88,17 @@ class SerperSearcher(SearchEngine):
         self,
         query: str,
         max_results: int = 5,
-        country: str = "IN"
+        country: str = "IN",
+        timelimit: Optional[str] = None
     ) -> List[SourceCitation]:
-        """Performs a general web search via Serper."""
+        """Performs a general web search via Serper with optional tbs date filter."""
         if not self.api_key:
             logger.warning("SERPER_API_KEY is not configured. Returning empty search results.")
             return []
+
+        settings = get_settings()
+        effective_timelimit = timelimit if timelimit is not None else settings.SEARCH_TIMELIMIT
+        tbs = _map_serper_tbs(effective_timelimit)
 
         url = f"{self.BASE_URL}/search"
         headers = {
@@ -92,8 +110,10 @@ class SerperSearcher(SearchEngine):
             "num": max_results,
             "gl": country.lower()
         }
+        if tbs:
+            payload["tbs"] = tbs
 
-        logger.info(f"Executing Serper web search: '{query}' (gl={country.lower()})")
+        logger.info(f"Executing Serper web search: '{query}' (gl={country.lower()}, tbs={tbs})")
         try:
             async with httpx.AsyncClient(timeout=self.timeout) as client:
                 response = await client.post(url, headers=headers, json=payload)
@@ -130,12 +150,17 @@ class SerperSearcher(SearchEngine):
         self,
         query: str,
         max_results: int = 5,
-        country: str = "IN"
+        country: str = "IN",
+        timelimit: Optional[str] = None
     ) -> List[SourceCitation]:
-        """Performs a recency-focused news search via Serper."""
+        """Performs a recency-focused news search via Serper with tbs date filter."""
         if not self.api_key:
             logger.warning("SERPER_API_KEY is not configured. Returning empty news results.")
             return []
+
+        settings = get_settings()
+        effective_timelimit = timelimit if timelimit is not None else settings.SEARCH_TIMELIMIT
+        tbs = _map_serper_tbs(effective_timelimit) or "qdr:w"
 
         url = f"{self.BASE_URL}/news"
         headers = {
@@ -145,10 +170,11 @@ class SerperSearcher(SearchEngine):
         payload = {
             "q": query,
             "num": max_results,
-            "gl": country.lower()
+            "gl": country.lower(),
+            "tbs": tbs
         }
 
-        logger.info(f"Executing Serper news search: '{query}' (gl={country.lower()})")
+        logger.info(f"Executing Serper news search: '{query}' (gl={country.lower()}, tbs={tbs})")
         try:
             async with httpx.AsyncClient(timeout=self.timeout) as client:
                 response = await client.post(url, headers=headers, json=payload)

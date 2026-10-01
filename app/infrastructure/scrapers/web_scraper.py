@@ -100,13 +100,16 @@ class TrafilaturaWebScraper(WebScraper):
                 if final_url != url:
                     logger.debug(f"Followed redirect: {url} -> {final_url}")
 
-            # Run CPU-bound trafilatura extraction in background thread
-            extracted_text = await asyncio.to_thread(
-                trafilatura.extract,
-                html_content,
-                include_comments=False,
-                include_tables=True,
-                no_fallback=False
+            # Run CPU-bound trafilatura extraction & metadata in background thread
+            extracted_text, metadata = await asyncio.gather(
+                asyncio.to_thread(
+                    trafilatura.extract,
+                    html_content,
+                    include_comments=False,
+                    include_tables=True,
+                    no_fallback=False
+                ),
+                asyncio.to_thread(trafilatura.extract_metadata, html_content)
             )
 
             # Extract any structured HTML tables as clean Markdown
@@ -117,16 +120,23 @@ class TrafilaturaWebScraper(WebScraper):
                 table_section = "\n\n### Extracted Data Tables:\n" + "\n\n".join(tables[:5])  # Cap at top 5 tables
                 combined_content += table_section
 
+            published_date = metadata.date if metadata else None
+            extracted_title = metadata.title if metadata and metadata.title else ""
+
             if not combined_content or len(combined_content.strip()) < 50:
                 return ScrapedDocument(
                     url=url,
+                    title=extracted_title,
+                    published_date=published_date,
                     success=False,
                     error="Content too short or could not be extracted"
                 )
 
             return ScrapedDocument(
                 url=final_url,
+                title=extracted_title,
                 content=combined_content.strip(),
+                published_date=published_date,
                 success=True
             )
 

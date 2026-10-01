@@ -26,6 +26,19 @@ def _parse_brave_date(page_age: Optional[str]) -> Optional[str]:
         return str(page_age)[:10]
 
 
+def _map_brave_freshness(timelimit: Optional[str]) -> Optional[str]:
+    """Maps standard timelimit ('d', 'w', 'm', 'y') to Brave freshness ('pd', 'pw', 'pm', 'py')."""
+    if not timelimit:
+        return None
+    mapping = {
+        "d": "pd",
+        "w": "pw",
+        "m": "pm",
+        "y": "py",
+    }
+    return mapping.get(timelimit.lower())
+
+
 class BraveSearcher(SearchEngine):
     """Brave Search API provider implementing the SearchEngine protocol."""
 
@@ -47,12 +60,17 @@ class BraveSearcher(SearchEngine):
         self,
         query: str,
         max_results: int = 5,
-        country: str = "IN"
+        country: str = "IN",
+        timelimit: Optional[str] = None
     ) -> List[SourceCitation]:
-        """Performs general web search via Brave Search API."""
+        """Performs general web search via Brave Search API with optional freshness filter."""
         if not self.api_key:
             logger.warning("BRAVE_API_KEY is not configured. Returning empty search results.")
             return []
+
+        settings = get_settings()
+        effective_timelimit = timelimit if timelimit is not None else settings.SEARCH_TIMELIMIT
+        freshness = _map_brave_freshness(effective_timelimit)
 
         headers = {
             "Accept": "application/json",
@@ -64,8 +82,10 @@ class BraveSearcher(SearchEngine):
             "country": country.lower(),
             "result_filter": "web"
         }
+        if freshness:
+            params["freshness"] = freshness
 
-        logger.info(f"Executing Brave web search: '{query}' (country={country.lower()})")
+        logger.info(f"Executing Brave web search: '{query}' (country={country.lower()}, freshness={freshness})")
         try:
             async with httpx.AsyncClient(timeout=self.timeout) as client:
                 response = await client.get(self.BASE_URL, headers=headers, params=params)
@@ -102,12 +122,18 @@ class BraveSearcher(SearchEngine):
         self,
         query: str,
         max_results: int = 5,
-        country: str = "IN"
+        country: str = "IN",
+        timelimit: Optional[str] = None
     ) -> List[SourceCitation]:
-        """Performs recency-focused news search via Brave Search API."""
+        """Performs recency-focused news search via Brave Search API with freshness control."""
         if not self.api_key:
             logger.warning("BRAVE_API_KEY is not configured. Returning empty news results.")
             return []
+
+        settings = get_settings()
+        effective_timelimit = timelimit if timelimit is not None else settings.SEARCH_TIMELIMIT
+        # Default to 'pw' (past week) for news if not specified
+        freshness = _map_brave_freshness(effective_timelimit) or "pw"
 
         headers = {
             "Accept": "application/json",
@@ -118,10 +144,10 @@ class BraveSearcher(SearchEngine):
             "count": min(max_results, 20),
             "country": country.lower(),
             "result_filter": "news",
-            "freshness": "pd"  # past day for fresh financial news
+            "freshness": freshness
         }
 
-        logger.info(f"Executing Brave news search: '{query}' (country={country.lower()})")
+        logger.info(f"Executing Brave news search: '{query}' (country={country.lower()}, freshness={freshness})")
         try:
             async with httpx.AsyncClient(timeout=self.timeout) as client:
                 response = await client.get(self.BASE_URL, headers=headers, params=params)
