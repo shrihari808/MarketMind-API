@@ -50,7 +50,7 @@ MarketMind-API/
 
 ##  Features (v2)
 
-- **Streaming Web RAG with Typed SSE**: Real-time multi-angle financial retrieval with concurrent scraping, lightweight BM25 reranking, and citation tracking (`status`, `sources`, `token`, `complete`).
+- **Streaming Web RAG with Typed SSE & Recency Scoring**: Real-time multi-angle financial retrieval with candidate pre-filtering (15 -> 5 URLs), rational time-decay reranking ($S_{\text{rel}} \times S_{\text{fresh}}$), HTML metadata date extraction, and citation tracking (`status`, `sources`, `token`, `complete`).
 - **Native Multimodal Document RAG**: Direct PDF ingestion leveraging Gemini's native 1M+ token context window—no heavy OCR, no vectorization bottlenecks, with visual balance sheet & chart analysis.
 - **Live Market Dashboard (SWR Cached)**: Real-time benchmark indices (Nifty 50, Sensex, S&P 500, Nasdaq), standout gainers/losers, and AI daily macro briefs with Stale-While-Revalidate caching in PostgreSQL/SQLite.
 - **Embedded LanceDB Semantic News Cache & Document Vault**: High-speed Apache Arrow columnar vector store running completely in-process (<30 MB RAM overhead).
@@ -58,6 +58,70 @@ MarketMind-API/
 - **Deep Equity Research & In-Memory PDF Export**: Automated 7-section institutional research generator producing downloadable PDF reports via ReportLab.
 - **Sliding-Window IP Rate Limiter**: 25 req/min protection with dynamic runtime inspection endpoints (`/api/v2/health/rate-limit`).
 - **Anonymous Device Sessions**: Multi-turn conversation persistence isolated by browser client UUID (`X-Client-ID`).
+
+---
+
+## ⏱️ Freshness-Aware Web RAG & Dynamic Recency Scoring
+
+In financial intelligence, retrieving context from months or years ago (e.g. outdated quarterly earnings or stale guidance) directly degrades synthesis quality. MarketMind v2 employs a multi-tier freshness architecture that systematically prioritizes up-to-date sources:
+
+```
+[ Search: DDG / Brave / Serper ] (Fetch 15 Candidates, timelimit='w')
+               │
+               ▼
+[ Pre-Scrape Date Extractor ] (ISO timestamps, URL regex, snippet dates)
+               │
+               ▼
+[ Pre-Scrape Filter ] (Rank by Snippet BM25 × Freshness -> Select Top 5)
+               │
+               ▼
+[ Trafilatura Scraper ] (Scrape ONLY top 5 URLs in parallel)
+               │
+               ▼
+[ HTML Metadata Date Extractor ] (OpenGraph, JSON-LD, <time> tags)
+               │
+               ▼
+[ Passage Chunking ] (Word chunks with elapsed time metadata)
+               │
+               ▼
+[ FreshnessReranker ] (S_final = S_BM25 × (0.25 + 0.75 × Decay(Δt)))
+               │
+               ▼
+[ Gemini 2.0 Streaming Synthesis ] (Prompt with explicit 'Published: YYYY-MM-DD')
+```
+
+### Key Pillars of the Recency Engine
+
+1. **Configurable Search Horizon with Tiered Fallback**:
+   - Primary retrieval focuses on news feeds (`ddgs.news`, Brave News, Serper News) using `SEARCH_TIMELIMIT` (default: `'w'` for past week).
+   - **Tiered fallback**: If a time-limited news search returns fewer than 3 results, it automatically expands to past month (`'m'`), then unconstrained search, preventing empty context on niche or conceptual queries.
+   - Uniform provider mapping:
+     - `'d'` (Past 24h): DuckDuckGo `d` | Brave `pd` | Google Serper `tbs=qdr:d`
+     - `'w'` (Past week): DuckDuckGo `w` | Brave `pw` | Google Serper `tbs=qdr:w` *(Default)*
+     - `'m'` (Past month): DuckDuckGo `m` | Brave `pm` | Google Serper `tbs=qdr:m`
+     - `'y'` (Past year): DuckDuckGo `y` | Brave `py` | Google Serper `tbs=qdr:y`
+
+2. **Pre-Scrape Filtering (Compute & Latency Optimization)**:
+   - Instead of scraping 15–20 web pages, MarketMind retrieves 15 raw search snippets and pre-ranks them using **Snippet BM25 $\times$ Freshness Decay**.
+   - Only the top `MAX_SCRAPED_SOURCES` (default: 5) URLs are scraped concurrently, keeping total scrape latency under 1.2s and conserving serverless memory.
+
+3. **Multi-Tier Publication Date Extraction**:
+   - **Pre-Scrape**: Captures native ISO dates from news APIs, URL date patterns (`/2026/09/28/`), and snippet prefix dates (`"Sep 28, 2026 — ..."`).
+   - **Post-Scrape**: Trafilatura inspects HTML meta tags (OpenGraph `article:published_time`, JSON-LD `datePublished`, HTML5 `<time>`, and Dublin Core), syncing confirmed dates back to citations.
+   - **Undated Pages**: Evergreen pages receive a neutral prior score ($0.35$), preventing them from being discarded if highly relevant, but ensuring fresh news always wins.
+
+4. **Continuous Rational Decay Scoring**:
+   - Rather than brittle keyword-matching (`"latest" in query`), every chunk is scored using a continuous heavy-tailed rational decay function:
+     $$\text{Decay}(\Delta t) = \frac{1}{1 + \left(\frac{\Delta t}{\tau}\right)}$$
+     where $\Delta t$ is the document age in days and $\tau = 7.0$ days (`RAG_HALF_LIFE_DAYS`).
+   - Blended via multiplicative rank attenuation:
+     $$S_{\text{final}} = S_{\text{relevance}} \times \left( \alpha + (1 - \alpha) \cdot \text{Decay}(\Delta t) \right)$$
+     where $\alpha = 0.25$ (`RAG_RELEVANCE_FLOOR`).
+   - **Safety Guarantee**: Irrelevant breaking articles ($S_{\text{rel}} = 0$) receive a score of $0$ regardless of freshness, while fresh relevant articles outrank older coverage by up to $4:1$.
+
+5. **Chronologically Grounded Synthesis**:
+   - Final context chunks injected into Gemini 2.0 include explicit `Published: YYYY-MM-DD` timestamps.
+   - System prompt instructions mandate prioritizing newer data when resolving conflicting earnings numbers, targets, or economic data across citations.
 
 ---
 
