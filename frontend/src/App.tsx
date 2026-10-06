@@ -147,7 +147,10 @@ export function App() {
 
   // Load dashboard on initial mount & country switch
   useEffect(() => {
-    loadDashboard(country);
+    const timer = setTimeout(() => {
+      loadDashboard(country);
+    }, 0);
+    return () => clearTimeout(timer);
   }, [country, loadDashboard]);
 
   // --- Fetch Chat Sessions ---
@@ -161,7 +164,10 @@ export function App() {
   }, [clientId]);
 
   useEffect(() => {
-    loadSessions();
+    const timer = setTimeout(() => {
+      loadSessions();
+    }, 0);
+    return () => clearTimeout(timer);
   }, [loadSessions]);
 
   // --- Handle Country Selection ---

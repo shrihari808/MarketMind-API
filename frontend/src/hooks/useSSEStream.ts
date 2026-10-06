@@ -1,6 +1,6 @@
 import { useState, useCallback, useRef } from 'react';
 import { SourceCitation } from '../types/api';
-import { SSEStatusPayload, SSESourcesPayload, SSETokenPayload, SSEErrorPayload } from '../types/sse';
+import { SSEStatusPayload, SSEErrorPayload } from '../types/sse';
 import { buildApiUrl } from '../lib/api';
 
 export interface StreamState {

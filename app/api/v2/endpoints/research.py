@@ -28,7 +28,7 @@ class ResearchRequest(BaseModel):
         name = self.company_name or self.ticker
         if not name or len(name.strip()) < 2:
             raise HTTPException(
-                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
                 detail="Either 'company_name' or 'ticker' must be provided with at least 2 characters."
             )
         return name.strip()

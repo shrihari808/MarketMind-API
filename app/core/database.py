@@ -6,7 +6,7 @@ automatic local SQLite fallback for offline development.
 
 import os
 from typing import AsyncGenerator, Optional
-from datetime import datetime
+from datetime import datetime, timezone
 from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker, AsyncSession
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 from sqlalchemy import String, Text, Integer, DateTime
@@ -101,7 +101,7 @@ class ChatMessageRecord(Base):
     content: Mapped[str] = mapped_column(Text, nullable=False)
     sources_json: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     tokens: Mapped[int] = mapped_column(Integer, default=0)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(timezone.utc))
 
 
 class DashboardCacheRecord(Base):
@@ -111,7 +111,7 @@ class DashboardCacheRecord(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     country: Mapped[str] = mapped_column(String(10), unique=True, index=True, nullable=False)
     data_json: Mapped[str] = mapped_column(Text, nullable=False)
-    updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(timezone.utc))
 
 
 async def get_db_session() -> AsyncGenerator[AsyncSession, None]:

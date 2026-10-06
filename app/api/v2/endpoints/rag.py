@@ -246,7 +246,7 @@ async def reddit_sentiment_endpoint(
     resolved_topic = (request.topic if request and request.topic else topic)
     if not resolved_topic or len(resolved_topic.strip()) < 2:
         raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
             detail="Field 'topic' is required with at least 2 characters."
         )
 

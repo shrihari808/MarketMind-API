@@ -2,7 +2,7 @@
 
 [![FastAPI](https://img.shields.io/badge/FastAPI-v0.115+-009688.svg?logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com)
 [![Python 3.11+](https://img.shields.io/badge/Python-3.11+-3776AB.svg?logo=python&logoColor=white)](https://www.python.org/)
-[![Google Gemini](https://img.shields.io/badge/Google_Gemini-3.8_Flash-4285F4.svg?logo=google&logoColor=white)](https://ai.google.dev/)
+[![Gemini](https://img.shields.io/badge/Gemini-3.8_Flash-4285F4.svg?logo=google&logoColor=white)](https://ai.google.dev/)
 [![React 19](https://img.shields.io/badge/React-19-61DAFB.svg?logo=react&logoColor=black)](https://react.dev/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.x-3178C6.svg?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
 [![Vite](https://img.shields.io/badge/Vite-6.x-646CFF.svg?logo=vite&logoColor=white)](https://vitejs.dev/)
@@ -87,7 +87,7 @@ In financial intelligence, retrieving context from months or years ago (e.g. out
 [ FreshnessReranker ] (S_final = S_BM25 × (0.25 + 0.75 × Decay(Δt)))
                │
                ▼
-[ Gemini 2.0 Streaming Synthesis ] (Prompt with explicit 'Published: YYYY-MM-DD')
+[ Gemini Streaming Synthesis ] (Prompt with explicit 'Published: YYYY-MM-DD')
 ```
 
 ### Key Pillars of the Recency Engine
@@ -120,7 +120,7 @@ In financial intelligence, retrieving context from months or years ago (e.g. out
    - **Safety Guarantee**: Irrelevant breaking articles ($S_{\text{rel}} = 0$) receive a score of $0$ regardless of freshness, while fresh relevant articles outrank older coverage by up to $4:1$.
 
 5. **Chronologically Grounded Synthesis**:
-   - Final context chunks injected into Gemini 2.0 include explicit `Published: YYYY-MM-DD` timestamps.
+   - Final context chunks injected into Gemini include explicit `Published: YYYY-MM-DD` timestamps.
    - System prompt instructions mandate prioritizing newer data when resolving conflicting earnings numbers, targets, or economic data across citations.
 
 ---
@@ -178,17 +178,70 @@ The Web Terminal will be available at: `http://localhost:5173`
 
 ---
 
-##  Testing
+## Testing
 
-Run the automated test suite using `pytest`:
+MarketMind provides a comprehensive automated test suite spanning domain services, REST API endpoints, security middleware, and embedded vector storage.
+
+### Running Backend Tests
+
+Run the full test suite with `pytest`:
 
 ```bash
 pytest
 ```
 
+Run specific test modules:
+
+```bash
+# REST API Endpoints (Gateway, Health, Stocks, Dashboard, Reddit Sentiment, Chat Sessions)
+pytest tests/test_api_endpoints.py
+
+# Sliding-Window Rate Limiter & Security Middleware
+pytest tests/test_rate_limiter.py
+
+# Financial Query Intent Classification & Ticker Resolution
+pytest tests/test_query_analyzer.py
+
+# Anonymous Device Chat History & Context Persistence
+pytest tests/test_chat_history.py
+
+# Freshness-Aware BM25 Reranker & Rational Decay Scoring
+pytest tests/test_freshness_reranker.py
+
+# LanceDB Semantic News Caching & Historical Filings Vault
+pytest tests/test_lance_cache_and_vault.py
+
+# Yahoo Finance Market Data Client & Benchmark Fallbacks
+pytest tests/test_yfinance_client.py
+```
+
+### Available Test Suites Overview
+
+| Test Module | Coverage & Capabilities Tested |
+|---|---|
+| `test_api_endpoints.py` | FastAPI gateway welcome, health check probe, dynamic rate limit inspection & reconfiguration, stock quotes/fundamentals, SWR dashboard, Reddit sentiment validation, and session endpoints. |
+| `test_rate_limiter.py` | Sliding-window calculation, threshold blocking (HTTP 429), `Retry-After` header accuracy, client IP isolation, runtime configuration overrides (`set_enabled`, `set_limit`), and path exemptions (`/api/v2/health`, `/docs`). |
+| `test_query_analyzer.py` | Multi-turn conversational follow-up detection, financial keyword dictionary matching, automated Indian & US ticker detection, and structured query decomposition. |
+| `test_chat_history.py` | SQLite message turn persistence, LLM prompt context tuples, session listing by update timestamp, cascade deletion, and device-level client UUID isolation. |
+| `test_freshness_reranker.py` | Rational time-decay curve calculations ($S_{\text{rel}} \times S_{\text{fresh}}$), multi-format date extraction (ISO 8601, RFC 2822, relative times), and base domain diversification. |
+| `test_lance_cache_and_vault.py` | Apache Arrow LanceDB vector lifecycle: semantic news caching with TTL expiration, corporate filing PDF/text chunking, page tracking, and cross-document RAG querying. |
+| `test_yfinance_client.py` | Live equity quote fetching, valuation multiples (P/E, P/B, ROE), benchmark indices, gainer/loser sorting, and resilient baseline fallbacks. |
+
+### Frontend Code Quality & Linting
+
+```bash
+cd frontend
+
+# Run Oxlint for fast static analysis
+npm run lint
+
+# Run TypeScript typecheck & production bundle build
+npm run build
+```
+
 ---
 
-## 📡 API Endpoints (v2)
+## API Endpoints (v2)
 
 | Method | Endpoint | Description |
 |---|---|---|
