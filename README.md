@@ -226,6 +226,24 @@ pytest tests/test_yfinance_client.py
 | `test_freshness_reranker.py` | Rational time-decay curve calculations ($S_{\text{rel}} \times S_{\text{fresh}}$), multi-format date extraction (ISO 8601, RFC 2822, relative times), and base domain diversification. |
 | `test_lance_cache_and_vault.py` | Apache Arrow LanceDB vector lifecycle: semantic news caching with TTL expiration, corporate filing PDF/text chunking, page tracking, and cross-document RAG querying. |
 | `test_yfinance_client.py` | Live equity quote fetching, valuation multiples (P/E, P/B, ROE), benchmark indices, gainer/loser sorting, and resilient baseline fallbacks. |
+| `test_web_rag_debug.py` | `WebRAGService` per-stage timing diagnostics (`RAGStageTimings`), `retrieval_only` mode, and `X-RAG-Retrieval-Ms` / `X-RAG-Total-Ms` debug headers. |
+
+---
+
+## Web RAG Evaluations & Performance Metrics
+
+Comprehensive latency, throughput, funnel, and retrieval-quality benchmarks for the Web RAG pipeline are recorded in **[`EVALS AND METRICS.md`](./EVALS%20AND%20METRICS.md)** (all evaluation scripts, Postman collections, and frozen corpus artifacts live in [`evals/`](./evals/) and [`postman/`](./postman/)).
+
+Key measured highlights *(retrieval-only scope without `GEMINI_API_KEY`; see [`EVALS AND METRICS.md`](./EVALS%20AND%20METRICS.md) for full stage breakdowns, per-query logs, and `N`-scaling tables)*:
+
+- **Postman Load Test (3 VUs, 68s, 32 requests):** `8,227 ms` **p95** response time (`5,288 ms` avg, `8,056 ms` p90, `8,543 ms` p99, `0.47 req/s`, `0%` error rate).
+- **Stage-by-Stage Retrieval Latency (20 financial queries, sequential):** `5,982.84 ms` p50 / `11,763.35 ms` p95 across the 19 retrieval-executed queries (`11,749.56 ms` HTTP p95 across all 20 queries). In-process `pre_filter` + chunking + `FreshnessReranker` run in `< 13 ms` p95, while DuckDuckGo search (`4.73 s` p95), Trafilatura scraping (`8.23 s` p95, `74.74%` URL success rate), and concurrent YFinance quote lookups (`9.17 s` p95) dominate tail latency.
+- **Retrieval Quality across $N = 98$ Scraped Documents (340 passages, 16 queries):**
+  - **`BM25Reranker`:** `Recall@5 = 0.4631`, `Hit@5 = 1.0000`, `MRR = 1.0000`
+  - **`FreshnessReranker` (default):** `Recall@5 = 0.3810`, `Hit@5 = 1.0000`, `MRR = 0.9062`
+  - **Production Two-Stage Funnel (`pre_filter(5)` $\rightarrow$ `FreshnessReranker`):** `Recall@5 = 0.3552`, `Hit@5 = 1.0000`, `MRR = 0.9375`
+
+See **[`EVALS AND METRICS.md`](./EVALS%20AND%20METRICS.md)** for all detailed evaluation tables across $N \in \{25, 50, 75, 98\}$, Postman functional assertions, and bottleneck analysis.
 
 ### Frontend Code Quality & Linting
 

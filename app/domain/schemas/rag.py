@@ -34,6 +34,38 @@ class ScrapedDocument(BaseModel):
     error: Optional[str] = None
 
 
+class PassageChunk(BaseModel):
+    """Segmented passage extracted from a scraped document with citation linkage."""
+    text: str
+    source: SourceCitation
+    score: float = 0.0
+    chunk_index: int = 0
+
+
+class RAGStageTimings(BaseModel):
+    """Per-stage latency (ms) and retrieval funnel counts for Web RAG diagnostics."""
+    query_analysis_ms: float = 0.0
+    cache_lookup_ms: float = 0.0
+    search_ms: float = 0.0
+    pre_filter_ms: float = 0.0
+    scrape_ms: float = 0.0
+    chunk_extract_ms: float = 0.0
+    rerank_ms: float = 0.0
+    quote_ms: float = 0.0
+    retrieval_total_ms: float = 0.0
+    llm_ttft_ms: Optional[float] = None
+    llm_total_ms: Optional[float] = None
+    total_ms: float = 0.0
+    cache_hit: bool = False
+    retrieval_only: bool = False
+    candidates_found: int = 0
+    urls_scraped: int = 0
+    scrape_success_count: int = 0
+    passages_extracted: int = 0
+    passages_selected: int = 0
+    llm_error: Optional[str] = None
+
+
 class RAGResult(BaseModel):
     """Final non-streaming RAG output object."""
     query: str
@@ -41,6 +73,8 @@ class RAGResult(BaseModel):
     sources: List[SourceCitation] = []
     tokens_used: int = 0
     duration_seconds: float = 0.0
+    stage_timings: Optional[RAGStageTimings] = None
+    selected_passages: Optional[List[PassageChunk]] = None
 
 
 class SSEMessage(BaseModel):
@@ -64,14 +98,6 @@ class QueryAnalysisResult(BaseModel):
     sub_queries: List[str] = Field(default_factory=list, description="Targeted sub-queries for multi-angle retrieval")
     target_date: Optional[str] = Field(default=None, description="Extracted date or time constraint if specified")
     reformulated_query: Optional[str] = Field(default=None, description="Context-enriched query if it was a follow-up")
-
-
-class PassageChunk(BaseModel):
-    """Segmented passage extracted from a scraped document with citation linkage."""
-    text: str
-    source: SourceCitation
-    score: float = 0.0
-    chunk_index: int = 0
 
 
 class CommunitySentimentResult(BaseModel):

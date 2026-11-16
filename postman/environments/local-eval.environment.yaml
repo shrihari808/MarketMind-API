@@ -1,0 +1,7 @@
+name: Local Eval
+values:
+  - key: base_url
+    value: 'http://127.0.0.1:8000'
+    enabled: true
+    type: default
+    description: Local FastAPI server base URL for evaluation runs

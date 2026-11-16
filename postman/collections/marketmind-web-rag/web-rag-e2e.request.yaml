@@ -1,0 +1,41 @@
+$kind: http-request
+name: 'Web RAG End-to-End (Debug)'
+method: POST
+url: '{{base_url}}/api/v2/rag/web?stream=false&debug=true&retrieval_only=false'
+order: 3000
+queryParams:
+  - key: stream
+    value: 'false'
+  - key: debug
+    value: 'true'
+  - key: retrieval_only
+    value: 'false'
+headers:
+  - key: Content-Type
+    value: application/json
+  - key: X-Client-ID
+    value: 'postman-eval-runner'
+body:
+  type: json
+  content: |-
+    {
+      "query": "{{query}}",
+      "country": "{{country}}"
+    }
+scripts:
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      pm.test("Status code is 200", function () {
+          pm.response.to.have.status(200);
+      });
+      pm.test("Stage timings are present", function () {
+          const json = pm.response.json();
+          pm.expect(json.stage_timings).to.be.an("object");
+          pm.expect(json.stage_timings.total_ms).to.be.above(0);
+      });
+      pm.test("Answer synthesized without LLM error", function () {
+          const json = pm.response.json();
+          pm.expect(json.stage_timings.llm_error).to.eql(null);
+          pm.expect(json.answer).to.be.a("string").and.not.be.empty;
+      });

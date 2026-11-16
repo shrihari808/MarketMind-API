@@ -1,0 +1,284 @@
+[
+  {
+    "id": "q_nvda",
+    "query": "Nvidia data center revenue earnings outlook",
+    "country": "US",
+    "relevant_doc_ids": [
+      "doc_001",
+      "doc_002",
+      "doc_003",
+      "doc_004",
+      "doc_021",
+      "doc_027",
+      "doc_055",
+      "doc_058",
+      "doc_084",
+      "doc_091",
+      "doc_093",
+      "doc_094",
+      "doc_095"
+    ],
+    "relevant_count": 13
+  },
+  {
+    "id": "q_reliance",
+    "query": "Reliance Industries quarterly results retail telecom",
+    "country": "IN",
+    "relevant_doc_ids": [
+      "doc_005",
+      "doc_006",
+      "doc_007",
+      "doc_008",
+      "doc_009",
+      "doc_010",
+      "doc_011",
+      "doc_012",
+      "doc_019",
+      "doc_087",
+      "doc_093"
+    ],
+    "relevant_count": 11
+  },
+  {
+    "id": "q_fed",
+    "query": "Federal Reserve interest rate decision inflation",
+    "country": "US",
+    "relevant_doc_ids": [
+      "doc_009",
+      "doc_014",
+      "doc_015",
+      "doc_016",
+      "doc_017",
+      "doc_045",
+      "doc_049",
+      "doc_050",
+      "doc_078",
+      "doc_082",
+      "doc_083",
+      "doc_084",
+      "doc_085",
+      "doc_088",
+      "doc_089",
+      "doc_090"
+    ],
+    "relevant_count": 16
+  },
+  {
+    "id": "q_tcs",
+    "query": "TCS Q2 earnings operating margin deal pipeline",
+    "country": "IN",
+    "relevant_doc_ids": [
+      "doc_018",
+      "doc_019",
+      "doc_020"
+    ],
+    "relevant_count": 3
+  },
+  {
+    "id": "q_aapl",
+    "query": "Apple iPhone sales growth services revenue",
+    "country": "US",
+    "relevant_doc_ids": [
+      "doc_004",
+      "doc_005",
+      "doc_021",
+      "doc_022",
+      "doc_023",
+      "doc_024",
+      "doc_025",
+      "doc_026",
+      "doc_027",
+      "doc_028"
+    ],
+    "relevant_count": 10
+  },
+  {
+    "id": "q_hdfc",
+    "query": "HDFC Bank net profit NIM asset quality",
+    "country": "IN",
+    "relevant_doc_ids": [
+      "doc_030",
+      "doc_031",
+      "doc_033",
+      "doc_034",
+      "doc_035",
+      "doc_037",
+      "doc_038",
+      "doc_069",
+      "doc_070",
+      "doc_084"
+    ],
+    "relevant_count": 10
+  },
+  {
+    "id": "q_tsla",
+    "query": "Tesla vehicle deliveries automotive gross margin",
+    "country": "US",
+    "relevant_doc_ids": [
+      "doc_039",
+      "doc_040",
+      "doc_041",
+      "doc_042",
+      "doc_043",
+      "doc_044"
+    ],
+    "relevant_count": 6
+  },
+  {
+    "id": "q_rbi",
+    "query": "RBI monetary policy repo rate inflation forecast",
+    "country": "IN",
+    "relevant_doc_ids": [
+      "doc_045",
+      "doc_046",
+      "doc_047",
+      "doc_048",
+      "doc_049",
+      "doc_050",
+      "doc_051",
+      "doc_052",
+      "doc_053",
+      "doc_054",
+      "doc_084"
+    ],
+    "relevant_count": 11
+  },
+  {
+    "id": "q_msft",
+    "query": "Microsoft Azure AI cloud growth capex",
+    "country": "US",
+    "relevant_doc_ids": [
+      "doc_002",
+      "doc_055",
+      "doc_056",
+      "doc_057",
+      "doc_058",
+      "doc_060",
+      "doc_066",
+      "doc_091",
+      "doc_093",
+      "doc_095"
+    ],
+    "relevant_count": 10
+  },
+  {
+    "id": "q_infy",
+    "query": "Infosys revenue guidance AI transformation deals",
+    "country": "IN",
+    "relevant_doc_ids": [
+      "doc_020",
+      "doc_059",
+      "doc_060",
+      "doc_061",
+      "doc_062",
+      "doc_063",
+      "doc_064"
+    ],
+    "relevant_count": 7
+  },
+  {
+    "id": "q_amzn",
+    "query": "Amazon AWS cloud operating income retail margin",
+    "country": "US",
+    "relevant_doc_ids": [
+      "doc_002",
+      "doc_041",
+      "doc_055",
+      "doc_065",
+      "doc_066",
+      "doc_067"
+    ],
+    "relevant_count": 6
+  },
+  {
+    "id": "q_icici",
+    "query": "ICICI Bank net interest income deposit growth",
+    "country": "IN",
+    "relevant_doc_ids": [
+      "doc_033",
+      "doc_068",
+      "doc_069",
+      "doc_070",
+      "doc_071",
+      "doc_072",
+      "doc_073",
+      "doc_074",
+      "doc_075",
+      "doc_076",
+      "doc_077"
+    ],
+    "relevant_count": 11
+  },
+  {
+    "id": "q_oil",
+    "query": "Crude oil Brent prices OPEC supply outlook",
+    "country": "US",
+    "relevant_doc_ids": [
+      "doc_005",
+      "doc_006",
+      "doc_010",
+      "doc_016",
+      "doc_045",
+      "doc_046",
+      "doc_047",
+      "doc_048",
+      "doc_049",
+      "doc_050",
+      "doc_051",
+      "doc_052",
+      "doc_054",
+      "doc_078",
+      "doc_079",
+      "doc_080",
+      "doc_081",
+      "doc_084",
+      "doc_087"
+    ],
+    "relevant_count": 19
+  },
+  {
+    "id": "q_gold",
+    "query": "Gold price rally central bank demand outlook",
+    "country": "IN",
+    "relevant_doc_ids": [
+      "doc_049",
+      "doc_068",
+      "doc_078",
+      "doc_082",
+      "doc_083",
+      "doc_084",
+      "doc_085",
+      "doc_086",
+      "doc_087",
+      "doc_088",
+      "doc_089",
+      "doc_090"
+    ],
+    "relevant_count": 12
+  },
+  {
+    "id": "q_amd",
+    "query": "AMD AI GPU MI300 data center competition",
+    "country": "US",
+    "relevant_doc_ids": [
+      "doc_091",
+      "doc_092",
+      "doc_093",
+      "doc_094",
+      "doc_095"
+    ],
+    "relevant_count": 5
+  },
+  {
+    "id": "q_tatamotors",
+    "query": "Tata Motors JLR EV sales margin outlook",
+    "country": "IN",
+    "relevant_doc_ids": [
+      "doc_084",
+      "doc_096",
+      "doc_097",
+      "doc_098"
+    ],
+    "relevant_count": 4
+  }
+]

@@ -1,0 +1,41 @@
+$kind: http-request
+name: 'Web RAG Retrieval (Debug)'
+method: POST
+url: '{{base_url}}/api/v2/rag/web?stream=false&debug=true&retrieval_only=true'
+order: 2000
+queryParams:
+  - key: stream
+    value: 'false'
+  - key: debug
+    value: 'true'
+  - key: retrieval_only
+    value: 'true'
+headers:
+  - key: Content-Type
+    value: application/json
+  - key: X-Client-ID
+    value: 'postman-eval-runner'
+body:
+  type: json
+  content: |-
+    {
+      "query": "{{query}}",
+      "country": "{{country}}"
+    }
+scripts:
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      pm.test("Status code is 200", function () {
+          pm.response.to.have.status(200);
+      });
+      pm.test("Stage timings are present", function () {
+          const json = pm.response.json();
+          pm.expect(json.stage_timings).to.be.an("object");
+          pm.expect(json.stage_timings.retrieval_total_ms).to.be.above(0);
+      });
+      pm.test("Retrieval returned sources or passages", function () {
+          const json = pm.response.json();
+          pm.expect(json.sources).to.be.an("array");
+          pm.expect(json.sources.length).to.be.above(0);
+      });

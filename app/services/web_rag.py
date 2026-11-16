@@ -17,6 +17,7 @@ from app.domain.schemas.market import StockQuote
 from app.domain.schemas.rag import (
     RAGQueryRequest,
     RAGResult,
+    RAGStageTimings,
     SourceCitation,
     ScrapedDocument,
     PassageChunk,
@@ -118,43 +119,61 @@ class WebRAGService:
         logger.info(f"[WebRAGService] Extracted {len(passages)} candidate passage chunks from {len(documents)} scraped document(s).")
         return passages
 
+    @staticmethod
+    def _ms_since(start_perf: float) -> float:
+        return round((time.perf_counter() - start_perf) * 1000.0, 2)
+
     async def stream(
         self,
         request: RAGQueryRequest,
-        chat_history: Optional[List[Dict[str, str]]] = None
+        chat_history: Optional[List[Dict[str, str]]] = None,
+        debug: bool = False,
+        retrieval_only: bool = False
     ) -> AsyncIterator[SSEMessage]:
         """
         Executes the Web RAG pipeline and yields standardized SSE messages.
         """
         settings = get_settings()
         start_time = time.time()
+        pipeline_perf = time.perf_counter()
+        timings = RAGStageTimings(retrieval_only=retrieval_only)
+        selected_passages: List[PassageChunk] = []
         logger.info(f"[WebRAGService] Incoming RAG query: '{request.query}' (country={request.country}, session_id={request.session_id})")
 
         # Step 1: Query Analysis & Financial Guardrail
         yield SSEMessage(event="status", data={"step": "analyzing_query", "message": "Analyzing financial query..."})
         
+        t_qa = time.perf_counter()
         analysis = await self.query_analyzer.analyze(
             query=request.query,
             country=request.country,
             chat_history=chat_history
         )
+        timings.query_analysis_ms = self._ms_since(t_qa)
 
         if not analysis.is_financial:
             logger.info(f"[WebRAGService] Guardrail triggered: '{request.query}' rejected as non-financial.")
+            timings.retrieval_total_ms = self._ms_since(pipeline_perf)
+            timings.total_ms = timings.retrieval_total_ms
             yield SSEMessage(
                 event="token",
                 data={"token": f"I specialize in financial markets, equities, and economic intelligence. {analysis.financial_reason}\n\nPlease ask a question related to stocks, financial statements, or market trends."}
             )
-            yield SSEMessage(
-                event="complete",
-                data={"tokens_used": 0, "duration_seconds": round(time.time() - start_time, 2)}
-            )
+            complete_payload: Dict[str, object] = {
+                "tokens_used": 0,
+                "duration_seconds": round(time.time() - start_time, 2)
+            }
+            if debug or retrieval_only:
+                complete_payload["stage_timings"] = timings.model_dump()
+            yield SSEMessage(event="complete", data=complete_payload)
             return
 
         # Step 2: Fetch Live Stock Quote if applicable
         quote_task = None
+        quote_start_perf = None
         if analysis.detected_ticker:
             logger.info(f"[WebRAGService] Ticker '{analysis.detected_ticker}' detected. Dispatching live quote fetch.")
+            quote_start_perf = time.perf_counter()
             quote_task = asyncio.create_task(self.market.get_quote(analysis.detected_ticker))
 
         # Step 2.5: Check LanceDB Semantic News Cache
@@ -162,6 +181,7 @@ class WebRAGService:
         is_cache_hit = False
 
         if settings.SEMANTIC_CACHE_ENABLED and self.vector_store:
+            t_cache = time.perf_counter()
             try:
                 min_time = time.time() - (settings.SEMANTIC_CACHE_TTL_HOURS * 3600)
                 max_dist = 1.0 - settings.SEMANTIC_CACHE_SIMILARITY_THRESHOLD
@@ -204,8 +224,12 @@ class WebRAGService:
                     )
                     selected_passages = cached_passages
                     is_cache_hit = True
+                    timings.cache_hit = True
+                    timings.passages_selected = len(selected_passages)
             except Exception as e:
                 logger.warning(f"[WebRAGService] News cache check error: {e}")
+            finally:
+                timings.cache_lookup_ms = self._ms_since(t_cache)
 
         if not is_cache_hit:
             # Step 3: Multi-Query Search with Candidate Expansion
@@ -219,6 +243,7 @@ class WebRAGService:
                 f"(per_query_limit={per_query_limit}, timelimit={timelimit})..."
             )
 
+            t_search = time.perf_counter()
             search_tasks = [
                 self.search_engine.search_news(q, max_results=per_query_limit, country=request.country, timelimit=timelimit)
                 for q in search_queries[:2]
@@ -235,10 +260,13 @@ class WebRAGService:
                         if item.url not in seen_urls:
                             seen_urls.add(item.url)
                             all_citations.append(item)
+            timings.search_ms = self._ms_since(t_search)
+            timings.candidates_found = len(all_citations)
 
             logger.info(f"[WebRAGService] Found {len(all_citations)} unique search candidates.")
 
             # Step 3.5: Pre-filter candidates by relevance & freshness before scraping
+            t_prefilter = time.perf_counter()
             max_to_scrape = settings.MAX_SCRAPED_SOURCES
             if hasattr(self.reranker, "pre_filter_citations"):
                 citations_to_scrape = self.reranker.pre_filter_citations(
@@ -248,12 +276,14 @@ class WebRAGService:
                 )
             else:
                 citations_to_scrape = all_citations[:max_to_scrape]
+            timings.pre_filter_ms = self._ms_since(t_prefilter)
 
             # Re-index citations for clean [1], [2] referencing
             for idx, cit in enumerate(citations_to_scrape, start=1):
                 cit.id = idx
 
             citations_map = {c.url: c for c in citations_to_scrape}
+            timings.urls_scraped = len(citations_to_scrape)
             logger.info(
                 f"[WebRAGService] Pre-filtered {len(all_citations)} candidates down to "
                 f"{len(citations_to_scrape)} scrape targets (MAX_SCRAPED_SOURCES={max_to_scrape})."
@@ -269,7 +299,10 @@ class WebRAGService:
             yield SSEMessage(event="status", data={"step": "reading_sources", "message": "Scraping and analyzing source articles..."})
             urls_to_scrape = [c.url for c in citations_to_scrape]
             logger.info(f"[WebRAGService] Scraping {len(urls_to_scrape)} URLs...")
+            t_scrape = time.perf_counter()
             scraped_docs = await self.scraper.scrape_many(urls_to_scrape)
+            timings.scrape_ms = self._ms_since(t_scrape)
+            timings.scrape_success_count = sum(1 for d in scraped_docs if d.success and d.content)
 
             # Step 5.5: Propagate any discovered metadata dates back to citations
             for doc in scraped_docs:
@@ -278,6 +311,7 @@ class WebRAGService:
                         citations_map[doc.url].publication_date = doc.published_date
 
             # Step 6: Passage Extraction and Freshness Reranking
+            t_chunk = time.perf_counter()
             passages = self._extract_passages(scraped_docs, citations_map)
             
             # If scraper failed to extract full text, build fallback passages from search snippets
@@ -293,9 +327,12 @@ class WebRAGService:
                                 chunk_index=0
                             )
                         )
+            timings.chunk_extract_ms = self._ms_since(t_chunk)
+            timings.passages_extracted = len(passages)
 
             # Rerank and diversify passages
             logger.info(f"[WebRAGService] Reranking {len(passages)} passages with freshness decay...")
+            t_rerank = time.perf_counter()
             if isinstance(self.reranker, HybridReranker):
                 selected_passages = await self.reranker.rerank(
                     query=request.query,
@@ -310,6 +347,8 @@ class WebRAGService:
                     top_k=5,
                     max_per_domain=2
                 )
+            timings.rerank_ms = self._ms_since(t_rerank)
+            timings.passages_selected = len(selected_passages)
 
             # Background Caching into LanceDB
             if settings.SEMANTIC_CACHE_ENABLED and self.vector_store and selected_passages:
@@ -342,6 +381,25 @@ class WebRAGService:
                     logger.info(f"[WebRAGService] Live quote retrieved for {live_quote.ticker}: {live_quote.currency} {live_quote.current_price:.2f}")
             except Exception as e:
                 logger.warning(f"[WebRAGService] Failed to retrieve live quote for {analysis.detected_ticker}: {e}")
+            finally:
+                if quote_start_perf is not None:
+                    timings.quote_ms = self._ms_since(quote_start_perf)
+
+        timings.retrieval_total_ms = self._ms_since(pipeline_perf)
+
+        if retrieval_only:
+            elapsed = round(time.time() - start_time, 2)
+            timings.total_ms = timings.retrieval_total_ms
+            if debug:
+                logger.info(f"[WebRAGService][Debug] Retrieval-only timings: {timings.model_dump()}")
+            complete_payload: Dict[str, object] = {
+                "tokens_used": 0,
+                "duration_seconds": elapsed,
+                "stage_timings": timings.model_dump(),
+                "selected_passages": [p.model_dump() for p in selected_passages],
+            }
+            yield SSEMessage(event="complete", data=complete_payload)
+            return
 
         # Step 7: Construct Grounded Financial Prompt
         context_parts = []
@@ -392,38 +450,65 @@ Provide a comprehensive, well-structured financial analysis addressing the quest
         logger.info(f"[WebRAGService] Initiating Gemini stream (temperature={settings.LLM_TEMPERATURE})...")
 
         token_count = 0
+        t_llm = time.perf_counter()
         try:
             async for token in self.llm.generate_stream(
                 prompt=user_prompt,
                 system_prompt=system_instruction,
                 temperature=settings.LLM_TEMPERATURE
             ):
+                if token_count == 0:
+                    timings.llm_ttft_ms = self._ms_since(t_llm)
                 token_count += 1
                 yield SSEMessage(event="token", data={"token": token})
+            timings.llm_total_ms = self._ms_since(t_llm)
         except Exception as e:
+            timings.llm_total_ms = self._ms_since(t_llm)
+            timings.total_ms = self._ms_since(pipeline_perf)
+            timings.llm_error = str(e)
             logger.error(f"[WebRAGService] Error streaming from Gemini: {e}")
-            yield SSEMessage(event="error", data={"message": f"Generation error: {str(e)}"})
+            err_payload: Dict[str, object] = {"message": f"Generation error: {str(e)}"}
+            if debug:
+                err_payload["stage_timings"] = timings.model_dump()
+                err_payload["selected_passages"] = [p.model_dump() for p in selected_passages]
+            yield SSEMessage(event="error", data=err_payload)
             return
 
         elapsed = round(time.time() - start_time, 2)
+        timings.total_ms = self._ms_since(pipeline_perf)
+        if debug:
+            logger.info(f"[WebRAGService][Debug] Stage timings: {timings.model_dump()}")
         logger.info(f"[WebRAGService] Generation finished: {token_count} tokens streamed in {elapsed}s.")
+        complete_payload = {"tokens_used": token_count, "duration_seconds": elapsed}
+        if debug:
+            complete_payload["stage_timings"] = timings.model_dump()
+            complete_payload["selected_passages"] = [p.model_dump() for p in selected_passages]
         yield SSEMessage(
             event="complete",
-            data={"tokens_used": token_count, "duration_seconds": elapsed}
+            data=complete_payload
         )
 
     async def execute(
         self,
         request: RAGQueryRequest,
-        chat_history: Optional[List[Dict[str, str]]] = None
+        chat_history: Optional[List[Dict[str, str]]] = None,
+        debug: bool = False,
+        retrieval_only: bool = False
     ) -> RAGResult:
         """Non-streaming execution returning a consolidated RAGResult."""
         full_text = []
         sources = []
         tokens = 0
         duration = 0.0
+        stage_timings: Optional[RAGStageTimings] = None
+        selected_passages: Optional[List[PassageChunk]] = None
 
-        async for sse in self.stream(request, chat_history):
+        async for sse in self.stream(
+            request,
+            chat_history,
+            debug=debug,
+            retrieval_only=retrieval_only,
+        ):
             if sse.event == "token":
                 full_text.append(sse.data.get("token", ""))
             elif sse.event == "sources":
@@ -432,11 +517,23 @@ Provide a comprehensive, well-structured financial analysis addressing the quest
             elif sse.event == "complete":
                 tokens = sse.data.get("tokens_used", 0)
                 duration = sse.data.get("duration_seconds", 0.0)
+                if "stage_timings" in sse.data:
+                    stage_timings = RAGStageTimings(**sse.data["stage_timings"])
+                if "selected_passages" in sse.data:
+                    selected_passages = [PassageChunk(**p) for p in sse.data["selected_passages"]]
+            elif sse.event == "error":
+                if "stage_timings" in sse.data:
+                    stage_timings = RAGStageTimings(**sse.data["stage_timings"])
+                    duration = round(stage_timings.total_ms / 1000.0, 2)
+                if "selected_passages" in sse.data:
+                    selected_passages = [PassageChunk(**p) for p in sse.data["selected_passages"]]
 
         return RAGResult(
             query=request.query,
             answer="".join(full_text),
             sources=sources,
             tokens_used=tokens,
-            duration_seconds=duration
+            duration_seconds=duration,
+            stage_timings=stage_timings,
+            selected_passages=selected_passages,
         )
