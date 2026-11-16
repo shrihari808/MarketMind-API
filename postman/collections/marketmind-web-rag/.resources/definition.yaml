@@ -1,0 +1,10 @@
+$kind: collection
+name: MarketMind Web RAG Evals
+description: Functional and latency evaluation requests for MarketMind Web RAG v2.
+variables:
+  - key: base_url
+    value: 'http://127.0.0.1:8000'
+  - key: query
+    value: 'Nvidia data center revenue earnings outlook'
+  - key: country
+    value: 'US'

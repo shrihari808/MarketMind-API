@@ -6,7 +6,7 @@ Includes Web RAG streaming, Multimodal PDF analysis, and Reddit sentiment discov
 import uuid
 from typing import Optional, List
 from pydantic import BaseModel, Field
-from fastapi import APIRouter, Depends, Query, UploadFile, File, Form, HTTPException, status
+from fastapi import APIRouter, Depends, Query, UploadFile, File, Form, HTTPException, Response, status
 from fastapi.responses import StreamingResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -37,7 +37,10 @@ router = APIRouter(prefix="/rag", tags=["RAG & Intelligence"])
 )
 async def web_rag_endpoint(
     request: RAGQueryRequest,
+    response: Response,
     stream: bool = Query(default=True, description="Stream response tokens via Server-Sent Events (SSE)"),
+    debug: bool = Query(default=False, description="Include per-stage latency timings and selected passages"),
+    retrieval_only: bool = Query(default=False, description="Run retrieval & reranking only without LLM synthesis"),
     header_client_id: str = Depends(get_client_id),
     db: AsyncSession = Depends(get_db),
     rag_service: WebRAGService = Depends(get_web_rag_service)
@@ -67,7 +70,12 @@ async def web_rag_endpoint(
             token_count = 0
 
             # Stream from service
-            async for sse_msg in rag_service.stream(request, chat_history=chat_history):
+            async for sse_msg in rag_service.stream(
+                request,
+                chat_history=chat_history,
+                debug=debug,
+                retrieval_only=retrieval_only,
+            ):
                 if sse_msg.event == "token":
                     t = sse_msg.data.get("token", "")
                     accumulated_tokens.append(t)
@@ -116,17 +124,26 @@ async def web_rag_endpoint(
         )
 
     # Non-streaming execution
-    result = await rag_service.execute(request, chat_history=chat_history)
-    try:
-        await ChatHistoryService.save_message(
-            db=db, client_id=client_id, session_id=session_id, role="user", content=request.query
-        )
-        await ChatHistoryService.save_message(
-            db=db, client_id=client_id, session_id=session_id, role="assistant",
-            content=result.answer, sources=result.sources, tokens=result.tokens_used
-        )
-    except Exception:
-        pass
+    result = await rag_service.execute(
+        request,
+        chat_history=chat_history,
+        debug=debug,
+        retrieval_only=retrieval_only,
+    )
+    if result.stage_timings:
+        response.headers["X-RAG-Retrieval-Ms"] = f"{result.stage_timings.retrieval_total_ms:.2f}"
+        response.headers["X-RAG-Total-Ms"] = f"{result.stage_timings.total_ms:.2f}"
+    if result.answer:
+        try:
+            await ChatHistoryService.save_message(
+                db=db, client_id=client_id, session_id=session_id, role="user", content=request.query
+            )
+            await ChatHistoryService.save_message(
+                db=db, client_id=client_id, session_id=session_id, role="assistant",
+                content=result.answer, sources=result.sources, tokens=result.tokens_used
+            )
+        except Exception:
+            pass
 
     return result
 
