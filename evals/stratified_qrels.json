@@ -1,0 +1,765 @@
+[
+  {
+    "id": "fund_01",
+    "category": "ticker_fundamentals",
+    "query": "Nvidia data center gross margin valuation multiples",
+    "country": "US",
+    "relevant_doc_ids": [
+      "doc_100",
+      "doc_003",
+      "doc_001"
+    ],
+    "gold_titles": [
+      "Jim Cramer Warns About the AI Data Center Trade. What It Means for Nvidia and Broadcom",
+      "Nvidia Stock Price Prediction 2026, 2027-2040: Can NVDA Become the First $6 Trillion AI Giant",
+      "Nvidia posts $96.2 billion quarter as AI demand more than doubles revenue"
+    ],
+    "relevant_count": 3
+  },
+  {
+    "id": "fund_02",
+    "category": "ticker_fundamentals",
+    "query": "Reliance Industries Jio ARPU retail EBITDA margin",
+    "country": "IN",
+    "relevant_doc_ids": [
+      "doc_011",
+      "doc_005",
+      "doc_006"
+    ],
+    "gold_titles": [
+      "Reliance Industries Q4 results key takeaways: O2C drags profit down 12.6% as Jio, retail hold the fort",
+      "Reliance Industries Q2 Results Highlights: Net profit jumps 34% on refining, digital gains; revenue hits record",
+      "Reliance Industries Q2 results: Profit may top Rs 21,000 crore as refining, Jio drive earnings- Moneycontrol.com"
+    ],
+    "relevant_count": 3
+  },
+  {
+    "id": "fund_03",
+    "category": "ticker_fundamentals",
+    "query": "TCS operating margin attrition free cash flow",
+    "country": "IN",
+    "relevant_doc_ids": [
+      "doc_101",
+      "doc_018",
+      "doc_019"
+    ],
+    "gold_titles": [
+      "TCS Q4 Results - TCS Q4 earnings News, TCS Q4 result updates | ETMarkets",
+      "TCS Consolidated September 2026 Net Sales at Rs 73,188.00 crore, up 11.23% Y-o-Y- Moneycontrol.com",
+      "DXC Technology Company: DXC Technology Reports Second Quarter Fiscal Year 2027 Results"
+    ],
+    "relevant_count": 3
+  },
+  {
+    "id": "fund_04",
+    "category": "ticker_fundamentals",
+    "query": "Apple services segment gross margin share buyback",
+    "country": "US",
+    "relevant_doc_ids": [
+      "doc_025",
+      "doc_024",
+      "doc_027"
+    ],
+    "gold_titles": [
+      "Apple Services Revenue Statistics 2026: $109,158 Million a Year at a 75.4% Gross Margin",
+      "Apple Statistics 2026: Revenue, iPhone, and Services | Fin Loom",
+      "Apple (AAPL) Revenue 2005-2026"
+    ],
+    "relevant_count": 3
+  },
+  {
+    "id": "fund_05",
+    "category": "ticker_fundamentals",
+    "query": "HDFC Bank net interest margin ROE asset quality",
+    "country": "IN",
+    "relevant_doc_ids": [
+      "doc_033",
+      "doc_037",
+      "doc_130"
+    ],
+    "gold_titles": [
+      "HDFC Bank\u2019s Q2FY27 net profit edges up 4.7%; asset quality improves",
+      "HDFC Bank Q2 results: Net profit rises 4.7% to Rs 19,510 crore, broadly meets estimates; asset quality improves- Moneycontrol.com",
+      "HDFC Bank vs ICICI Bank: CASA, Margins and Asset Quality | Altys Labs"
+    ],
+    "relevant_count": 3
+  },
+  {
+    "id": "fund_06",
+    "category": "ticker_fundamentals",
+    "query": "Tesla automotive gross margin excluding regulatory credits",
+    "country": "US",
+    "relevant_doc_ids": [
+      "doc_039",
+      "doc_041",
+      "doc_042"
+    ],
+    "gold_titles": [
+      "Tesla vs. Ford: Which Stock Has an Edge After Q3 Earnings?",
+      "Rivian Automotive Inc (RIVN) Q3 2026 Earnings Call Highlights: R",
+      "Tesla Has Cash But It Won\u2019t Matter for The Rest of 2026"
+    ],
+    "relevant_count": 3
+  },
+  {
+    "id": "fund_07",
+    "category": "ticker_fundamentals",
+    "query": "Microsoft Azure cloud revenue capex operating income",
+    "country": "US",
+    "relevant_doc_ids": [
+      "doc_106",
+      "doc_107",
+      "doc_133"
+    ],
+    "gold_titles": [
+      "Microsoft Q1 FY2027 Earnings Preview: Azure Must Hit 45%, and Capex Must Start Paying Off",
+      "Microsoft stock jumps 4% as cloud growth drives earnings and revenue beat",
+      "The Cloud Titans: Microsoft\u2019s Copilot Backlog Challenges Amazon\u2019s Data Center Re-Acceleration"
+    ],
+    "relevant_count": 3
+  },
+  {
+    "id": "fund_08",
+    "category": "ticker_fundamentals",
+    "query": "Infosys EBIT margin constant currency revenue guidance",
+    "country": "IN",
+    "relevant_doc_ids": [
+      "doc_062",
+      "doc_061",
+      "doc_059"
+    ],
+    "gold_titles": [
+      "Infosys Q2 Results: PAT Jumps 6% YoY To Rs 7,823 Crore, Cuts FY27 Revenue Guidance - Full Earnings Report",
+      "What Infosys (INFY) Said on Its Q2 Earnings Call",
+      "Infosys Q2 FY27 Profit Rises 6.2%; Cuts Growth Guidance | Sarkaritel.com"
+    ],
+    "relevant_count": 3
+  },
+  {
+    "id": "fund_09",
+    "category": "ticker_fundamentals",
+    "query": "Amazon AWS operating margin retail free cash flow",
+    "country": "US",
+    "relevant_doc_ids": [
+      "doc_065",
+      "doc_134",
+      "doc_066"
+    ],
+    "gold_titles": [
+      "Amazon stock rises as AWS growth meets $220 billion AI spend",
+      "Amazon Climbs 5% as Upgrade Fuels Post-Earnings Rebound on AWS Strength; Walmart Rises 2%, Alphabet Edges Higher",
+      "Amazon Q3 2026 10-Q Analysis: AWS Margins and Capex Surge"
+    ],
+    "relevant_count": 3
+  },
+  {
+    "id": "fund_10",
+    "category": "ticker_fundamentals",
+    "query": "ICICI Bank CASA deposit ratio net interest income",
+    "country": "IN",
+    "relevant_doc_ids": [
+      "doc_076",
+      "doc_077",
+      "doc_071"
+    ],
+    "gold_titles": [
+      "ICICI Bank Q2 results: Net profit rises 20.1% to Rs 14,843 crore, NII up 17.7%",
+      "ICICI Bank Q2 profit rises 20% to \u20b914,843 crore, NII jumps 18%",
+      "ICICI Bank Q2 profit rises 20.1% to \u20b914,843 crore; NIM falls to 4.18%"
+    ],
+    "relevant_count": 3
+  },
+  {
+    "id": "fund_11",
+    "category": "ticker_fundamentals",
+    "query": "State Bank of India SBI credit growth net NPA",
+    "country": "IN",
+    "relevant_doc_ids": [
+      "doc_029",
+      "doc_104",
+      "doc_141"
+    ],
+    "gold_titles": [
+      "SBI Q2 Results: \u20b923,040 crore profit, steady growth with improved asset quality",
+      "SBI quarterly results: Bank shares decline despite loan growth, better asset quality in Q2 - What it means to investors | Stock Market News",
+      "HDFC Bank vs SBI: One bank wins on RoA, the other on credit momentum\u2014Which fits your 2026 watchlist?"
+    ],
+    "relevant_count": 3
+  },
+  {
+    "id": "fund_12",
+    "category": "ticker_fundamentals",
+    "query": "Alphabet Google Cloud profitability search ad revenue",
+    "country": "US",
+    "relevant_doc_ids": [
+      "doc_109",
+      "doc_108",
+      "doc_142"
+    ],
+    "gold_titles": [
+      "Google Business Strategy 2026: AI, Search, Cloud & Revenue Diversification - The Strategy Story",
+      "Alphabet Earnings: Revenue Up 25%, Profit Down [2026]",
+      "Google Cloud vs AWS: 103% Growth Outpaces Azure [2026]"
+    ],
+    "relevant_count": 3
+  },
+  {
+    "id": "fund_13",
+    "category": "ticker_fundamentals",
+    "query": "AMD data center GPU revenue balance sheet debt",
+    "country": "US",
+    "relevant_doc_ids": [
+      "doc_091",
+      "doc_093",
+      "doc_095"
+    ],
+    "gold_titles": [
+      "AMD beats expectations as agentic AI sparks its data center revenue growth engines - SiliconANGLE",
+      "AMD Delivers Leadership Portfolio of Data Center AI Solutions with AMD Instinct MI300 Series",
+      "AMD Takes On Nvidia with New GPU for AI"
+    ],
+    "relevant_count": 3
+  },
+  {
+    "id": "fund_14",
+    "category": "ticker_fundamentals",
+    "query": "Tata Motors JLR free cash flow EV margin",
+    "country": "IN",
+    "relevant_doc_ids": [
+      "doc_146",
+      "doc_098",
+      "doc_097"
+    ],
+    "gold_titles": [
+      "Tata Motors EV Sales Surge 90% in Q2FY27",
+      "JLR's 20% revenue growth supports Tata Motors PV's Q2 performance as revenue rises 34% to \u20b996,920 crore",
+      "TaMo PV posts 5,531cr loss, pares JLR margin outlook"
+    ],
+    "relevant_count": 3
+  },
+  {
+    "id": "fund_15",
+    "category": "ticker_fundamentals",
+    "query": "Meta Platforms Reality Labs capex advertising ARPU",
+    "country": "US",
+    "relevant_doc_ids": [
+      "doc_108",
+      "doc_111",
+      "doc_112"
+    ],
+    "gold_titles": [
+      "Alphabet Earnings: Revenue Up 25%, Profit Down [2026]",
+      "How Meta Makes Money: Ad Auctions, ARPU Geography, and the Reality Labs Bet | PitchGrade Research",
+      "Meta by the Numbers: 3.60 Billion Daily Users and $60.80 Billion in One Quarter"
+    ],
+    "relevant_count": 3
+  },
+  {
+    "id": "news_01",
+    "category": "breaking_news",
+    "query": "Federal Reserve latest FOMC interest rate cut decision",
+    "country": "US",
+    "relevant_doc_ids": [
+      "doc_015",
+      "doc_017",
+      "doc_016"
+    ],
+    "gold_titles": [
+      "Economy at a Glance - Policy Rate",
+      "Federal Reserve holds interest rates steady even as inflation remains high",
+      "Federal Reserve raises interest rates for the first time since 2023"
+    ],
+    "relevant_count": 3
+  },
+  {
+    "id": "news_02",
+    "category": "breaking_news",
+    "query": "RBI MPC latest repo rate policy inflation outlook",
+    "country": "IN",
+    "relevant_doc_ids": [
+      "doc_054",
+      "doc_113",
+      "doc_051"
+    ],
+    "gold_titles": [
+      "RBI MPC meeting August 2026 highlights: Repo rate decision, inflation outlook & GDP forecast; key takeaways from Governor Sanjay Malhotra's speech",
+      "RBI MPC Explained: Everything That Changed On Repo Rate, GDP, And Inflation",
+      "RBI MPC Key Takeaways 2026: Repo rate hiked to 5.50%, FY27 GDP growth forecast raised to 7.1%"
+    ],
+    "relevant_count": 3
+  },
+  {
+    "id": "news_03",
+    "category": "breaking_news",
+    "query": "Nvidia latest quarterly earnings Blackwell GPU guidance",
+    "country": "US",
+    "relevant_doc_ids": [
+      "doc_003",
+      "doc_001",
+      "doc_002"
+    ],
+    "gold_titles": [
+      "Nvidia Stock Price Prediction 2026, 2027-2040: Can NVDA Become the First $6 Trillion AI Giant",
+      "Nvidia posts $96.2 billion quarter as AI demand more than doubles revenue",
+      "Why Nvidia at 13 Times Expected Earnings Still Isn't Cheap"
+    ],
+    "relevant_count": 3
+  },
+  {
+    "id": "news_04",
+    "category": "breaking_news",
+    "query": "Reliance Industries latest Q2 Q3 earnings telecom retail",
+    "country": "IN",
+    "relevant_doc_ids": [
+      "doc_006",
+      "doc_011",
+      "doc_012"
+    ],
+    "gold_titles": [
+      "Reliance Industries Q2 results: Profit may top Rs 21,000 crore as refining, Jio drive earnings- Moneycontrol.com",
+      "Reliance Industries Q4 results key takeaways: O2C drags profit down 12.6% as Jio, retail hold the fort",
+      "Reliance Q2 FY27 Results on Oct 30: Rs 20,900 Crore Profit"
+    ],
+    "relevant_count": 3
+  },
+  {
+    "id": "news_05",
+    "category": "breaking_news",
+    "query": "Brent crude oil price today OPEC supply forecast",
+    "country": "US",
+    "relevant_doc_ids": [
+      "doc_156",
+      "doc_137",
+      "doc_079"
+    ],
+    "gold_titles": [
+      "OPEC+ Strategy vs US Oil: 2026 Market Battle for Price Control",
+      "Crude oil price fall offers India relief, but exporters await cheaper inputs: IIFT Vice Chancellor K Rangarajan- Moneycontrol.com",
+      "EIA Sees Brent Near $100 for the Rest of the Year as Crude Futures Ease Again"
+    ],
+    "relevant_count": 3
+  },
+  {
+    "id": "news_06",
+    "category": "breaking_news",
+    "query": "Gold price rally central bank bullion buying news",
+    "country": "IN",
+    "relevant_doc_ids": [
+      "doc_087",
+      "doc_083",
+      "doc_119"
+    ],
+    "gold_titles": [
+      "Gold Price Rebound: Central Bank Demand Drives 2026 Rally",
+      "Gold, Silver Retreat From Peaks As Bullion Rally Loses Steam - BW Businessworld",
+      "Goldman forecasts gold price to take two years to recapture all-time highs"
+    ],
+    "relevant_count": 3
+  },
+  {
+    "id": "news_07",
+    "category": "breaking_news",
+    "query": "Nifty 50 Sensex FII DII flows market rally",
+    "country": "IN",
+    "relevant_doc_ids": [
+      "doc_123",
+      "doc_084",
+      "doc_122"
+    ],
+    "gold_titles": [
+      "NSE Trends | Live Nifty 50, Bank Nifty, Sensex, FII DII & Nifty Stocks",
+      "Stock Market Today Live Updates: Sensex ends 512 pts higher, Nifty above 25,250; ITC, Tata Cons rise 3% each - The Economic Times",
+      "FII Inflows Hit \u20b945,960 Crore as Nifty Rallies 8.6%"
+    ],
+    "relevant_count": 3
+  },
+  {
+    "id": "news_08",
+    "category": "breaking_news",
+    "query": "US 10 year Treasury yield bond market move",
+    "country": "US",
+    "relevant_doc_ids": [
+      "doc_124",
+      "doc_046",
+      "doc_048"
+    ],
+    "gold_titles": [
+      "US treasury bond prices down on Friday, Yields on 10-year, 30-year, 2-year jump. Check latest rates",
+      "RBI rate hike in December: SBI now expects just 25 bps despite inflation crossing 6% - BusinessToday",
+      "SBI Halves RBI Rate Hike Forecast to 0.25% Amid Easing Pressures"
+    ],
+    "relevant_count": 3
+  },
+  {
+    "id": "news_09",
+    "category": "breaking_news",
+    "query": "Apple latest iPhone shipments China demand news",
+    "country": "US",
+    "relevant_doc_ids": [
+      "doc_023",
+      "doc_024",
+      "doc_025"
+    ],
+    "gold_titles": [
+      "How much of Apple\u2019s revenue comes from iPhone? Every year since 2007",
+      "Apple Statistics 2026: Revenue, iPhone, and Services | Fin Loom",
+      "Apple Services Revenue Statistics 2026: $109,158 Million a Year at a 75.4% Gross Margin"
+    ],
+    "relevant_count": 3
+  },
+  {
+    "id": "news_10",
+    "category": "breaking_news",
+    "query": "Tesla latest quarterly deliveries robotaxi update",
+    "country": "US",
+    "relevant_doc_ids": [
+      "doc_043",
+      "doc_039",
+      "doc_044"
+    ],
+    "gold_titles": [
+      "Zero To Sixty: Fort Worth Gets Tesla Robotaxi While UBS Upgrades Rivian And Citigroup Shuffles EV Holdings",
+      "Tesla vs. Ford: Which Stock Has an Edge After Q3 Earnings?",
+      "After Earnings, We Raise Our Tesla Stock Fair Value Estimate. Are Shares a Buy?"
+    ],
+    "relevant_count": 3
+  },
+  {
+    "id": "news_11",
+    "category": "breaking_news",
+    "query": "TCS latest Q2 Q3 earnings deal wins update",
+    "country": "IN",
+    "relevant_doc_ids": [
+      "doc_101",
+      "doc_019",
+      "doc_020"
+    ],
+    "gold_titles": [
+      "TCS Q4 Results - TCS Q4 earnings News, TCS Q4 result updates | ETMarkets",
+      "DXC Technology Company: DXC Technology Reports Second Quarter Fiscal Year 2027 Results",
+      "Revenue gains take time to materialise even as Indian IT sees strong bookings"
+    ],
+    "relevant_count": 3
+  },
+  {
+    "id": "news_12",
+    "category": "breaking_news",
+    "query": "Infosys latest earnings guidance AI deal pipeline",
+    "country": "IN",
+    "relevant_doc_ids": [
+      "doc_062",
+      "doc_061",
+      "doc_063"
+    ],
+    "gold_titles": [
+      "Infosys Q2 Results: PAT Jumps 6% YoY To Rs 7,823 Crore, Cuts FY27 Revenue Guidance - Full Earnings Report",
+      "What Infosys (INFY) Said on Its Q2 Earnings Call",
+      "Infosys AI business grows to 10% of overall revenue in Q2"
+    ],
+    "relevant_count": 3
+  },
+  {
+    "id": "news_13",
+    "category": "breaking_news",
+    "query": "HDFC Bank latest quarterly profit loan deposit growth",
+    "country": "IN",
+    "relevant_doc_ids": [
+      "doc_035",
+      "doc_070",
+      "doc_129"
+    ],
+    "gold_titles": [
+      "HDFC Bank Q2 Results: Margins at record low; Treasury income drops 67% - CNBC TV18",
+      "Anup Bagchi takes charge at HDFC Bank: Can he close the gap with ICICI Bank? - CNBC TV18",
+      "HDFC Bank vs ICICI Bank: Margin blues to growth drivers in Q4- 7 key takeaways"
+    ],
+    "relevant_count": 3
+  },
+  {
+    "id": "news_14",
+    "category": "breaking_news",
+    "query": "Microsoft latest earnings Azure AI capex news",
+    "country": "US",
+    "relevant_doc_ids": [
+      "doc_106",
+      "doc_057",
+      "doc_055"
+    ],
+    "gold_titles": [
+      "Microsoft Q1 FY2027 Earnings Preview: Azure Must Hit 45%, and Capex Must Start Paying Off",
+      "Microsoft and Alphabet Just Reported Earnings, Putting the AI Boom to the Test | The Motley Fool",
+      "AI buildout hits snag as Google and Microsoft put off raising capex forecasts"
+    ],
+    "relevant_count": 3
+  },
+  {
+    "id": "news_15",
+    "category": "breaking_news",
+    "query": "Amazon latest quarterly earnings AWS cloud growth",
+    "country": "US",
+    "relevant_doc_ids": [
+      "doc_134",
+      "doc_065",
+      "doc_066"
+    ],
+    "gold_titles": [
+      "Amazon Climbs 5% as Upgrade Fuels Post-Earnings Rebound on AWS Strength; Walmart Rises 2%, Alphabet Edges Higher",
+      "Amazon stock rises as AWS growth meets $220 billion AI spend",
+      "Amazon Q3 2026 10-Q Analysis: AWS Margins and Capex Surge"
+    ],
+    "relevant_count": 3
+  },
+  {
+    "id": "comp_01",
+    "category": "multi_hop_comparative",
+    "query": "Nvidia vs AMD AI GPU data center competition",
+    "country": "US",
+    "relevant_doc_ids": [
+      "doc_095",
+      "doc_150",
+      "doc_093"
+    ],
+    "gold_titles": [
+      "AMD Takes On Nvidia with New GPU for AI",
+      "AMD vs. Broadcom: With NVDA's Jensen Huang Gone, Which AI Stock Wins the Most?",
+      "AMD Delivers Leadership Portfolio of Data Center AI Solutions with AMD Instinct MI300 Series"
+    ],
+    "relevant_count": 3
+  },
+  {
+    "id": "comp_02",
+    "category": "multi_hop_comparative",
+    "query": "TCS vs Infosys operating margin and revenue growth comparison",
+    "country": "IN",
+    "relevant_doc_ids": [
+      "doc_103",
+      "doc_101",
+      "doc_020"
+    ],
+    "gold_titles": [
+      "Infosys Stock Outlook, AI Deals and FY27 Growth",
+      "TCS Q4 Results - TCS Q4 earnings News, TCS Q4 result updates | ETMarkets",
+      "Revenue gains take time to materialise even as Indian IT sees strong bookings"
+    ],
+    "relevant_count": 3
+  },
+  {
+    "id": "comp_03",
+    "category": "multi_hop_comparative",
+    "query": "HDFC Bank vs ICICI Bank net interest margin and deposit growth",
+    "country": "IN",
+    "relevant_doc_ids": [
+      "doc_129",
+      "doc_070",
+      "doc_130"
+    ],
+    "gold_titles": [
+      "HDFC Bank vs ICICI Bank: Margin blues to growth drivers in Q4- 7 key takeaways",
+      "Anup Bagchi takes charge at HDFC Bank: Can he close the gap with ICICI Bank? - CNBC TV18",
+      "HDFC Bank vs ICICI Bank: CASA, Margins and Asset Quality | Altys Labs"
+    ],
+    "relevant_count": 3
+  },
+  {
+    "id": "comp_04",
+    "category": "multi_hop_comparative",
+    "query": "Microsoft Azure vs Amazon AWS cloud AI capex growth",
+    "country": "US",
+    "relevant_doc_ids": [
+      "doc_142",
+      "doc_066",
+      "doc_133"
+    ],
+    "gold_titles": [
+      "Google Cloud vs AWS: 103% Growth Outpaces Azure [2026]",
+      "Amazon Q3 2026 10-Q Analysis: AWS Margins and Capex Surge",
+      "The Cloud Titans: Microsoft\u2019s Copilot Backlog Challenges Amazon\u2019s Data Center Re-Acceleration"
+    ],
+    "relevant_count": 3
+  },
+  {
+    "id": "comp_05",
+    "category": "multi_hop_comparative",
+    "query": "Federal Reserve rate cuts impact on gold and Treasury yields",
+    "country": "US",
+    "relevant_doc_ids": [
+      "doc_082",
+      "doc_085",
+      "doc_083"
+    ],
+    "gold_titles": [
+      "Gold Price \u2013 Today\u2019s Chart \u2013 Historical Data \u2013 Outlook - The Bull",
+      "Gold Price Outlook: Why Gold Is Holding Up Despite 5% US Yields",
+      "Gold, Silver Retreat From Peaks As Bullion Rally Loses Steam - BW Businessworld"
+    ],
+    "relevant_count": 3
+  },
+  {
+    "id": "comp_06",
+    "category": "multi_hop_comparative",
+    "query": "RBI monetary policy inflation impact on Indian banks NIM",
+    "country": "IN",
+    "relevant_doc_ids": [
+      "doc_046",
+      "doc_053",
+      "doc_054"
+    ],
+    "gold_titles": [
+      "RBI rate hike in December: SBI now expects just 25 bps despite inflation crossing 6% - BusinessToday",
+      "RBI Hikes Repo Rate to 5.5%, Raises FY27 Retail Inflation Forecast to 5.2%",
+      "RBI MPC meeting August 2026 highlights: Repo rate decision, inflation outlook & GDP forecast; key takeaways from Governor Sanjay Malhotra's speech"
+    ],
+    "relevant_count": 3
+  },
+  {
+    "id": "comp_07",
+    "category": "multi_hop_comparative",
+    "query": "Crude oil Brent prices impact on Reliance and Indian inflation",
+    "country": "IN",
+    "relevant_doc_ids": [
+      "doc_139",
+      "doc_136",
+      "doc_138"
+    ],
+    "gold_titles": [
+      "Brent Crude Above $90: India's Economy, Stocks Face Inflation Shock",
+      "D-Street Outlook: 5 Key Factors Including India, US CPI Inflation Data And Crude Oil Prices To Drive Markets Next Week - Outlook Money",
+      "Brent Crude Volatility: India's Economic Fault Line & Stock Winners/Losers"
+    ],
+    "relevant_count": 3
+  },
+  {
+    "id": "comp_08",
+    "category": "multi_hop_comparative",
+    "query": "Apple vs Microsoft AI ecosystem services and cloud revenue",
+    "country": "US",
+    "relevant_doc_ids": [
+      "doc_027",
+      "doc_024",
+      "doc_025"
+    ],
+    "gold_titles": [
+      "Apple (AAPL) Revenue 2005-2026",
+      "Apple Statistics 2026: Revenue, iPhone, and Services | Fin Loom",
+      "Apple Services Revenue Statistics 2026: $109,158 Million a Year at a 75.4% Gross Margin"
+    ],
+    "relevant_count": 3
+  },
+  {
+    "id": "comp_09",
+    "category": "multi_hop_comparative",
+    "query": "SBI vs HDFC Bank credit growth and asset quality comparison",
+    "country": "IN",
+    "relevant_doc_ids": [
+      "doc_141",
+      "doc_140"
+    ],
+    "gold_titles": [
+      "HDFC Bank vs SBI: One bank wins on RoA, the other on credit momentum\u2014Which fits your 2026 watchlist?",
+      "HDFC Bank vs SBI: The king is still standing. But the challenger is closing in"
+    ],
+    "relevant_count": 2
+  },
+  {
+    "id": "comp_10",
+    "category": "multi_hop_comparative",
+    "query": "Alphabet Google Cloud vs AWS AI infrastructure spending",
+    "country": "US",
+    "relevant_doc_ids": [
+      "doc_145",
+      "doc_066",
+      "doc_134"
+    ],
+    "gold_titles": [
+      "Amazon vs. Alphabet: Which AI Cloud Stock Makes the Better Case After the Spending Bill?",
+      "Amazon Q3 2026 10-Q Analysis: AWS Margins and Capex Surge",
+      "Amazon Climbs 5% as Upgrade Fuels Post-Earnings Rebound on AWS Strength; Walmart Rises 2%, Alphabet Edges Higher"
+    ],
+    "relevant_count": 3
+  },
+  {
+    "id": "comp_11",
+    "category": "multi_hop_comparative",
+    "query": "Tata Motors JLR EV margins vs Tesla automotive margins",
+    "country": "IN",
+    "relevant_doc_ids": [
+      "doc_146",
+      "doc_098",
+      "doc_096"
+    ],
+    "gold_titles": [
+      "Tata Motors EV Sales Surge 90% in Q2FY27",
+      "JLR's 20% revenue growth supports Tata Motors PV's Q2 performance as revenue rises 34% to \u20b996,920 crore",
+      "TaMo PV narrows Q2 loss to \u20b95,451 cr as JLR recovery offsets costs"
+    ],
+    "relevant_count": 3
+  },
+  {
+    "id": "comp_12",
+    "category": "multi_hop_comparative",
+    "query": "Broadcom vs Nvidia AI networking and custom silicon revenue",
+    "country": "US",
+    "relevant_doc_ids": [
+      "doc_100",
+      "doc_150",
+      "doc_148"
+    ],
+    "gold_titles": [
+      "Jim Cramer Warns About the AI Data Center Trade. What It Means for Nvidia and Broadcom",
+      "AMD vs. Broadcom: With NVDA's Jensen Huang Gone, Which AI Stock Wins the Most?",
+      "How Investors May Respond To Broadcom (AVGO) As Nvidia Rivals Gain Attention"
+    ],
+    "relevant_count": 3
+  },
+  {
+    "id": "comp_13",
+    "category": "multi_hop_comparative",
+    "query": "FII outflows vs DII inflows impact on Nifty 50 valuation",
+    "country": "IN",
+    "relevant_doc_ids": [
+      "doc_123",
+      "doc_120",
+      "doc_084"
+    ],
+    "gold_titles": [
+      "NSE Trends | Live Nifty 50, Bank Nifty, Sensex, FII DII & Nifty Stocks",
+      "FII & DII Data India | Daily Institutional Flow Tracker",
+      "Stock Market Today Live Updates: Sensex ends 512 pts higher, Nifty above 25,250; ITC, Tata Cons rise 3% each - The Economic Times"
+    ],
+    "relevant_count": 3
+  },
+  {
+    "id": "comp_14",
+    "category": "multi_hop_comparative",
+    "query": "OPEC supply cuts vs US shale output effect on Brent crude",
+    "country": "US",
+    "relevant_doc_ids": [
+      "doc_079",
+      "doc_139",
+      "doc_156"
+    ],
+    "gold_titles": [
+      "EIA Sees Brent Near $100 for the Rest of the Year as Crude Futures Ease Again",
+      "Brent Crude Above $90: India's Economy, Stocks Face Inflation Shock",
+      "OPEC+ Strategy vs US Oil: 2026 Market Battle for Price Control"
+    ],
+    "relevant_count": 3
+  },
+  {
+    "id": "comp_15",
+    "category": "multi_hop_comparative",
+    "query": "ICICI Bank vs SBI loan growth and net profit comparison",
+    "country": "IN",
+    "relevant_doc_ids": [
+      "doc_071",
+      "doc_074",
+      "doc_076"
+    ],
+    "gold_titles": [
+      "ICICI Bank Q2 profit rises 20.1% to \u20b914,843 crore; NIM falls to 4.18%",
+      "ICICI Bank Ltd (IBN) (Q2 2027) Earnings Call Highlights: Strong Deposit Growth and Asset ...",
+      "ICICI Bank Q2 results: Net profit rises 20.1% to Rs 14,843 crore, NII up 17.7%"
+    ],
+    "relevant_count": 3
+  }
+]

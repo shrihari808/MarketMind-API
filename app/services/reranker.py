@@ -144,6 +144,13 @@ class FreshnessReranker(BM25Reranker):
     Blends keyword relevance with article age without brittle keyword flags.
     """
 
+    TIME_SENSITIVE_TERMS = {
+        "latest", "today", "breaking", "news", "recent", "currently", "now",
+        "q1", "q2", "q3", "q4", "quarterly", "earnings", "results", "guidance",
+        "fed", "fomc", "rbi", "mpc", "rate cut", "rate hike", "rally", "crash",
+        "surge", "drop", "update", "2026", "this week", "this month",
+    }
+
     def __init__(
         self,
         k1: float = 1.5,
@@ -153,8 +160,22 @@ class FreshnessReranker(BM25Reranker):
     ):
         super().__init__(k1=k1, b=b)
         settings = get_settings()
+        self._explicit_floor = relevance_floor is not None
         self.half_life_days = half_life_days if half_life_days is not None else settings.RAG_HALF_LIFE_DAYS
         self.relevance_floor = relevance_floor if relevance_floor is not None else settings.RAG_RELEVANCE_FLOOR
+
+    @classmethod
+    def is_time_sensitive_query(cls, query: str) -> bool:
+        q_lower = query.lower()
+        return any(term in q_lower for term in cls.TIME_SENSITIVE_TERMS)
+
+    def _effective_floor(self, query: str) -> float:
+        if self._explicit_floor:
+            return self.relevance_floor
+        if self.is_time_sensitive_query(query):
+            return self.relevance_floor
+        # Preserve evergreen/undated fundamental documents with a gentle recency tie-breaker
+        return max(self.relevance_floor, 0.92)
 
     @staticmethod
     def parse_date(date_str: Optional[str]) -> Optional[datetime]:
@@ -225,31 +246,44 @@ class FreshnessReranker(BM25Reranker):
         self,
         query: str,
         citations: List[SourceCitation],
-        top_k: int = 5
+        top_k: int = 12
     ) -> List[SourceCitation]:
         """
         Pre-filters search citations down to top_k URLs to scrape
-        using Snippet BM25 relevance blended with freshness decay.
+        using Snippet BM25 relevance blended with bounded intent-aware freshness boost.
         """
         if len(citations) <= top_k:
             return citations
 
-        query_tokens = set(self.tokenize(query))
-        scored = []
-        for c in citations:
-            text = f"{c.title} {c.snippet or ''}"
-            tokens = self.tokenize(text)
-            overlap = sum(1 for t in tokens if t in query_tokens)
-            rel_score = overlap / max(len(query_tokens), 1)
+        snippet_passages = [
+            PassageChunk(
+                text=f"{c.title} {c.snippet or ''}",
+                source=c,
+                score=0.0,
+                chunk_index=idx,
+            )
+            for idx, c in enumerate(citations)
+        ]
+        bm25_scored = super().rerank(
+            query=query,
+            passages=snippet_passages,
+            top_k=len(snippet_passages),
+            max_per_domain=999,
+        )
+        max_bm25 = max([p.score for p in bm25_scored] or [1.0]) or 1.0
+        floor = self._effective_floor(query)
 
-            freshness = self.calculate_freshness(c.publication_date)
-            combined = rel_score * (self.relevance_floor + (1.0 - self.relevance_floor) * freshness)
-            scored.append((combined, c))
+        scored = []
+        for p in bm25_scored:
+            norm_bm25 = p.score / max_bm25
+            freshness = self.calculate_freshness(p.source.publication_date)
+            combined = norm_bm25 * (floor + (1.0 - floor) * freshness)
+            scored.append((combined, p.source))
 
         scored.sort(key=lambda x: x[0], reverse=True)
         filtered = [c for _, c in scored[:top_k]]
         logger.info(
-            f"[FreshnessReranker] Pre-filtered {len(citations)} citations down to {len(filtered)} scrape targets."
+            f"[FreshnessReranker] Pre-filtered {len(citations)} citations down to {len(filtered)} scrape targets (floor={floor:.2f})."
         )
         return filtered
 
@@ -261,7 +295,7 @@ class FreshnessReranker(BM25Reranker):
         max_per_domain: int = 2
     ) -> List[PassageChunk]:
         """
-        Reranks passage chunks by combining BM25 relevance with rational time decay.
+        Reranks passage chunks by combining BM25 relevance with bounded intent-aware recency boost.
         Score = BM25_rel * (floor + (1 - floor) * Freshness)
         """
         if not passages:
@@ -279,14 +313,16 @@ class FreshnessReranker(BM25Reranker):
         if max_bm25 <= 0:
             max_bm25 = 1.0
 
-        # 2. Multiplicative Freshness Decay
+        floor = self._effective_floor(query)
+
+        # 2. Bounded Intent-Aware Freshness Boost
         freshness_scored: List[PassageChunk] = []
         for p in bm25_scored:
             norm_bm25 = p.score / max_bm25
             pub_date = p.source.publication_date if p.source else None
             freshness = self.calculate_freshness(pub_date)
 
-            final_score = norm_bm25 * (self.relevance_floor + (1.0 - self.relevance_floor) * freshness)
+            final_score = norm_bm25 * (floor + (1.0 - floor) * freshness)
             scored = p.model_copy(update={"score": round(final_score, 4)})
             freshness_scored.append(scored)
 
@@ -387,7 +423,7 @@ class HybridReranker:
                 max_bm25 = 1.0
 
             hybrid_scored: List[PassageChunk] = []
-            floor = self.bm25.relevance_floor
+            floor = self.bm25._effective_floor(query)
             for passage, p_emb in zip(candidate_pool, passage_embs):
                 sim = self._cosine_similarity(query_emb, p_emb)
                 norm_bm25 = passage.score / max_bm25

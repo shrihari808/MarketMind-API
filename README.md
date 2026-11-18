@@ -227,23 +227,24 @@ pytest tests/test_yfinance_client.py
 | `test_lance_cache_and_vault.py` | Apache Arrow LanceDB vector lifecycle: semantic news caching with TTL expiration, corporate filing PDF/text chunking, page tracking, and cross-document RAG querying. |
 | `test_yfinance_client.py` | Live equity quote fetching, valuation multiples (P/E, P/B, ROE), benchmark indices, gainer/loser sorting, and resilient baseline fallbacks. |
 | `test_web_rag_debug.py` | `WebRAGService` per-stage timing diagnostics (`RAGStageTimings`), `retrieval_only` mode, and `X-RAG-Retrieval-Ms` / `X-RAG-Total-Ms` debug headers. |
+| `test_evals_improvements.py` | `AsyncTTLCache` LRU/TTL eviction, bounded intent-aware `FreshnessReranker`, adversarial `QueryAnalyzer` abstention, scraper timeout/cache, and faithfulness judge schema. |
 
 ---
 
 ## Web RAG Evaluations & Performance Metrics
 
-Comprehensive latency, throughput, funnel, and retrieval-quality benchmarks for the Web RAG pipeline are recorded in **[`EVALS AND METRICS.md`](./EVALS%20AND%20METRICS.md)** (all evaluation scripts, Postman collections, and frozen corpus artifacts live in [`evals/`](./evals/) and [`postman/`](./postman/)).
+Comprehensive before/after latency, throughput, guardrail, and stratified retrieval-quality benchmarks for the Web RAG pipeline are recorded in **[`EVALS AND METRICS.md`](./EVALS%20AND%20METRICS.md)** (all evaluation scripts, Postman collections, and corpus artifacts live in [`evals/`](./evals/) and [`postman/`](./postman/)).
 
-Key measured highlights *(retrieval-only scope without `GEMINI_API_KEY`; see [`EVALS AND METRICS.md`](./EVALS%20AND%20METRICS.md) for full stage breakdowns, per-query logs, and `N`-scaling tables)*:
+Key measured highlights *(retrieval-only scope without `GEMINI_API_KEY`; see [`EVALS AND METRICS.md`](./EVALS%20AND%20METRICS.md) for full stage breakdowns, before/after tables, and `N`-scaling metrics)*:
 
-- **Postman Load Test (3 VUs, 68s, 32 requests):** `8,227 ms` **p95** response time (`5,288 ms` avg, `8,056 ms` p90, `8,543 ms` p99, `0.47 req/s`, `0%` error rate).
-- **Stage-by-Stage Retrieval Latency (20 financial queries, sequential):** `5,982.84 ms` p50 / `11,763.35 ms` p95 across the 19 retrieval-executed queries (`11,749.56 ms` HTTP p95 across all 20 queries). In-process `pre_filter` + chunking + `FreshnessReranker` run in `< 13 ms` p95, while DuckDuckGo search (`4.73 s` p95), Trafilatura scraping (`8.23 s` p95, `74.74%` URL success rate), and concurrent YFinance quote lookups (`9.17 s` p95) dominate tail latency.
-- **Retrieval Quality across $N = 98$ Scraped Documents (340 passages, 16 queries):**
-  - **`BM25Reranker`:** `Recall@5 = 0.4631`, `Hit@5 = 1.0000`, `MRR = 1.0000`
-  - **`FreshnessReranker` (default):** `Recall@5 = 0.3810`, `Hit@5 = 1.0000`, `MRR = 0.9062`
-  - **Production Two-Stage Funnel (`pre_filter(5)` $\rightarrow$ `FreshnessReranker`):** `Recall@5 = 0.3552`, `Hit@5 = 1.0000`, `MRR = 0.9375`
+- **Postman Load Test (3 VUs, 68s, `179` requests):** **`3,092 ms` p95** (`939 ms` avg, `2.63 req/s`, `0%` errors) — down **62.4%** from the `8,227 ms` baseline (`32` reqs, `0.47 req/s`).
+- **Stage-by-Stage Retrieval Latency (20 queries, sequential):** Cold retrieval p95 improved from `11,749.56 ms` to **`7,655.96 ms`** (`-34.8%`) via `3.0s` hard scraper timeouts (`scrape_ms` p95 `8,181 ms` $\rightarrow$ `3,105 ms`), `2.5s` quote timeouts (`quote_ms` p95 `653.24 ms`), and `4.5s` search caps; warm-cache runs drop `http_ms` p50 to **`2,045.37 ms`** (`min 33.57 ms`, `quote_ms p50 = 0.04 ms`).
+- **Stratified Tight-Gold Retrieval (55 queries, $N = 157$ docs, `2.98` gold docs/query):**
+  - **Production Two-Stage Funnel (`MAX_SCRAPED_SOURCES=12`):** `Recall@5 = 0.6111` (`0.7111` Fundamentals / `0.6000` Breaking News / `0.5222` Comparative), `NDCG@5 = 0.5768`, `Hit@5 = 0.8889`, `MRR = 0.7057`.
+  - **Apples-to-Apples ($N = 98$):** Bounded intent-aware `FreshnessReranker` lifted `Recall@5` from `0.3810` $\rightarrow$ **`0.4631`** (`+21.5%`, `MRR = 1.0000`), and widened two-stage `Recall@5` rose from `0.3552` $\rightarrow$ **`0.4318`** (`+21.6%`, `Recall@10` `+45.3%`).
+- **Guardrail Classification (55 stratified queries):** **`100.0%` accuracy** (`45/45` in-domain + `10/10` OOD/adversarial abstention).
 
-See **[`EVALS AND METRICS.md`](./EVALS%20AND%20METRICS.md)** for all detailed evaluation tables across $N \in \{25, 50, 75, 98\}$, Postman functional assertions, and bottleneck analysis.
+See **[`EVALS AND METRICS.md`](./EVALS%20AND%20METRICS.md)** for all detailed evaluation tables, LLM-as-a-Judge faithfulness setup, and reproduction instructions.
 
 ### Frontend Code Quality & Linting
 

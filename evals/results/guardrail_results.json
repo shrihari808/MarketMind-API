@@ -1,0 +1,589 @@
+{
+  "summary": {
+    "total_queries": 55,
+    "tp": 45,
+    "fp": 0,
+    "tn": 10,
+    "fn": 0,
+    "accuracy": 1.0,
+    "precision": 1.0,
+    "recall": 1.0,
+    "f1": 1.0,
+    "ood_abstention_rate": 1.0,
+    "ood_false_positive_rate": 0.0,
+    "by_category": {
+      "ticker_fundamentals": {
+        "total": 15,
+        "correct": 15,
+        "accuracy": 1.0
+      },
+      "breaking_news": {
+        "total": 15,
+        "correct": 15,
+        "accuracy": 1.0
+      },
+      "multi_hop_comparative": {
+        "total": 15,
+        "correct": 15,
+        "accuracy": 1.0
+      },
+      "out_of_domain_adversarial": {
+        "total": 10,
+        "correct": 10,
+        "accuracy": 1.0
+      }
+    }
+  },
+  "records": [
+    {
+      "id": "fund_01",
+      "category": "ticker_fundamentals",
+      "query": "Nvidia data center gross margin valuation multiples",
+      "expected_is_financial": true,
+      "predicted_is_financial": true,
+      "correct": true,
+      "detected_ticker": "NVDA",
+      "reason": "Heuristic evaluation based on financial vocabulary and ticker matching."
+    },
+    {
+      "id": "fund_02",
+      "category": "ticker_fundamentals",
+      "query": "Reliance Industries Jio ARPU retail EBITDA margin",
+      "expected_is_financial": true,
+      "predicted_is_financial": true,
+      "correct": true,
+      "detected_ticker": "RELIANCE.NS",
+      "reason": "Heuristic evaluation based on financial vocabulary and ticker matching."
+    },
+    {
+      "id": "fund_03",
+      "category": "ticker_fundamentals",
+      "query": "TCS operating margin attrition free cash flow",
+      "expected_is_financial": true,
+      "predicted_is_financial": true,
+      "correct": true,
+      "detected_ticker": "TCS.NS",
+      "reason": "Heuristic evaluation based on financial vocabulary and ticker matching."
+    },
+    {
+      "id": "fund_04",
+      "category": "ticker_fundamentals",
+      "query": "Apple services segment gross margin share buyback",
+      "expected_is_financial": true,
+      "predicted_is_financial": true,
+      "correct": true,
+      "detected_ticker": "AAPL",
+      "reason": "Heuristic evaluation based on financial vocabulary and ticker matching."
+    },
+    {
+      "id": "fund_05",
+      "category": "ticker_fundamentals",
+      "query": "HDFC Bank net interest margin ROE asset quality",
+      "expected_is_financial": true,
+      "predicted_is_financial": true,
+      "correct": true,
+      "detected_ticker": "HDFCBANK.NS",
+      "reason": "Heuristic evaluation based on financial vocabulary and ticker matching."
+    },
+    {
+      "id": "fund_06",
+      "category": "ticker_fundamentals",
+      "query": "Tesla automotive gross margin excluding regulatory credits",
+      "expected_is_financial": true,
+      "predicted_is_financial": true,
+      "correct": true,
+      "detected_ticker": "TSLA",
+      "reason": "Heuristic evaluation based on financial vocabulary and ticker matching."
+    },
+    {
+      "id": "fund_07",
+      "category": "ticker_fundamentals",
+      "query": "Microsoft Azure cloud revenue capex operating income",
+      "expected_is_financial": true,
+      "predicted_is_financial": true,
+      "correct": true,
+      "detected_ticker": "MSFT",
+      "reason": "Heuristic evaluation based on financial vocabulary and ticker matching."
+    },
+    {
+      "id": "fund_08",
+      "category": "ticker_fundamentals",
+      "query": "Infosys EBIT margin constant currency revenue guidance",
+      "expected_is_financial": true,
+      "predicted_is_financial": true,
+      "correct": true,
+      "detected_ticker": "INFY.NS",
+      "reason": "Heuristic evaluation based on financial vocabulary and ticker matching."
+    },
+    {
+      "id": "fund_09",
+      "category": "ticker_fundamentals",
+      "query": "Amazon AWS operating margin retail free cash flow",
+      "expected_is_financial": true,
+      "predicted_is_financial": true,
+      "correct": true,
+      "detected_ticker": "AMZN",
+      "reason": "Heuristic evaluation based on financial vocabulary and ticker matching."
+    },
+    {
+      "id": "fund_10",
+      "category": "ticker_fundamentals",
+      "query": "ICICI Bank CASA deposit ratio net interest income",
+      "expected_is_financial": true,
+      "predicted_is_financial": true,
+      "correct": true,
+      "detected_ticker": "ICICIBANK.NS",
+      "reason": "Heuristic evaluation based on financial vocabulary and ticker matching."
+    },
+    {
+      "id": "fund_11",
+      "category": "ticker_fundamentals",
+      "query": "State Bank of India SBI credit growth net NPA",
+      "expected_is_financial": true,
+      "predicted_is_financial": true,
+      "correct": true,
+      "detected_ticker": "SBIN.NS",
+      "reason": "Heuristic evaluation based on financial vocabulary and ticker matching."
+    },
+    {
+      "id": "fund_12",
+      "category": "ticker_fundamentals",
+      "query": "Alphabet Google Cloud profitability search ad revenue",
+      "expected_is_financial": true,
+      "predicted_is_financial": true,
+      "correct": true,
+      "detected_ticker": "GOOGL",
+      "reason": "Heuristic evaluation based on financial vocabulary and ticker matching."
+    },
+    {
+      "id": "fund_13",
+      "category": "ticker_fundamentals",
+      "query": "AMD data center GPU revenue balance sheet debt",
+      "expected_is_financial": true,
+      "predicted_is_financial": true,
+      "correct": true,
+      "detected_ticker": "AMD",
+      "reason": "Heuristic evaluation based on financial vocabulary and ticker matching."
+    },
+    {
+      "id": "fund_14",
+      "category": "ticker_fundamentals",
+      "query": "Tata Motors JLR free cash flow EV margin",
+      "expected_is_financial": true,
+      "predicted_is_financial": true,
+      "correct": true,
+      "detected_ticker": "TMPV.NS",
+      "reason": "Heuristic evaluation based on financial vocabulary and ticker matching."
+    },
+    {
+      "id": "fund_15",
+      "category": "ticker_fundamentals",
+      "query": "Meta Platforms Reality Labs capex advertising ARPU",
+      "expected_is_financial": true,
+      "predicted_is_financial": true,
+      "correct": true,
+      "detected_ticker": "META",
+      "reason": "Heuristic evaluation based on financial vocabulary and ticker matching."
+    },
+    {
+      "id": "news_01",
+      "category": "breaking_news",
+      "query": "Federal Reserve latest FOMC interest rate cut decision",
+      "expected_is_financial": true,
+      "predicted_is_financial": true,
+      "correct": true,
+      "detected_ticker": null,
+      "reason": "Heuristic evaluation based on financial vocabulary and ticker matching."
+    },
+    {
+      "id": "news_02",
+      "category": "breaking_news",
+      "query": "RBI MPC latest repo rate policy inflation outlook",
+      "expected_is_financial": true,
+      "predicted_is_financial": true,
+      "correct": true,
+      "detected_ticker": null,
+      "reason": "Heuristic evaluation based on financial vocabulary and ticker matching."
+    },
+    {
+      "id": "news_03",
+      "category": "breaking_news",
+      "query": "Nvidia latest quarterly earnings Blackwell GPU guidance",
+      "expected_is_financial": true,
+      "predicted_is_financial": true,
+      "correct": true,
+      "detected_ticker": "NVDA",
+      "reason": "Heuristic evaluation based on financial vocabulary and ticker matching."
+    },
+    {
+      "id": "news_04",
+      "category": "breaking_news",
+      "query": "Reliance Industries latest Q2 Q3 earnings telecom retail",
+      "expected_is_financial": true,
+      "predicted_is_financial": true,
+      "correct": true,
+      "detected_ticker": "RELIANCE.NS",
+      "reason": "Heuristic evaluation based on financial vocabulary and ticker matching."
+    },
+    {
+      "id": "news_05",
+      "category": "breaking_news",
+      "query": "Brent crude oil price today OPEC supply forecast",
+      "expected_is_financial": true,
+      "predicted_is_financial": true,
+      "correct": true,
+      "detected_ticker": null,
+      "reason": "Heuristic evaluation based on financial vocabulary and ticker matching."
+    },
+    {
+      "id": "news_06",
+      "category": "breaking_news",
+      "query": "Gold price rally central bank bullion buying news",
+      "expected_is_financial": true,
+      "predicted_is_financial": true,
+      "correct": true,
+      "detected_ticker": null,
+      "reason": "Heuristic evaluation based on financial vocabulary and ticker matching."
+    },
+    {
+      "id": "news_07",
+      "category": "breaking_news",
+      "query": "Nifty 50 Sensex FII DII flows market rally",
+      "expected_is_financial": true,
+      "predicted_is_financial": true,
+      "correct": true,
+      "detected_ticker": null,
+      "reason": "Heuristic evaluation based on financial vocabulary and ticker matching."
+    },
+    {
+      "id": "news_08",
+      "category": "breaking_news",
+      "query": "US 10 year Treasury yield bond market move",
+      "expected_is_financial": true,
+      "predicted_is_financial": true,
+      "correct": true,
+      "detected_ticker": null,
+      "reason": "Heuristic evaluation based on financial vocabulary and ticker matching."
+    },
+    {
+      "id": "news_09",
+      "category": "breaking_news",
+      "query": "Apple latest iPhone shipments China demand news",
+      "expected_is_financial": true,
+      "predicted_is_financial": true,
+      "correct": true,
+      "detected_ticker": "AAPL",
+      "reason": "Heuristic evaluation based on financial vocabulary and ticker matching."
+    },
+    {
+      "id": "news_10",
+      "category": "breaking_news",
+      "query": "Tesla latest quarterly deliveries robotaxi update",
+      "expected_is_financial": true,
+      "predicted_is_financial": true,
+      "correct": true,
+      "detected_ticker": "TSLA",
+      "reason": "Heuristic evaluation based on financial vocabulary and ticker matching."
+    },
+    {
+      "id": "news_11",
+      "category": "breaking_news",
+      "query": "TCS latest Q2 Q3 earnings deal wins update",
+      "expected_is_financial": true,
+      "predicted_is_financial": true,
+      "correct": true,
+      "detected_ticker": "TCS.NS",
+      "reason": "Heuristic evaluation based on financial vocabulary and ticker matching."
+    },
+    {
+      "id": "news_12",
+      "category": "breaking_news",
+      "query": "Infosys latest earnings guidance AI deal pipeline",
+      "expected_is_financial": true,
+      "predicted_is_financial": true,
+      "correct": true,
+      "detected_ticker": "INFY.NS",
+      "reason": "Heuristic evaluation based on financial vocabulary and ticker matching."
+    },
+    {
+      "id": "news_13",
+      "category": "breaking_news",
+      "query": "HDFC Bank latest quarterly profit loan deposit growth",
+      "expected_is_financial": true,
+      "predicted_is_financial": true,
+      "correct": true,
+      "detected_ticker": "HDFCBANK.NS",
+      "reason": "Heuristic evaluation based on financial vocabulary and ticker matching."
+    },
+    {
+      "id": "news_14",
+      "category": "breaking_news",
+      "query": "Microsoft latest earnings Azure AI capex news",
+      "expected_is_financial": true,
+      "predicted_is_financial": true,
+      "correct": true,
+      "detected_ticker": "MSFT",
+      "reason": "Heuristic evaluation based on financial vocabulary and ticker matching."
+    },
+    {
+      "id": "news_15",
+      "category": "breaking_news",
+      "query": "Amazon latest quarterly earnings AWS cloud growth",
+      "expected_is_financial": true,
+      "predicted_is_financial": true,
+      "correct": true,
+      "detected_ticker": "AMZN",
+      "reason": "Heuristic evaluation based on financial vocabulary and ticker matching."
+    },
+    {
+      "id": "comp_01",
+      "category": "multi_hop_comparative",
+      "query": "Nvidia vs AMD AI GPU data center competition",
+      "expected_is_financial": true,
+      "predicted_is_financial": true,
+      "correct": true,
+      "detected_ticker": "NVDA",
+      "reason": "Heuristic evaluation based on financial vocabulary and ticker matching."
+    },
+    {
+      "id": "comp_02",
+      "category": "multi_hop_comparative",
+      "query": "TCS vs Infosys operating margin and revenue growth comparison",
+      "expected_is_financial": true,
+      "predicted_is_financial": true,
+      "correct": true,
+      "detected_ticker": "TCS.NS",
+      "reason": "Heuristic evaluation based on financial vocabulary and ticker matching."
+    },
+    {
+      "id": "comp_03",
+      "category": "multi_hop_comparative",
+      "query": "HDFC Bank vs ICICI Bank net interest margin and deposit growth",
+      "expected_is_financial": true,
+      "predicted_is_financial": true,
+      "correct": true,
+      "detected_ticker": "HDFCBANK.NS",
+      "reason": "Heuristic evaluation based on financial vocabulary and ticker matching."
+    },
+    {
+      "id": "comp_04",
+      "category": "multi_hop_comparative",
+      "query": "Microsoft Azure vs Amazon AWS cloud AI capex growth",
+      "expected_is_financial": true,
+      "predicted_is_financial": true,
+      "correct": true,
+      "detected_ticker": "MSFT",
+      "reason": "Heuristic evaluation based on financial vocabulary and ticker matching."
+    },
+    {
+      "id": "comp_05",
+      "category": "multi_hop_comparative",
+      "query": "Federal Reserve rate cuts impact on gold and Treasury yields",
+      "expected_is_financial": true,
+      "predicted_is_financial": true,
+      "correct": true,
+      "detected_ticker": null,
+      "reason": "Heuristic evaluation based on financial vocabulary and ticker matching."
+    },
+    {
+      "id": "comp_06",
+      "category": "multi_hop_comparative",
+      "query": "RBI monetary policy inflation impact on Indian banks NIM",
+      "expected_is_financial": true,
+      "predicted_is_financial": true,
+      "correct": true,
+      "detected_ticker": null,
+      "reason": "Heuristic evaluation based on financial vocabulary and ticker matching."
+    },
+    {
+      "id": "comp_07",
+      "category": "multi_hop_comparative",
+      "query": "Crude oil Brent prices impact on Reliance and Indian inflation",
+      "expected_is_financial": true,
+      "predicted_is_financial": true,
+      "correct": true,
+      "detected_ticker": "RELIANCE.NS",
+      "reason": "Heuristic evaluation based on financial vocabulary and ticker matching."
+    },
+    {
+      "id": "comp_08",
+      "category": "multi_hop_comparative",
+      "query": "Apple vs Microsoft AI ecosystem services and cloud revenue",
+      "expected_is_financial": true,
+      "predicted_is_financial": true,
+      "correct": true,
+      "detected_ticker": "AAPL",
+      "reason": "Heuristic evaluation based on financial vocabulary and ticker matching."
+    },
+    {
+      "id": "comp_09",
+      "category": "multi_hop_comparative",
+      "query": "SBI vs HDFC Bank credit growth and asset quality comparison",
+      "expected_is_financial": true,
+      "predicted_is_financial": true,
+      "correct": true,
+      "detected_ticker": "HDFCBANK.NS",
+      "reason": "Heuristic evaluation based on financial vocabulary and ticker matching."
+    },
+    {
+      "id": "comp_10",
+      "category": "multi_hop_comparative",
+      "query": "Alphabet Google Cloud vs AWS AI infrastructure spending",
+      "expected_is_financial": true,
+      "predicted_is_financial": true,
+      "correct": true,
+      "detected_ticker": "GOOGL",
+      "reason": "Heuristic evaluation based on financial vocabulary and ticker matching."
+    },
+    {
+      "id": "comp_11",
+      "category": "multi_hop_comparative",
+      "query": "Tata Motors JLR EV margins vs Tesla automotive margins",
+      "expected_is_financial": true,
+      "predicted_is_financial": true,
+      "correct": true,
+      "detected_ticker": "TMPV.NS",
+      "reason": "Heuristic evaluation based on financial vocabulary and ticker matching."
+    },
+    {
+      "id": "comp_12",
+      "category": "multi_hop_comparative",
+      "query": "Broadcom vs Nvidia AI networking and custom silicon revenue",
+      "expected_is_financial": true,
+      "predicted_is_financial": true,
+      "correct": true,
+      "detected_ticker": "NVDA",
+      "reason": "Heuristic evaluation based on financial vocabulary and ticker matching."
+    },
+    {
+      "id": "comp_13",
+      "category": "multi_hop_comparative",
+      "query": "FII outflows vs DII inflows impact on Nifty 50 valuation",
+      "expected_is_financial": true,
+      "predicted_is_financial": true,
+      "correct": true,
+      "detected_ticker": null,
+      "reason": "Heuristic evaluation based on financial vocabulary and ticker matching."
+    },
+    {
+      "id": "comp_14",
+      "category": "multi_hop_comparative",
+      "query": "OPEC supply cuts vs US shale output effect on Brent crude",
+      "expected_is_financial": true,
+      "predicted_is_financial": true,
+      "correct": true,
+      "detected_ticker": null,
+      "reason": "Heuristic evaluation based on financial vocabulary and ticker matching."
+    },
+    {
+      "id": "comp_15",
+      "category": "multi_hop_comparative",
+      "query": "ICICI Bank vs SBI loan growth and net profit comparison",
+      "expected_is_financial": true,
+      "predicted_is_financial": true,
+      "correct": true,
+      "detected_ticker": "ICICIBANK.NS",
+      "reason": "Heuristic evaluation based on financial vocabulary and ticker matching."
+    },
+    {
+      "id": "ood_01",
+      "category": "out_of_domain_adversarial",
+      "query": "How do I bake a chocolate cake with exact gram measurements?",
+      "expected_is_financial": false,
+      "predicted_is_financial": false,
+      "correct": true,
+      "detected_ticker": null,
+      "reason": "Query does not appear related to financial markets or stocks."
+    },
+    {
+      "id": "ood_02",
+      "category": "out_of_domain_adversarial",
+      "query": "Nvidia RTX 5090 gaming FPS benchmark in Cyberpunk 2077",
+      "expected_is_financial": false,
+      "predicted_is_financial": false,
+      "correct": true,
+      "detected_ticker": null,
+      "reason": "Query does not appear related to financial markets or stocks."
+    },
+    {
+      "id": "ood_03",
+      "category": "out_of_domain_adversarial",
+      "query": "Apple pie recipe calories and baking temperature",
+      "expected_is_financial": false,
+      "predicted_is_financial": false,
+      "correct": true,
+      "detected_ticker": null,
+      "reason": "Query does not appear related to financial markets or stocks."
+    },
+    {
+      "id": "ood_04",
+      "category": "out_of_domain_adversarial",
+      "query": "Tesla Model 3 recommended tire pressure and windshield wiper size",
+      "expected_is_financial": false,
+      "predicted_is_financial": false,
+      "correct": true,
+      "detected_ticker": null,
+      "reason": "Query does not appear related to financial markets or stocks."
+    },
+    {
+      "id": "ood_05",
+      "category": "out_of_domain_adversarial",
+      "query": "Write a Python binary search tutorial with recursion",
+      "expected_is_financial": false,
+      "predicted_is_financial": false,
+      "correct": true,
+      "detected_ticker": null,
+      "reason": "Query does not appear related to financial markets or stocks."
+    },
+    {
+      "id": "ood_06",
+      "category": "out_of_domain_adversarial",
+      "query": "Who won the last FIFA World Cup final score?",
+      "expected_is_financial": false,
+      "predicted_is_financial": false,
+      "correct": true,
+      "detected_ticker": null,
+      "reason": "Query does not appear related to financial markets or stocks."
+    },
+    {
+      "id": "ood_07",
+      "category": "out_of_domain_adversarial",
+      "query": "What is the capital city of Australia and its weather forecast?",
+      "expected_is_financial": false,
+      "predicted_is_financial": false,
+      "correct": true,
+      "detected_ticker": null,
+      "reason": "Query does not appear related to financial markets or stocks."
+    },
+    {
+      "id": "ood_08",
+      "category": "out_of_domain_adversarial",
+      "query": "Amazon Prime movie review and top thriller series",
+      "expected_is_financial": false,
+      "predicted_is_financial": false,
+      "correct": true,
+      "detected_ticker": null,
+      "reason": "Query does not appear related to financial markets or stocks."
+    },
+    {
+      "id": "ood_09",
+      "category": "out_of_domain_adversarial",
+      "query": "Microsoft Xbox Game Pass workout fitness games list",
+      "expected_is_financial": false,
+      "predicted_is_financial": false,
+      "correct": true,
+      "detected_ticker": null,
+      "reason": "Query does not appear related to financial markets or stocks."
+    },
+    {
+      "id": "ood_10",
+      "category": "out_of_domain_adversarial",
+      "query": "Best 30 minute home workout diet plan for beginners",
+      "expected_is_financial": false,
+      "predicted_is_financial": false,
+      "correct": true,
+      "detected_ticker": null,
+      "reason": "Query does not appear related to financial markets or stocks."
+    }
+  ]
+}

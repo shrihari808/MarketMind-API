@@ -13,7 +13,7 @@ def test_config_freshness_parameters():
     settings = get_settings()
     assert settings.SEARCH_TIMELIMIT in ("d", "w", "m", "y", None)
     assert settings.MAX_SEARCH_CANDIDATES >= settings.MAX_SCRAPED_SOURCES
-    assert settings.MAX_SCRAPED_SOURCES == 5
+    assert settings.MAX_SCRAPED_SOURCES == 12
     assert settings.RAG_HALF_LIFE_DAYS > 0
     assert 0.0 < settings.RAG_RELEVANCE_FLOOR < 1.0
 
