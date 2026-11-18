@@ -32,7 +32,7 @@ class Settings(BaseSettings):
 
     # Google Gemini Configuration
     GEMINI_API_KEY: Optional[str] = Field(default=None, description="Google AI Studio Gemini API Key")
-    GEMINI_MODEL: str = Field(default="gemini-2.0-flash", description="Default model for synthesis")
+    GEMINI_MODEL: str = Field(default="gemini-3.1-flash-lite-preview", description="Default model for synthesis")
     GEMINI_EMBEDDING_MODEL: str = Field(default="gemini-embedding-001", description="Default embedding model")
     LLM_TEMPERATURE: float = Field(default=0.2, description="Default temperature for LLM generation")
     EMBEDDING_BATCH_SIZE: int = Field(default=32, description="Batch size for generating embeddings")
@@ -104,9 +104,13 @@ class Settings(BaseSettings):
     SCRAPER_CACHE_TTL_SECONDS: int = Field(default=3600, description="TTL (seconds) for cached scraped articles (1 hour)")
     SEARCH_CACHE_TTL_SECONDS: int = Field(default=300, description="TTL (seconds) for cached web search candidates (5 mins)")
     
-    # Search Engine API Keys
+    # Search Engine API Keys & Rate Spacing
     SERPER_API_KEY: Optional[str] = Field(default=None, description="Serper.dev API Key")
     BRAVE_API_KEY: Optional[str] = Field(default=None, description="Brave Search API Key")
+    BRAVE_MIN_INTERVAL_SECONDS: float = Field(
+        default=1.05,
+        description="Minimum spacing (seconds) between Brave Search requests (1.05s protects 1 req/s free tier)"
+    )
     TAVILY_API_KEY: Optional[str] = Field(default=None, description="Tavily API Key")
 
     # Vector Store & LanceDB

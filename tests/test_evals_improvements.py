@@ -135,3 +135,40 @@ async def test_faithfulness_judge_helper():
     )
     assert judgment.total_claims == 2
     assert judgment.supported_claims == 2
+
+
+@pytest.mark.asyncio
+async def test_brave_searcher_free_tier_rate_spacing(monkeypatch):
+    import time
+    from app.infrastructure.search.brave import BraveSearcher
+
+    BraveSearcher._last_request_ts = 0.0
+    searcher = BraveSearcher(api_key="test-brave-key", min_interval_seconds=0.15)
+    call_times: List[float] = []
+
+    class DummyResp:
+        status_code = 200
+        text = "{}"
+        def json(self):
+            return {"web": {"results": [{"title": "NVDA", "url": "https://example.com/nvda", "description": "Nvidia"}]}}
+
+    class DummyAsyncClient:
+        def __init__(self, *args, **kwargs):
+            pass
+        async def __aenter__(self):
+            return self
+        async def __aexit__(self, *args):
+            return False
+        async def get(self, *args, **kwargs):
+            call_times.append(time.monotonic())
+            return DummyResp()
+
+    monkeypatch.setattr("app.infrastructure.search.brave.httpx.AsyncClient", DummyAsyncClient)
+
+    r1, r2 = await asyncio.gather(
+        searcher.search("Nvidia", max_results=2, country="US"),
+        searcher.search("AMD", max_results=2, country="US"),
+    )
+    assert len(r1) == 1 and len(r2) == 1
+    assert len(call_times) == 2
+    assert (call_times[1] - call_times[0]) >= 0.12

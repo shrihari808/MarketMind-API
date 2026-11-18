@@ -34,6 +34,9 @@ from app.services.query_analyzer import QueryAnalyzer
 from app.services.reranker import BM25Reranker, HybridReranker, FreshnessReranker
 
 
+_UNSET = object()
+
+
 class WebRAGService:
     """End-to-end financial Web RAG service adhering to Clean Architecture with LanceDB semantic caching."""
 
@@ -43,7 +46,7 @@ class WebRAGService:
         search_engine: Optional[SearchEngine] = None,
         scraper: Optional[WebScraper] = None,
         market_client: Optional[MarketDataClient] = None,
-        vector_store: Optional[LanceVectorStore] = None,
+        vector_store: Optional[LanceVectorStore] = _UNSET,  # type: ignore[assignment]
         use_hybrid_reranker: bool = False
     ):
         settings = get_settings()
@@ -51,7 +54,7 @@ class WebRAGService:
         self.search_engine = search_engine or SearchEngineFactory.get_search_engine()
         self.scraper = scraper or TrafilaturaWebScraper(timeout_seconds=settings.SCRAPER_TIMEOUT_SECONDS)
         self.market = market_client or YFinanceMarketClient()
-        self.vector_store = vector_store or LanceVectorStore(llm_client=self.llm)
+        self.vector_store = LanceVectorStore(llm_client=self.llm) if vector_store is _UNSET else vector_store
         self.query_analyzer = QueryAnalyzer(llm_client=self.llm, market_client=self.market)
 
         if use_hybrid_reranker:

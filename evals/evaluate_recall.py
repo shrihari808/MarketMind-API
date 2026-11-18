@@ -276,10 +276,13 @@ async def evaluate(
                 funnel_docs = ordered_unique_doc_ids([p.source.url for p in funnel_top], url_to_doc_id)
                 funnel_q_metrics.update(score_ranking(funnel_docs, rel_set, [k]))
 
-                if hybrid is not None:
-                    hyb_top = await hybrid.rerank(query=query_text, passages=passages, top_k=k, max_per_domain=2)
-                    hyb_docs = ordered_unique_doc_ids([p.source.url for p in hyb_top], url_to_doc_id)
-                    hybrid_q_metrics.update(score_ranking(hyb_docs, rel_set, [k]))
+            if hybrid is not None:
+                hyb_top_all = await hybrid.rerank(query=query_text, passages=passages, top_k=max_k, max_per_domain=2)
+                for k in ks:
+                    hyb_docs_k = ordered_unique_doc_ids([p.source.url for p in hyb_top_all[:k]], url_to_doc_id)
+                    hybrid_q_metrics.update(score_ranking(hyb_docs_k, rel_set, [k]))
+                hyb_docs_all = ordered_unique_doc_ids([p.source.url for p in hyb_top_all], url_to_doc_id)
+                hybrid_q_metrics["mrr"] = score_ranking(hyb_docs_all, rel_set, [])["mrr"]
 
             # MRR over full passage ranking (up to 999)
             bm25_full = bm25.rerank(query=query_text, passages=passages, top_k=len(passages), max_per_domain=2)
@@ -342,6 +345,7 @@ async def evaluate(
         }
         if hybrid is not None:
             entry["methods"]["hybrid_reranker"] = aggregate_metrics(hybrid_slot_scores, ks)
+            entry["by_category"]["hybrid_reranker"] = aggregate_by_category(hybrid_slot_scores, ks)
 
         results_by_n.append(entry)
 

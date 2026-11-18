@@ -29,7 +29,10 @@ class GeminiLLMClient(LLMClient):
         self._client: Optional[genai.Client] = None
 
         if self.api_key:
-            self._client = genai.Client(api_key=self.api_key)
+            self._client = genai.Client(
+                api_key=self.api_key,
+                http_options=types.HttpOptions(timeout=20_000),
+            )
             logger.info(f"Gemini client initialized with model: {self.model_name}")
         else:
             logger.warning("GEMINI_API_KEY not configured. Set it in .env to enable Gemini features.")
@@ -40,7 +43,10 @@ class GeminiLLMClient(LLMClient):
         settings = get_settings()
         if settings.GEMINI_API_KEY:
             self.api_key = settings.GEMINI_API_KEY
-            self._client = genai.Client(api_key=self.api_key)
+            self._client = genai.Client(
+                api_key=self.api_key,
+                http_options=types.HttpOptions(timeout=20_000),
+            )
             return self._client
         raise ValueError("GEMINI_API_KEY is required but not configured.")
 

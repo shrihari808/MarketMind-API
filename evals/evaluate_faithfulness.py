@@ -91,7 +91,7 @@ async def run_faithfulness_eval(
     in_domain = [q for q in all_queries if q.get("expected_is_financial")][:limit]
 
     llm = GeminiLLMClient()
-    rag = WebRAGService(llm_client=llm)
+    rag = WebRAGService(llm_client=llm, vector_store=None)
 
     records: List[Dict[str, Any]] = []
     total_claims = 0
@@ -99,22 +99,55 @@ async def run_faithfulness_eval(
 
     for q in in_domain:
         req = RAGQueryRequest(query=q["query"], country=q.get("country", "IN"))
-        res = await rag.execute(req, debug=True, retrieval_only=False)
-        passages = [p.model_dump() for p in (res.selected_passages or [])]
-        if not res.answer or not passages:
+        res = None
+        for attempt in range(3):
+            try:
+                res = await asyncio.wait_for(
+                    rag.execute(req, debug=True, retrieval_only=False),
+                    timeout=35.0,
+                )
+                if res.answer:
+                    break
+            except Exception:
+                pass
+            await asyncio.sleep(2.0 * (attempt + 1))
+
+        passages = [p.model_dump() for p in (res.selected_passages or [])] if res else []
+        if not res or not res.answer or not passages:
             records.append({
                 "id": q["id"],
                 "category": q.get("category"),
                 "query": q["query"],
                 "skipped": True,
-                "reason": "Empty answer or no passages",
+                "reason": (res.stage_timings.llm_error if res and res.stage_timings and res.stage_timings.llm_error else "Empty answer or no passages"),
             })
             continue
 
-        judgment = await judge_answer_faithfulness(llm, q["query"], res.answer, passages)
+        judgment = None
+        for attempt in range(3):
+            try:
+                judgment = await asyncio.wait_for(
+                    judge_answer_faithfulness(llm, q["query"], res.answer, passages),
+                    timeout=25.0,
+                )
+                break
+            except Exception:
+                await asyncio.sleep(2.0 * (attempt + 1))
+
+        if judgment is None:
+            records.append({
+                "id": q["id"],
+                "category": q.get("category"),
+                "query": q["query"],
+                "skipped": True,
+                "reason": "Judge timed out or 503 unavailable",
+            })
+            continue
+
         total_claims += judgment.total_claims
         total_supported += judgment.supported_claims
         score = (judgment.supported_claims / judgment.total_claims) if judgment.total_claims else 0.0
+        timings = res.stage_timings.model_dump() if res.stage_timings else {}
         records.append({
             "id": q["id"],
             "category": q.get("category"),
@@ -122,6 +155,9 @@ async def run_faithfulness_eval(
             "faithfulness": round(score, 4),
             "total_claims": judgment.total_claims,
             "supported_claims": judgment.supported_claims,
+            "llm_ttft_ms": timings.get("llm_ttft_ms"),
+            "llm_total_ms": timings.get("llm_total_ms"),
+            "total_ms": timings.get("total_ms"),
             "verdicts": [v.model_dump() for v in judgment.verdicts],
         })
 

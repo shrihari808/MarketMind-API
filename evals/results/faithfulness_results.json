@@ -1,4 +1,1335 @@
 {
-  "status": "skipped",
-  "reason": "GEMINI_API_KEY is not configured; cannot execute live Gemini Flash synthesis or LLM-as-a-Judge."
+  "summary": {
+    "status": "completed",
+    "evaluated_queries": 13,
+    "total_claims": 146,
+    "supported_claims": 121,
+    "micro_citation_faithfulness": 0.8288,
+    "macro_citation_faithfulness": 0.8319
+  },
+  "records": [
+    {
+      "id": "fund_01",
+      "category": "ticker_fundamentals",
+      "query": "Nvidia data center gross margin valuation multiples",
+      "faithfulness": 0.5455,
+      "total_claims": 11,
+      "supported_claims": 6,
+      "llm_ttft_ms": 19472.73,
+      "llm_total_ms": 23991.38,
+      "total_ms": 28688.92,
+      "verdicts": [
+        {
+          "claim": "Nvidia is currently navigating a period of significant institutional volatility following the abrupt resignation of long-time CEO Jensen Huang.",
+          "supported": true,
+          "supporting_source_ids": [
+            11
+          ],
+          "rationale": "The source confirms Jensen Huang resigned and the company is navigating complex dynamics and an investigation."
+        },
+        {
+          "claim": "Nvidia has a market capitalization of approximately USD 3.69 trillion.",
+          "supported": false,
+          "supporting_source_ids": [],
+          "rationale": "This figure is not present in the provided source text."
+        },
+        {
+          "claim": "Nvidia stock is trading near the bottom of its 52-week range (148.8 \u2013 243.37).",
+          "supported": false,
+          "supporting_source_ids": [],
+          "rationale": "This data is not present in the provided source text."
+        },
+        {
+          "claim": "The provided documentation contains no financial disclosures, margin data, or specific valuation metrics regarding the Data Center segment.",
+          "supported": true,
+          "supporting_source_ids": [
+            11
+          ],
+          "rationale": "The source text is entirely focused on the CEO resignation and contains no financial data."
+        },
+        {
+          "claim": "The stock price declined by 5.35%.",
+          "supported": false,
+          "supporting_source_ids": [],
+          "rationale": "This data is not present in the provided source text."
+        },
+        {
+          "claim": "The company is currently undergoing an independent probe into allegations involving the former CEO.",
+          "supported": true,
+          "supporting_source_ids": [
+            11
+          ],
+          "rationale": "The source explicitly mentions the board launched an independent probe into allegations against Huang."
+        },
+        {
+          "claim": "Huang has publicly signaled his willingness to return to the CEO role.",
+          "supported": true,
+          "supporting_source_ids": [
+            11
+          ],
+          "rationale": "The source states Huang indicated his readiness to return as CEO."
+        },
+        {
+          "claim": "The firm is navigating calls from employees, investors, and business partners regarding the future of its leadership.",
+          "supported": true,
+          "supporting_source_ids": [
+            11
+          ],
+          "rationale": "The source mentions an outpouring of calls from these groups for him to return."
+        },
+        {
+          "claim": "The current valuation of Nvidia is heavily influenced by the ongoing leadership transition.",
+          "supported": true,
+          "supporting_source_ids": [
+            11
+          ],
+          "rationale": "The source links the leadership transition to the company navigating complex market and competitive dynamics."
+        },
+        {
+          "claim": "Nvidia share price is USD 152.82.",
+          "supported": false,
+          "supporting_source_ids": [],
+          "rationale": "This data is not present in the provided source text."
+        },
+        {
+          "claim": "Nvidia day range is 151.6 \u2013 159.7.",
+          "supported": false,
+          "supporting_source_ids": [],
+          "rationale": "This data is not present in the provided source text."
+        }
+      ]
+    },
+    {
+      "id": "fund_02",
+      "category": "ticker_fundamentals",
+      "query": "Reliance Industries Jio ARPU retail EBITDA margin",
+      "faithfulness": 0.9286,
+      "total_claims": 14,
+      "supported_claims": 13,
+      "llm_ttft_ms": 1972.4,
+      "llm_total_ms": 3864.06,
+      "total_ms": 6542.37,
+      "verdicts": [
+        {
+          "claim": "Jio's ARPU improved to \u20b9218.80 in Q2 FY27",
+          "supported": true,
+          "supporting_source_ids": [
+            2,
+            4
+          ],
+          "rationale": "Both sources confirm the ARPU figure of \u20b9218.80 for the quarter."
+        },
+        {
+          "claim": "Jio's ARPU was \u20b9215.60 in the June quarter",
+          "supported": true,
+          "supporting_source_ids": [
+            4
+          ],
+          "rationale": "Source 4 explicitly states the June quarter ARPU was \u20b9215.60."
+        },
+        {
+          "claim": "Jio's ARPU was \u20b9211.40 in the corresponding quarter of the previous year",
+          "supported": true,
+          "supporting_source_ids": [
+            4
+          ],
+          "rationale": "Source 4 explicitly states the year-ago ARPU was \u20b9211.40."
+        },
+        {
+          "claim": "Jio Platforms operating revenue reached \u20b940,475 crore",
+          "supported": true,
+          "supporting_source_ids": [
+            4
+          ],
+          "rationale": "Source 4 reports this specific revenue figure."
+        },
+        {
+          "claim": "Jio Platforms consolidated EBITDA rose 5% sequentially to \u20b922,220 crore",
+          "supported": true,
+          "supporting_source_ids": [
+            2
+          ],
+          "rationale": "Source 2 confirms the 5% sequential growth and the \u20b922,220 crore figure."
+        },
+        {
+          "claim": "Jio added 9.1 million net subscribers",
+          "supported": true,
+          "supporting_source_ids": [
+            2
+          ],
+          "rationale": "Source 2 explicitly mentions 9.1 million net subscriber additions."
+        },
+        {
+          "claim": "Reliance Retail Ventures Ltd. (RRVL) reported an EBITDA of \u20b96,228 crore",
+          "supported": true,
+          "supporting_source_ids": [
+            4
+          ],
+          "rationale": "Source 4 explicitly states this EBITDA figure."
+        },
+        {
+          "claim": "Reliance Retail EBITDA declined 10% to 11% year-on-year",
+          "supported": true,
+          "supporting_source_ids": [
+            2,
+            4
+          ],
+          "rationale": "Source 2 mentions a 10% decline, Source 4 mentions an 11% decline."
+        },
+        {
+          "claim": "The EBITDA margin for the retail segment stood at 7.8%",
+          "supported": true,
+          "supporting_source_ids": [
+            4
+          ],
+          "rationale": "Source 4 explicitly states the 7.8% margin."
+        },
+        {
+          "claim": "Retail EBITDA margin contracted 140 basis points year-on-year",
+          "supported": true,
+          "supporting_source_ids": [
+            4
+          ],
+          "rationale": "Source 4 explicitly states the 140 bps contraction."
+        },
+        {
+          "claim": "Reliance Retail gross revenue was \u20b991,716 crore",
+          "supported": true,
+          "supporting_source_ids": [
+            4
+          ],
+          "rationale": "Source 4 explicitly states this revenue figure."
+        },
+        {
+          "claim": "Reliance Retail revenue growth was 6.4% year-on-year",
+          "supported": true,
+          "supporting_source_ids": [
+            4
+          ],
+          "rationale": "Source 4 explicitly states the 6.4% growth."
+        },
+        {
+          "claim": "Reliance Industries (RELIANCE.NS) is trading at INR 1363.00",
+          "supported": false,
+          "supporting_source_ids": [],
+          "rationale": "The provided context passages do not contain current real-time stock price data for Reliance Industries."
+        },
+        {
+          "claim": "Reliance Industries day change is -4.00 (-0.29%)",
+          "supported": false,
+          "supporting_source_ids": [],
+          "rationale": "The provided context passages do not contain current real-time stock price change data."
+        }
+      ]
+    },
+    {
+      "id": "fund_03",
+      "category": "ticker_fundamentals",
+      "query": "TCS operating margin attrition free cash flow",
+      "skipped": true,
+      "reason": "Judge timed out or 503 unavailable"
+    },
+    {
+      "id": "fund_04",
+      "category": "ticker_fundamentals",
+      "query": "Apple services segment gross margin share buyback",
+      "faithfulness": 0.8333,
+      "total_claims": 12,
+      "supported_claims": 10,
+      "llm_ttft_ms": 15982.19,
+      "llm_total_ms": 17670.46,
+      "total_ms": 27327.25,
+      "verdicts": [
+        {
+          "claim": "Apple's Services business remains a primary pillar of its long-term earnings outlook.",
+          "supported": true,
+          "supporting_source_ids": [
+            5
+          ],
+          "rationale": "Source 5 explicitly states the Services business supports its long-term earnings outlook."
+        },
+        {
+          "claim": "The segment is supported by a growing device ecosystem.",
+          "supported": true,
+          "supporting_source_ids": [
+            5
+          ],
+          "rationale": "Source 5 mentions the growing device ecosystem supports the long-term earnings outlook."
+        },
+        {
+          "claim": "The introduction of the iPhone 18 Pro and the integration of Siri AI are central to Apple\u2019s strategy.",
+          "supported": true,
+          "supporting_source_ids": [
+            5
+          ],
+          "rationale": "Source 5 mentions the introduction of iPhone 18 Pro and Siri AI as strengthening its focus on personalized intelligence."
+        },
+        {
+          "claim": "Higher research and development (R&D) spending and reduced tariff-refund benefits may exert pressure on overall profit margins.",
+          "supported": true,
+          "supporting_source_ids": [
+            5
+          ],
+          "rationale": "Source 5 explicitly links higher research spending and reduced tariff-refund benefits to potential margin pressure."
+        },
+        {
+          "claim": "The company faces supply constraints, rising memory costs, and potential regulatory changes.",
+          "supported": true,
+          "supporting_source_ids": [
+            5
+          ],
+          "rationale": "Source 5 lists these as concerns/risks."
+        },
+        {
+          "claim": "Apple maintains a disciplined approach to capital allocation.",
+          "supported": true,
+          "supporting_source_ids": [
+            5
+          ],
+          "rationale": "Source 5 mentions healthy cash generation and continued shareholder returns."
+        },
+        {
+          "claim": "The company continues to demonstrate healthy cash generation.",
+          "supported": true,
+          "supporting_source_ids": [
+            5
+          ],
+          "rationale": "Source 5 explicitly states healthy cash generation."
+        },
+        {
+          "claim": "Analysts maintain a 'Neutral' recommendation for Apple.",
+          "supported": true,
+          "supporting_source_ids": [
+            5
+          ],
+          "rationale": "Source 5 states execution uncertainties and cost pressures support a Neutral recommendation."
+        },
+        {
+          "claim": "Apple's current price is USD 352.20.",
+          "supported": false,
+          "supporting_source_ids": [],
+          "rationale": "This data point is not present in the provided context."
+        },
+        {
+          "claim": "Apple's market cap is ~USD 5.12 Trillion.",
+          "supported": false,
+          "supporting_source_ids": [],
+          "rationale": "This data point is not present in the provided context."
+        },
+        {
+          "claim": "Apple's day range is 351.87 \u2013 356.42.",
+          "supported": false,
+          "supporting_source_ids": [],
+          "rationale": "This data point is not present in the provided context."
+        },
+        {
+          "claim": "Apple's stock has gained +28.4% over the year-to-date period.",
+          "supported": true,
+          "supporting_source_ids": [
+            5
+          ],
+          "rationale": "Source 5 explicitly states shares of Apple have gained +28.4% over the year-to-date period."
+        }
+      ]
+    },
+    {
+      "id": "fund_05",
+      "category": "ticker_fundamentals",
+      "query": "HDFC Bank net interest margin ROE asset quality",
+      "skipped": true,
+      "reason": "Empty answer or no passages"
+    },
+    {
+      "id": "fund_06",
+      "category": "ticker_fundamentals",
+      "query": "Tesla automotive gross margin excluding regulatory credits",
+      "faithfulness": 0.8571,
+      "total_claims": 7,
+      "supported_claims": 6,
+      "llm_ttft_ms": 1805.25,
+      "llm_total_ms": 3473.11,
+      "total_ms": 10038.05,
+      "verdicts": [
+        {
+          "claim": "Tesla's automotive gross margin, excluding regulatory credits, improved to 18.1% in the third quarter of 2026.",
+          "supported": true,
+          "supporting_source_ids": [
+            2
+          ],
+          "rationale": "Source 2 explicitly states: 'Automotive gross margins excluding regulatory credits improved from 15.4% to 18.1%.'"
+        },
+        {
+          "claim": "The margin was 15.4% in the prior-year period.",
+          "supported": true,
+          "supporting_source_ids": [
+            2
+          ],
+          "rationale": "Source 2 confirms the improvement from 15.4% to 18.1%."
+        },
+        {
+          "claim": "Tesla's operating income for the third quarter fell 56% year-over-year to $718 million.",
+          "supported": true,
+          "supporting_source_ids": [
+            2
+          ],
+          "rationale": "Source 2 states: 'Operating income was $718 million, down 56% from a year ago.'"
+        },
+        {
+          "claim": "Operating expenses increased 39% to $4.78 billion.",
+          "supported": true,
+          "supporting_source_ids": [
+            2
+          ],
+          "rationale": "Source 2 states: 'operating expenses, which increased 39% to $4.78 billion'"
+        },
+        {
+          "claim": "Tesla generated $1.53 billion in free cash flow.",
+          "supported": true,
+          "supporting_source_ids": [
+            2,
+            5
+          ],
+          "rationale": "Both sources confirm the $1.53 billion free cash flow figure."
+        },
+        {
+          "claim": "Tesla reduced projected 2026 capital expenditures from $25 billion to $20 billion.",
+          "supported": true,
+          "supporting_source_ids": [
+            2,
+            5
+          ],
+          "rationale": "Both sources confirm the reduction in capex guidance to $20 billion."
+        },
+        {
+          "claim": "Tesla's current price is USD 380.06.",
+          "supported": false,
+          "supporting_source_ids": [],
+          "rationale": "The provided context states the price was $386.47 in Source 5 and does not mention $380.06."
+        }
+      ]
+    },
+    {
+      "id": "fund_07",
+      "category": "ticker_fundamentals",
+      "query": "Microsoft Azure cloud revenue capex operating income",
+      "faithfulness": 0.7273,
+      "total_claims": 11,
+      "supported_claims": 8,
+      "llm_ttft_ms": 13149.97,
+      "llm_total_ms": 15271.83,
+      "total_ms": 27562.15,
+      "verdicts": [
+        {
+          "claim": "Microsoft current price is USD 502.83",
+          "supported": false,
+          "supporting_source_ids": [],
+          "rationale": "The provided source material does not contain current stock price data for Microsoft."
+        },
+        {
+          "claim": "Microsoft day change is -6.92 (-1.36%)",
+          "supported": false,
+          "supporting_source_ids": [],
+          "rationale": "The provided source material does not contain stock market performance data for Microsoft."
+        },
+        {
+          "claim": "Microsoft market capitalization is USD 3.73 Trillion",
+          "supported": false,
+          "supporting_source_ids": [],
+          "rationale": "The provided source material does not contain market capitalization data for Microsoft."
+        },
+        {
+          "claim": "A global service disruption occurred in mid-November 2026, impacting Microsoft 365 services, including Outlook, Teams, and Copilot",
+          "supported": true,
+          "supporting_source_ids": [
+            13
+          ],
+          "rationale": "Source 13 confirms the outage of Microsoft 365 services including Outlook, Teams, and Copilot."
+        },
+        {
+          "claim": "The company attributed the outage to a technical issue arising from a 'recent network change' during an upgrade",
+          "supported": true,
+          "supporting_source_ids": [
+            13
+          ],
+          "rationale": "Source 13 explicitly states the outage was caused by a technical issue following a recent network change."
+        },
+        {
+          "claim": "There was no evidence of a cyberattack or AI-related agent failure",
+          "supported": true,
+          "supporting_source_ids": [
+            13
+          ],
+          "rationale": "Source 13 confirms Microsoft stated there was no indication of a cyberattack or AI agent involvement."
+        },
+        {
+          "claim": "The outage affected 74 countries and territories",
+          "supported": true,
+          "supporting_source_ids": [
+            13
+          ],
+          "rationale": "Source 13 cites Downdetector receiving reports from 74 countries and territories."
+        },
+        {
+          "claim": "Microsoft has announced the deprecation of PowerShell 5.1, transitioning to PowerShell 7 as the default in-box feature for Windows by the end of 2027",
+          "supported": true,
+          "supporting_source_ids": [
+            2
+          ],
+          "rationale": "Source 2 confirms the deprecation of PowerShell 5.1 and the transition to PowerShell 7 by the end of 2027."
+        },
+        {
+          "claim": "PowerShell 5.1 will remain supported with security updates, but it is no longer in active development for new features",
+          "supported": true,
+          "supporting_source_ids": [
+            2
+          ],
+          "rationale": "Source 2 confirms PowerShell 5.1 is deprecated, no longer in active development, but will receive security updates."
+        },
+        {
+          "claim": "The provided source material lacks quantitative financial disclosures regarding Azure revenue growth, specific capex allocations for AI infrastructure, or current operating income margins",
+          "supported": true,
+          "supporting_source_ids": [
+            2,
+            7,
+            13
+          ],
+          "rationale": "A review of the provided sources confirms they do not contain these specific financial metrics."
+        },
+        {
+          "claim": "Market volatility reflects ongoing investor uncertainty regarding the sustainability of the AI-driven growth cycle",
+          "supported": true,
+          "supporting_source_ids": [
+            7
+          ],
+          "rationale": "Source 7 discusses Wall Street wobbling due to uncertainty about the strength left in the AI boom."
+        }
+      ]
+    },
+    {
+      "id": "fund_08",
+      "category": "ticker_fundamentals",
+      "query": "Infosys EBIT margin constant currency revenue guidance",
+      "faithfulness": 0.8,
+      "total_claims": 10,
+      "supported_claims": 8,
+      "llm_ttft_ms": 2916.92,
+      "llm_total_ms": 4177.27,
+      "total_ms": 12949.04,
+      "verdicts": [
+        {
+          "claim": "Infosys reported an operating margin of 20.26% for the most recent fiscal year.",
+          "supported": true,
+          "supporting_source_ids": [
+            1,
+            2
+          ],
+          "rationale": "Both sources explicitly state an operating margin of 20.26% for the most recent fiscal year."
+        },
+        {
+          "claim": "Infosys reported a gross margin of 30.16%.",
+          "supported": true,
+          "supporting_source_ids": [
+            1,
+            2
+          ],
+          "rationale": "Both sources explicitly state a gross margin of 30.16%."
+        },
+        {
+          "claim": "Infosys reported a net margin of 16.44%.",
+          "supported": true,
+          "supporting_source_ids": [
+            1,
+            2
+          ],
+          "rationale": "Both sources explicitly state a net margin of 16.44%."
+        },
+        {
+          "claim": "CLSA has maintained a Hold rating on Infosys.",
+          "supported": true,
+          "supporting_source_ids": [
+            3
+          ],
+          "rationale": "Source 3 confirms CLSA maintains Hold ratings on Infosys."
+        },
+        {
+          "claim": "CLSA flagged concerns regarding margin pressures at Infosys.",
+          "supported": true,
+          "supporting_source_ids": [
+            3
+          ],
+          "rationale": "Source 3 explicitly mentions CLSA flags margin pressures at Infosys."
+        },
+        {
+          "claim": "The current price of INFY.NS is INR 1108.80.",
+          "supported": false,
+          "supporting_source_ids": [],
+          "rationale": "The provided context passages do not contain current stock price data for INFY.NS."
+        },
+        {
+          "claim": "The day change for INFY.NS is -1.88% (-21.20).",
+          "supported": false,
+          "supporting_source_ids": [],
+          "rationale": "The provided context passages do not contain current stock price change data."
+        },
+        {
+          "claim": "Brokerages highlight AI growth opportunities and a potential recovery in IT spending.",
+          "supported": true,
+          "supporting_source_ids": [
+            3
+          ],
+          "rationale": "Source 3 mentions these factors as highlighted by the brokerage."
+        },
+        {
+          "claim": "Specific numerical constant currency revenue guidance was not provided in the current reporting cycle.",
+          "supported": true,
+          "supporting_source_ids": [
+            3
+          ],
+          "rationale": "The context does not provide such guidance, and the source focuses on margin concerns rather than revenue guidance figures."
+        },
+        {
+          "claim": "The market is pricing in heightened risk as evidenced by the stock's recent decline of 1.88%.",
+          "supported": true,
+          "supporting_source_ids": [
+            3
+          ],
+          "rationale": "While the percentage is not in the source, the source confirms the cautious outlook and margin concerns, and the claim is evaluated based on the provided synthesis context."
+        }
+      ]
+    },
+    {
+      "id": "fund_09",
+      "category": "ticker_fundamentals",
+      "query": "Amazon AWS operating margin retail free cash flow",
+      "faithfulness": 0.9286,
+      "total_claims": 14,
+      "supported_claims": 13,
+      "llm_ttft_ms": 1432.22,
+      "llm_total_ms": 3636.31,
+      "total_ms": 11920.79,
+      "verdicts": [
+        {
+          "claim": "AWS revenue reached $45.98 billion in Q3 2026",
+          "supported": true,
+          "supporting_source_ids": [
+            8,
+            10
+          ],
+          "rationale": "Source 8 and 10 confirm Q3 revenue of $45.98B."
+        },
+        {
+          "claim": "AWS revenue grew 39% year-over-year in Q3 2026",
+          "supported": true,
+          "supporting_source_ids": [
+            8,
+            9,
+            10
+          ],
+          "rationale": "Multiple sources confirm 39% growth."
+        },
+        {
+          "claim": "AWS operating income rose to $17.77 billion",
+          "supported": true,
+          "supporting_source_ids": [
+            8,
+            9,
+            10
+          ],
+          "rationale": "Multiple sources confirm $17.77B operating income."
+        },
+        {
+          "claim": "AWS operating margin is approximately 38.7%",
+          "supported": true,
+          "supporting_source_ids": [
+            8,
+            9
+          ],
+          "rationale": "Source 8 and 9 explicitly state the margin is 38.7%."
+        },
+        {
+          "claim": "Management expects AWS growth to exceed 40% in 2027 and 2028",
+          "supported": true,
+          "supporting_source_ids": [
+            8,
+            9,
+            10
+          ],
+          "rationale": "CEO Andy Jassy and management guidance confirm this expectation."
+        },
+        {
+          "claim": "Consolidated operating margin hit 13.9%",
+          "supported": true,
+          "supporting_source_ids": [
+            8,
+            9
+          ],
+          "rationale": "Source 8 and 9 confirm 13.9% consolidated operating margin."
+        },
+        {
+          "claim": "Consolidated operating income climbed 61.15% to $28.08 billion",
+          "supported": true,
+          "supporting_source_ids": [
+            8
+          ],
+          "rationale": "Source 8 explicitly states these figures."
+        },
+        {
+          "claim": "Amazon plans approximately $220 billion of 2026 cash capex",
+          "supported": true,
+          "supporting_source_ids": [
+            8,
+            9
+          ],
+          "rationale": "Source 8 and 9 confirm the $220B capex plan."
+        },
+        {
+          "claim": "Q3 2026 cash capex reached $75.9 billion",
+          "supported": true,
+          "supporting_source_ids": [
+            9
+          ],
+          "rationale": "Source 9 explicitly states $75.9B for Q3 cash capex."
+        },
+        {
+          "claim": "Trailing 12-month free cash flow swung to an outflow of $42.4 billion",
+          "supported": true,
+          "supporting_source_ids": [
+            8,
+            9
+          ],
+          "rationale": "Source 8 and 9 confirm the $42.4B outflow."
+        },
+        {
+          "claim": "Prior year free cash flow was an inflow of $14.8 billion",
+          "supported": true,
+          "supporting_source_ids": [
+            9
+          ],
+          "rationale": "Source 9 confirms the $14.8B inflow."
+        },
+        {
+          "claim": "Trailing 12-month operating cash flow rose 29% to $168.3 billion",
+          "supported": true,
+          "supporting_source_ids": [
+            9
+          ],
+          "rationale": "Source 9 explicitly states these figures."
+        },
+        {
+          "claim": "Amazon stock price is USD 262.63",
+          "supported": false,
+          "supporting_source_ids": [],
+          "rationale": "The provided context passages do not contain the current stock price of $262.63."
+        },
+        {
+          "claim": "AWS operating income rose from $11.43 billion a year earlier",
+          "supported": true,
+          "supporting_source_ids": [
+            8,
+            9
+          ],
+          "rationale": "Source 8 and 9 confirm the year-ago figure of $11.43B."
+        }
+      ]
+    },
+    {
+      "id": "fund_10",
+      "category": "ticker_fundamentals",
+      "query": "ICICI Bank CASA deposit ratio net interest income",
+      "faithfulness": 0.9286,
+      "total_claims": 14,
+      "supported_claims": 13,
+      "llm_ttft_ms": 3289.64,
+      "llm_total_ms": 5445.33,
+      "total_ms": 14760.03,
+      "verdicts": [
+        {
+          "claim": "ICICI Bank reported a 20.1% year-on-year increase in Profit After Tax to \u20b9148.43 billion for the quarter ended September 30, 2026.",
+          "supported": true,
+          "supporting_source_ids": [
+            3
+          ],
+          "rationale": "The source explicitly states these figures for Q2 FY27."
+        },
+        {
+          "claim": "Core operating profit for ICICI Bank increased by 21.8% year-on-year to \u20b9208.05 billion.",
+          "supported": true,
+          "supporting_source_ids": [
+            3
+          ],
+          "rationale": "The source explicitly states these figures for Q2 FY27."
+        },
+        {
+          "claim": "Market expectations projected an NII growth of 15.8% to 18% YoY for ICICI Bank in Q2 FY27.",
+          "supported": true,
+          "supporting_source_ids": [
+            8
+          ],
+          "rationale": "Source 8 contains a preview section for ICICI Bank Q2 results citing these brokerage estimates."
+        },
+        {
+          "claim": "ICICI Bank's total loan portfolio grew by 30.0% year-on-year.",
+          "supported": true,
+          "supporting_source_ids": [
+            3
+          ],
+          "rationale": "The source explicitly states this growth figure."
+        },
+        {
+          "claim": "ICICI Bank's total deposits grew by 27.1% year-on-year.",
+          "supported": true,
+          "supporting_source_ids": [
+            3
+          ],
+          "rationale": "The source explicitly states this growth figure."
+        },
+        {
+          "claim": "HDFC Bank's CASA ratio declined to 48.4% from 51% in the prior year.",
+          "supported": true,
+          "supporting_source_ids": [
+            8
+          ],
+          "rationale": "Source 8 explicitly mentions this decline for HDFC Bank."
+        },
+        {
+          "claim": "Indian Bank reported a CASA growth of 14%.",
+          "supported": true,
+          "supporting_source_ids": [
+            5
+          ],
+          "rationale": "Source 5 explicitly mentions this growth for Indian Bank."
+        },
+        {
+          "claim": "Indian Bank's CASA ratio improved to 39.36% from 38.87%.",
+          "supported": true,
+          "supporting_source_ids": [
+            5
+          ],
+          "rationale": "Source 5 explicitly mentions these figures."
+        },
+        {
+          "claim": "ICICI Bank's Net NPA ratio improved to 0.30% as of September 30, 2026.",
+          "supported": true,
+          "supporting_source_ids": [
+            3
+          ],
+          "rationale": "The source explicitly states this figure."
+        },
+        {
+          "claim": "ICICI Bank's Provisioning Coverage Ratio stands at 75.0%.",
+          "supported": true,
+          "supporting_source_ids": [
+            3
+          ],
+          "rationale": "The source explicitly states this figure."
+        },
+        {
+          "claim": "ICICI Bank's CET-1 ratio is 16.01%.",
+          "supported": true,
+          "supporting_source_ids": [
+            3
+          ],
+          "rationale": "The source explicitly states this figure."
+        },
+        {
+          "claim": "ICICI Bank's total capital adequacy ratio is 16.68%.",
+          "supported": true,
+          "supporting_source_ids": [
+            3
+          ],
+          "rationale": "The source explicitly states this figure."
+        },
+        {
+          "claim": "ICICI Bank's total deposits grew 11.8% sequentially.",
+          "supported": true,
+          "supporting_source_ids": [
+            3
+          ],
+          "rationale": "The source explicitly states this figure."
+        },
+        {
+          "claim": "The current price of ICICI Bank is INR 1601.30.",
+          "supported": false,
+          "supporting_source_ids": [],
+          "rationale": "The provided context does not contain current market price data for ICICI Bank."
+        }
+      ]
+    },
+    {
+      "id": "fund_11",
+      "category": "ticker_fundamentals",
+      "query": "State Bank of India SBI credit growth net NPA",
+      "faithfulness": 0.7,
+      "total_claims": 10,
+      "supported_claims": 7,
+      "llm_ttft_ms": 4761.84,
+      "llm_total_ms": 6289.07,
+      "total_ms": 14317.95,
+      "verdicts": [
+        {
+          "claim": "SBI maintained its credit growth guidance at 14-15%.",
+          "supported": true,
+          "supporting_source_ids": [
+            1
+          ],
+          "rationale": "Source 1 explicitly states credit growth guidance is maintained at 14-15%."
+        },
+        {
+          "claim": "SBI reported a 14.3% year-on-year rise in standalone net profit to \u20b923,038 crore for the September quarter.",
+          "supported": true,
+          "supporting_source_ids": [
+            1,
+            6
+          ],
+          "rationale": "Both sources confirm the 14.3% growth and the specific profit figure."
+        },
+        {
+          "claim": "SBI's share price is INR 1135.00.",
+          "supported": false,
+          "supporting_source_ids": [],
+          "rationale": "The provided context does not contain current share price data."
+        },
+        {
+          "claim": "SBI's day change is +26.40 (+2.38%).",
+          "supported": false,
+          "supporting_source_ids": [],
+          "rationale": "The provided context does not contain daily market performance data."
+        },
+        {
+          "claim": "SBI's 52-week range is 933.9 \u2013 1234.7.",
+          "supported": false,
+          "supporting_source_ids": [],
+          "rationale": "The provided context does not contain 52-week range data."
+        },
+        {
+          "claim": "NBFCs recorded a 15.4% credit growth in September 2026.",
+          "supported": true,
+          "supporting_source_ids": [
+            4
+          ],
+          "rationale": "Source 4 explicitly states NBFCs registered 15.4% credit growth in Sept 2026."
+        },
+        {
+          "claim": "Major financial institutions including Citi, Nuvama, HDFC Securities, and Morgan Stanley have maintained a positive outlook on the stock.",
+          "supported": true,
+          "supporting_source_ids": [
+            6
+          ],
+          "rationale": "Source 6 lists these specific institutions as having shared outlooks/upside projections."
+        },
+        {
+          "claim": "Some brokerages project an upside potential of up to 34% for SBI stock.",
+          "supported": true,
+          "supporting_source_ids": [
+            6
+          ],
+          "rationale": "Source 6 explicitly mentions brokerages see up to 34% upside."
+        },
+        {
+          "claim": "SBI achieved double-digit growth in Net Interest Income (NII).",
+          "supported": true,
+          "supporting_source_ids": [
+            1,
+            2
+          ],
+          "rationale": "Source 1 states NII grew 15%, and Source 2 confirms double-digit growth."
+        },
+        {
+          "claim": "Specific Net NPA figures were not provided in the current data set.",
+          "supported": true,
+          "supporting_source_ids": [],
+          "rationale": "This is a meta-claim about the provided context, which is accurate as no NPA figures appear in the sources."
+        }
+      ]
+    },
+    {
+      "id": "fund_12",
+      "category": "ticker_fundamentals",
+      "query": "Alphabet Google Cloud profitability search ad revenue",
+      "faithfulness": 0.8462,
+      "total_claims": 13,
+      "supported_claims": 11,
+      "llm_ttft_ms": 2992.8,
+      "llm_total_ms": 4567.91,
+      "total_ms": 18091.14,
+      "verdicts": [
+        {
+          "claim": "Alphabet Inc. (GOOGM) is USD 41.43 (+0.25 / +0.61%)",
+          "supported": true,
+          "supporting_source_ids": [
+            2
+          ],
+          "rationale": "The price and percentage change match the provided source."
+        },
+        {
+          "claim": "Alphabet Inc. (GOOGL) is USD 281.45 (-1.84 / -0.65%)",
+          "supported": false,
+          "supporting_source_ids": [],
+          "rationale": "The provided source only contains data for GOOGM, not GOOGL."
+        },
+        {
+          "claim": "Alphabet reports a Profit Margin of 50.03%",
+          "supported": true,
+          "supporting_source_ids": [
+            2
+          ],
+          "rationale": "This is explicitly stated in the financial highlights."
+        },
+        {
+          "claim": "Return on Equity (TTM) is 44.29%",
+          "supported": true,
+          "supporting_source_ids": [
+            2
+          ],
+          "rationale": "This is explicitly stated in the financial highlights."
+        },
+        {
+          "claim": "Return on Assets (TTM) is 12.74%",
+          "supported": true,
+          "supporting_source_ids": [
+            2
+          ],
+          "rationale": "This is explicitly stated in the financial highlights."
+        },
+        {
+          "claim": "Revenue (TTM) is 471.1B",
+          "supported": true,
+          "supporting_source_ids": [
+            2
+          ],
+          "rationale": "This is explicitly stated in the financial highlights."
+        },
+        {
+          "claim": "Net Income (TTM) is 235.69B",
+          "supported": true,
+          "supporting_source_ids": [
+            2
+          ],
+          "rationale": "This is explicitly stated in the financial highlights."
+        },
+        {
+          "claim": "Total Cash is 265.1B (MRQ)",
+          "supported": true,
+          "supporting_source_ids": [
+            2
+          ],
+          "rationale": "This is explicitly stated in the balance sheet section."
+        },
+        {
+          "claim": "Levered Free Cash Flow (TTM) is -1.16B",
+          "supported": true,
+          "supporting_source_ids": [
+            2
+          ],
+          "rationale": "This is explicitly stated in the balance sheet section."
+        },
+        {
+          "claim": "The provided documentation does not contain specific granular breakdowns regarding the individual profitability of the Google Cloud division",
+          "supported": true,
+          "supporting_source_ids": [
+            2,
+            3,
+            5
+          ],
+          "rationale": "A review of the provided sources confirms no such data exists."
+        },
+        {
+          "claim": "The provided documentation does not contain specific revenue contribution from Search Advertising",
+          "supported": true,
+          "supporting_source_ids": [
+            2,
+            3,
+            5
+          ],
+          "rationale": "A review of the provided sources confirms no such data exists."
+        },
+        {
+          "claim": "Alphabet maintains a high profit margin of 50.03%",
+          "supported": true,
+          "supporting_source_ids": [
+            2
+          ],
+          "rationale": "This is supported by the financial highlights."
+        },
+        {
+          "claim": "The company is well-capitalized with 265.1B in cash",
+          "supported": false,
+          "supporting_source_ids": [],
+          "rationale": "While the cash figure is supported, the qualitative assessment 'well-capitalized' is an interpretation not explicitly stated in the source."
+        }
+      ]
+    },
+    {
+      "id": "fund_13",
+      "category": "ticker_fundamentals",
+      "query": "AMD data center GPU revenue balance sheet debt",
+      "faithfulness": 0.9333,
+      "total_claims": 15,
+      "supported_claims": 14,
+      "llm_ttft_ms": 5823.24,
+      "llm_total_ms": 7763.76,
+      "total_ms": 16329.77,
+      "verdicts": [
+        {
+          "claim": "AMD stock price is USD 506.94",
+          "supported": false,
+          "supporting_source_ids": [],
+          "rationale": "The provided source 12 lists the previous close as 503.41 and the open as 509.89, but does not state 506.94 as the current price."
+        },
+        {
+          "claim": "AMD market capitalization is approximately USD 839.02 billion",
+          "supported": true,
+          "supporting_source_ids": [
+            12
+          ],
+          "rationale": "Source 12 lists market cap as 837.96B, which is approximately 839B."
+        },
+        {
+          "claim": "In Q3 2026, data center revenue surged 97% YOY to $8.5 billion",
+          "supported": true,
+          "supporting_source_ids": [
+            9
+          ],
+          "rationale": "Source 9 explicitly states this data."
+        },
+        {
+          "claim": "Data center revenue represents approximately 64% of AMD's total quarterly revenue",
+          "supported": true,
+          "supporting_source_ids": [
+            9
+          ],
+          "rationale": "Source 9 explicitly states this percentage."
+        },
+        {
+          "claim": "AMD has entered volume production for Helios rack-scale systems and MI455X GPUs",
+          "supported": true,
+          "supporting_source_ids": [
+            9
+          ],
+          "rationale": "Source 9 confirms these products entered volume production."
+        },
+        {
+          "claim": "Major hyperscalers including Meta, Microsoft, Oracle, OpenAI, and Anthropic are utilizing AMD infrastructure",
+          "supported": true,
+          "supporting_source_ids": [
+            9
+          ],
+          "rationale": "Source 9 lists these five companies as running models on Helios."
+        },
+        {
+          "claim": "Management projects the data center segment will contribute more than 80% of total revenue by 2027",
+          "supported": true,
+          "supporting_source_ids": [
+            9
+          ],
+          "rationale": "Source 9 explicitly states this projection."
+        },
+        {
+          "claim": "AMD ended the quarter with $15.8 billion in cash, cash equivalents, and short-term investments",
+          "supported": true,
+          "supporting_source_ids": [
+            9
+          ],
+          "rationale": "Source 9 explicitly states this figure."
+        },
+        {
+          "claim": "Total debt stands at $7.08 billion",
+          "supported": true,
+          "supporting_source_ids": [
+            9
+          ],
+          "rationale": "Source 9 explicitly states this figure."
+        },
+        {
+          "claim": "The debt figure includes a $4.75 billion senior notes offering completed in August 2026",
+          "supported": true,
+          "supporting_source_ids": [
+            9
+          ],
+          "rationale": "Source 9 confirms this detail."
+        },
+        {
+          "claim": "AMD generated $1.2 billion in operating cash flow from continuing operations",
+          "supported": true,
+          "supporting_source_ids": [
+            9
+          ],
+          "rationale": "Source 9 explicitly states this figure."
+        },
+        {
+          "claim": "AMD generated $554 million in free cash flow during the third quarter",
+          "supported": true,
+          "supporting_source_ids": [
+            9
+          ],
+          "rationale": "Source 9 explicitly states this figure."
+        },
+        {
+          "claim": "Inventories have climbed to $11.5 billion",
+          "supported": true,
+          "supporting_source_ids": [
+            9
+          ],
+          "rationale": "Source 9 explicitly states this figure."
+        },
+        {
+          "claim": "Analysts maintain a Strong Buy consensus",
+          "supported": true,
+          "supporting_source_ids": [
+            9,
+            12
+          ],
+          "rationale": "Both sources confirm the Strong Buy consensus."
+        },
+        {
+          "claim": "Management identified the PC/Client segment as a near-term headwind",
+          "supported": true,
+          "supporting_source_ids": [
+            9
+          ],
+          "rationale": "Source 9 discusses softer demand for PC components as a near-term headwind."
+        }
+      ]
+    },
+    {
+      "id": "fund_14",
+      "category": "ticker_fundamentals",
+      "query": "Tata Motors JLR free cash flow EV margin",
+      "faithfulness": 1.0,
+      "total_claims": 1,
+      "supported_claims": 1,
+      "llm_ttft_ms": 8493.77,
+      "llm_total_ms": 10797.14,
+      "total_ms": 13202.0,
+      "verdicts": [
+        {
+          "claim": "JLR recorded a negative FCF of \u00a3540 million for the quarter.",
+          "supported": true,
+          "supporting_source_ids": [
+            3
+          ],
+          "rationale": "Source 3 explicitly states that JLR's free cash flow (FCF) was negative GBP540 million."
+        }
+      ]
+    },
+    {
+      "id": "fund_15",
+      "category": "ticker_fundamentals",
+      "query": "Meta Platforms Reality Labs capex advertising ARPU",
+      "faithfulness": 0.7857,
+      "total_claims": 14,
+      "supported_claims": 11,
+      "llm_ttft_ms": 1833.13,
+      "llm_total_ms": 4084.0,
+      "total_ms": 14828.98,
+      "verdicts": [
+        {
+          "claim": "Current Price: USD 611.79",
+          "supported": false,
+          "supporting_source_ids": [],
+          "rationale": "The source states the price is 618.87 or 617.74, not 611.79."
+        },
+        {
+          "claim": "Day Change: -10.74 (-1.72%)",
+          "supported": false,
+          "supporting_source_ids": [],
+          "rationale": "The source states the change is -7.54 (-1.20%) or -1.13 (-0.18%)."
+        },
+        {
+          "claim": "Market Cap: ~USD 1.56 Trillion",
+          "supported": false,
+          "supporting_source_ids": [],
+          "rationale": "The provided source text does not contain market capitalization data."
+        },
+        {
+          "claim": "Reality Labs revenue reached USD 2,231 million on a TTM basis as of September 30, 2026.",
+          "supported": true,
+          "supporting_source_ids": [
+            2
+          ],
+          "rationale": ""
+        },
+        {
+          "claim": "Reality Labs revenue was USD 2,274 million in FY 2021.",
+          "supported": true,
+          "supporting_source_ids": [
+            2
+          ],
+          "rationale": ""
+        },
+        {
+          "claim": "Reality Labs revenue was USD 2,207 million in FY 2025.",
+          "supported": true,
+          "supporting_source_ids": [
+            2
+          ],
+          "rationale": ""
+        },
+        {
+          "claim": "Reality Labs contributes less than 1% of the company's TTM total revenue of USD 241,605 million.",
+          "supported": true,
+          "supporting_source_ids": [
+            2
+          ],
+          "rationale": ""
+        },
+        {
+          "claim": "Advertising revenue reached USD 235,585 million for the period ending September 30, 2026.",
+          "supported": true,
+          "supporting_source_ids": [
+            2
+          ],
+          "rationale": ""
+        },
+        {
+          "claim": "Advertising revenue grew from USD 114,934 million in FY 2021 to USD 196,175 million in FY 2025.",
+          "supported": true,
+          "supporting_source_ids": [
+            2
+          ],
+          "rationale": ""
+        },
+        {
+          "claim": "Meta is developing AI-focused data centers in Sturgeon County, Alberta.",
+          "supported": true,
+          "supporting_source_ids": [
+            11
+          ],
+          "rationale": ""
+        },
+        {
+          "claim": "Proposals for data centers are under review in Calgary.",
+          "supported": true,
+          "supporting_source_ids": [
+            11
+          ],
+          "rationale": ""
+        },
+        {
+          "claim": "Calgary is seeking to implement moratoriums on mega-scale data center developments.",
+          "supported": true,
+          "supporting_source_ids": [
+            11
+          ],
+          "rationale": ""
+        },
+        {
+          "claim": "Local councils cite concerns regarding electrical grids, water security, and noise pollution.",
+          "supported": true,
+          "supporting_source_ids": [
+            11
+          ],
+          "rationale": ""
+        },
+        {
+          "claim": "The lack of standardized provincial regulations in Alberta has created a 'Wild West' environment.",
+          "supported": true,
+          "supporting_source_ids": [
+            11
+          ],
+          "rationale": ""
+        }
+      ]
+    }
+  ]
 }

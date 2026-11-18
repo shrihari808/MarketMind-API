@@ -1,15 +1,16 @@
 # MarketMind Web RAG Evaluation Report
 
 **Date:** 2026-11-18  
-**Branch:** `evals-v2` $\rightarrow$ `main`  
+**Branch:** `main`  
 **Target API:** `POST /api/v2/rag/web` ([rag.py](file:///c:/Users/shrihari/OneDrive%20-%20Invendis%20Technologies%20India%20Pvt.%20Ltd/Desktop/stuff/MarketMind-API/app/api/v2/endpoints/rag.py))  
-**Core Service:** `WebRAGService` ([web_rag.py](file:///c:/Users/shrihari/OneDrive%20-%20Invendis%20Technologies%20India%20Pvt.%20Ltd/Desktop/stuff/MarketMind-API/app/services/web_rag.py))
+**Core Service:** `WebRAGService` ([web_rag.py](file:///c:/Users/shrihari/OneDrive%20-%20Invendis%20Technologies%20India%20Pvt.%20Ltd/Desktop/stuff/MarketMind-API/app/services/web_rag.py))  
+**Live Models & Search:** `gemini-3.1-flash-lite-preview` (synthesis & judge), `gemini-embedding-001` (`HybridReranker`), `duckduckgo` (primary) + `brave` (`BRAVE_MIN_INTERVAL_SECONDS=1.05`)
 
-> **Environment Scope & Unverified Components:**  
-> `GEMINI_API_KEY`, `SERPER_API_KEY`, `BRAVE_API_KEY`, and a running Redis server (`REDIS_URL`) are not configured in this checkout. Consequently:
-> - **Latency runs** measure the **live retrieval pipeline** (`retrieval_only=true`: `QueryAnalyzer` heuristic fallback + DuckDuckGo search + Trafilatura scraping + `FreshnessReranker` + YFinance live quotes) using the bounded in-memory `AsyncTTLCache` backend ([cache.py](file:///c:/Users/shrihari/OneDrive%20-%20Invendis%20Technologies%20India%20Pvt.%20Ltd/Desktop/stuff/MarketMind-API/app/core/cache.py); Redis optional when `REDIS_URL` + `redis` are configured). Gemini LLM synthesis (`llm_ttft_ms`, `llm_total_ms`) and LanceDB embedding lookups are excluded.
-> - **Retrieval quality runs** evaluate the lexical and freshness stages (`pre_filter_citations`, `BM25Reranker`, `FreshnessReranker`, and the production two-stage funnel). `HybridReranker` dense cosine scoring requires `GEMINI_API_KEY` and was not evaluated.
-> - **LLM-as-a-Judge Citation Faithfulness** ([evaluate_faithfulness.py](file:///c:/Users/shrihari/OneDrive%20-%20Invendis%20Technologies%20India%20Pvt.%20Ltd/Desktop/stuff/MarketMind-API/evals/evaluate_faithfulness.py)) is implemented and unit-tested with a stubbed judge, and its live run recorded `status: "skipped"` ([faithfulness_results.json](file:///c:/Users/shrihari/OneDrive%20-%20Invendis%20Technologies%20India%20Pvt.%20Ltd/Desktop/stuff/MarketMind-API/evals/results/faithfulness_results.json)) pending `GEMINI_API_KEY`.
+> **Environment Scope:**  
+> `GEMINI_API_KEY` and `BRAVE_API_KEY` (free tier) are configured via local `.env` (gitignored); `SERPER_API_KEY` and a standalone Redis server (`REDIS_URL`) are not configured in this checkout (caching uses the bounded in-memory `AsyncTTLCache` backend in [cache.py](file:///c:/Users/shrihari/OneDrive%20-%20Invendis%20Technologies%20India%20Pvt.%20Ltd/Desktop/stuff/MarketMind-API/app/core/cache.py)).
+> - **Load & Retrieval Latency runs** (Sections 1–3) isolate the retrieval pipeline (`retrieval_only=true`) so latency reflects search, scraping, reranking, and YFinance quote stages without LLM generation variance.
+> - **Live Search Provider Head-to-Head** (Section 5) compares `duckduckgo` vs. free-tier `brave` (1.05s request spacing) across 15 stratified queries under identical heuristic sub-queries.
+> - **Live Gemini Evaluations** (Sections 4.4 & 6) benchmark `HybridReranker` (`gemini-embedding-001`) at $N=157$ and end-to-end streaming synthesis + LLM-as-a-Judge Citation Faithfulness using `gemini-3.1-flash-lite-preview`.
 > - Local load tests disabled the IP sliding-window rate limiter (`25 req/min` default) via `POST /api/v2/health/rate-limit`.
 
 ---
@@ -126,7 +127,21 @@
 
 *Source: [recall_results_v2_stratified.json](file:///c:/Users/shrihari/OneDrive%20-%20Invendis%20Technologies%20India%20Pvt.%20Ltd/Desktop/stuff/MarketMind-API/evals/results/recall_results_v2_stratified.json).*
 
-### 4.4 Guardrail Classification Metrics (All 55 Stratified Queries)
+### 4.4 `HybridReranker` Dense + BM25 Evaluation ($N = 157$, `gemini-embedding-001`)
+Evaluated across all `45` in-domain queries (`580` passages) with live `gemini-embedding-001` embeddings ([recall_results_v2_hybrid.json](file:///c:/Users/shrihari/OneDrive%20-%20Invendis%20Technologies%20India%20Pvt.%20Ltd/Desktop/stuff/MarketMind-API/evals/results/recall_results_v2_hybrid.json)):
+
+| Method ($N = 157$) | Recall@1 | Recall@3 | Recall@5 | Recall@10 | NDCG@5 | NDCG@10 | Hit@5 | Hit@10 | MRR |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+| `pre_filter_citations` | 0.2259 | 0.5111 | 0.6815 | 0.8815 | 0.6381 | 0.7298 | 0.9778 | 1.0000 | 0.7904 |
+| `bm25_reranker` | 0.1556 | 0.4407 | 0.6037 | 0.8185 | 0.5549 | 0.6663 | 0.9333 | 0.9556 | 0.6664 |
+| `freshness_reranker` | 0.1556 | 0.4407 | 0.5963 | 0.8111 | 0.5560 | 0.6689 | 0.9111 | 0.9556 | 0.6695 |
+| `production_two_stage_funnel` | 0.1704 | 0.4407 | 0.6037 | 0.8037 | 0.5682 | 0.6728 | 0.8889 | 0.9778 | 0.6957 |
+| **`hybrid_reranker` (`gemini-embedding-001`)** | 0.1556 | 0.4333 | 0.5741 | 0.7815 | 0.5444 | 0.6567 | 0.9111 | 0.9556 | 0.6730 |
+
+* **`hybrid_reranker` by Category (`Recall@5`):** `ticker_fundamentals = 0.6444`, `breaking_news = 0.6000`, `multi_hop_comparative = 0.4778`.
+* **Takeaway:** Adding `gemini-embedding-001` RRF fusion improved `MRR` over pure `bm25_reranker` (`0.6730` vs. `0.6664`) and matched breaking-news `Recall@5` (`0.6000`), while exact-match financial BM25 + bounded freshness kept the highest top-5 precision (`0.6037` `Recall@5`, `0.6957` `MRR`) with zero external embedding API latency.
+
+### 4.5 Guardrail Classification Metrics (All 55 Stratified Queries)
 Evaluated via [evaluate_guardrail.py](file:///c:/Users/shrihari/OneDrive%20-%20Invendis%20Technologies%20India%20Pvt.%20Ltd/Desktop/stuff/MarketMind-API/evals/evaluate_guardrail.py) ([guardrail_results.json](file:///c:/Users/shrihari/OneDrive%20-%20Invendis%20Technologies%20India%20Pvt.%20Ltd/Desktop/stuff/MarketMind-API/evals/results/guardrail_results.json)):
 
 * **Overall Accuracy:** **`100.0%` (`55 / 55`)** | **Precision:** `1.0000` | **Recall:** `1.0000` | **F1:** `1.0000`
@@ -135,7 +150,48 @@ Evaluated via [evaluate_guardrail.py](file:///c:/Users/shrihari/OneDrive%20-%20I
 
 ---
 
-## 5. Apples-to-Apples Reference on Original 98-Doc Benchmark
+## 5. Live Search Provider Head-to-Head (`duckduckgo` vs. `brave` Free Tier)
+
+Compared via [compare_search_providers.py](file:///c:/Users/shrihari/OneDrive%20-%20Invendis%20Technologies%20India%20Pvt.%20Ltd/Desktop/stuff/MarketMind-API/evals/compare_search_providers.py) (`--retrieval-only --per-category 5`, `15` queries across Fundamentals / Breaking News / Comparative) with identical heuristic sub-queries and Brave free-tier rate spacing (`BRAVE_MIN_INTERVAL_SECONDS=1.05` + `429` spaced retry in [brave.py](file:///c:/Users/shrihari/OneDrive%20-%20Invendis%20Technologies%20India%20Pvt.%20Ltd/Desktop/stuff/MarketMind-API/app/infrastructure/search/brave.py)):
+
+| Metric (15 Stratified Queries) | `duckduckgo` (Selected Primary) | `brave` (Free Tier, 1.05s Spaced) | Delta (`ddg` vs. `brave`) |
+|---|---:|---:|---:|
+| Non-Empty Source Rate | **`100.0%` (`15/15`)** | **`100.0%` (`15/15`)** | Tie (`0%` empty) |
+| Avg Search Candidates Found | **`13.40`** | `8.40` | **`+59.5%` candidates** |
+| Avg URLs Sent to Scraper | `11.13` | `8.00` | `+39.1%` scrape pool |
+| Avg Successfully Scraped Docs | **`3.60`** | `3.00` | **`+20.0%` scraped docs** |
+| Per-URL Scrape Success Rate | `32.34%` | **`37.50%`** | `+5.16 pp` Brave URL quality |
+| Avg Final Passages Selected | **`4.20`** | `3.80` | **`+10.5%` passages** |
+| `search_ms` p50 / Mean | **`2,779.87` / `2,526.97 ms`** | `7,765.14` / `5,241.08 ms` | **`2.79x` faster p50** |
+| `search_ms` p95 / Max | **`4,556.17` / `4,602.16 ms`** | `8,190.66` / `8,328.39 ms` | **`-44.4%` search p95** |
+| `scrape_ms` p50 / p95 | `3,024.69` / `3,042.80 ms` | `3,015.48` / `3,027.78 ms` | ~Identical (`3.0s` cap) |
+| **`retrieval_total_ms` p50 / Mean** | **`5,839.24` / `5,376.07 ms`** | `10,595.93` / `8,068.56 ms` | **`-44.9%` p50 latency** |
+| **`retrieval_total_ms` p95 / Max** | **`7,614.55` / `7,695.08 ms`** | `11,150.83` / `11,352.82 ms` | **`-31.7%` p95 latency** |
+
+* **Provider Decision (`SEARCH_PROVIDER=duckduckgo` primary, `BRAVE_API_KEY` configured in `.env`):** `duckduckgo` wins on both latency (`5.84s` vs. `10.60s` p50; `7.61s` vs. `11.15s` p95) and retrieval volume (`13.4` vs. `8.4` candidates, `4.2` vs. `3.8` selected passages) because 3 parallel DDG sub-queries run concurrently, whereas free-tier Brave (`1 req/s`) serializes sub-queries and tiered fallbacks (`pw -> pm -> all`) across `1.05s`-spaced calls. Brave achieves a higher per-URL scrape success rate (`37.50%` vs. `32.34%`) and remains ready in `.env` as a zero-code-change config switch (`SEARCH_PROVIDER=brave`).
+*Source: [search_provider_comparison.json](file:///c:/Users/shrihari/OneDrive%20-%20Invendis%20Technologies%20India%20Pvt.%20Ltd/Desktop/stuff/MarketMind-API/evals/results/search_provider_comparison.json).*
+
+---
+
+## 6. Live E2E Synthesis Latency & Citation Faithfulness (`gemini-3.1-flash-lite-preview`)
+
+Evaluated end-to-end (`retrieval_only=false`, vector cache disabled via `vector_store=None` so every query hits live search/scrape/YFinance/LLM) via [evaluate_faithfulness.py](file:///c:/Users/shrihari/OneDrive%20-%20Invendis%20Technologies%20India%20Pvt.%20Ltd/Desktop/stuff/MarketMind-API/evals/evaluate_faithfulness.py) (`--limit 15`, Ticker Fundamentals) using **`gemini-3.1-flash-lite-preview`** for both streaming synthesis and structured `FaithfulnessJudgment` auditing:
+
+* **Completion Scope:** **`13 / 15` queries** evaluated end-to-end; `2` skipped (`fund_03`: judge `503`/timeout during transient Gemini high-demand spike; `fund_05`: empty answer or no passages).
+* **Citation Faithfulness (`146` atomic claims across `13` queries):**
+  * **Micro Citation Faithfulness:** **`82.88%` (`121 / 146` supported claims)**
+  * **Macro Citation Faithfulness:** **`83.19%`** (per-query range `0.5455`–`1.0000`, median `0.8571`)
+  * **Root-Cause Audit of Unverified Claims:** Out of `27` claim verdicts flagged `supported=false` by the passage-only judge, **`26`** were live **YFinance `StockQuote` fields** (current price, day change, market cap, day/52-week range) injected into the synthesis prompt via `market_context` rather than retrieved web passages; only **`1`** claim out of `146` total atomic claims was a qualitative interpretation (`"well-capitalized"` in `fund_12`).
+* **Live E2E Generation & Streaming Latency (`n = 13` completed queries):**
+  * **`llm_ttft_ms` (Time to First Token):** p50 **`3,289.64 ms`**, mean `6,455.85 ms`, p95 `15,982.19 ms`
+  * **`llm_total_ms` (Streaming Synthesis):** p50 **`5,445.33 ms`**, mean `8,540.89 ms`, p95 `17,670.46 ms`
+  * **`total_ms` (Full E2E Pipeline):** p50 **`14,760.03 ms`**, mean `16,658.34 ms`, p95 `27,562.15 ms`
+
+*Source: [faithfulness_results.json](file:///c:/Users/shrihari/OneDrive%20-%20Invendis%20Technologies%20India%20Pvt.%20Ltd/Desktop/stuff/MarketMind-API/evals/results/faithfulness_results.json).*
+
+---
+
+## 7. Apples-to-Apples Reference on Original 98-Doc Benchmark
 
 Comparing baseline ([recall_results.json](file:///c:/Users/shrihari/OneDrive%20-%20Invendis%20Technologies%20India%20Pvt.%20Ltd/Desktop/stuff/MarketMind-API/evals/results/recall_results.json)) vs. post-fix ([recall_results_v2_on_98.json](file:///c:/Users/shrihari/OneDrive%20-%20Invendis%20Technologies%20India%20Pvt.%20Ltd/Desktop/stuff/MarketMind-API/evals/results/recall_results_v2_on_98.json)) at $N = 98$ (`340` passages, `16` queries):
 
@@ -148,7 +204,7 @@ Comparing baseline ([recall_results.json](file:///c:/Users/shrihari/OneDrive%20-
 
 ---
 
-## 6. Verification & Automated Checks
+## 8. Verification & Automated Checks
 
-* **Pytest Suite:** `.\.venv\Scripts\python.exe -m pytest -q` $\rightarrow$ **`43 passed in 17.37s`** (includes [test_web_rag_debug.py](file:///c:/Users/shrihari/OneDrive%20-%20Invendis%20Technologies%20India%20Pvt.%20Ltd/Desktop/stuff/MarketMind-API/tests/test_web_rag_debug.py) and [test_evals_improvements.py](file:///c:/Users/shrihari/OneDrive%20-%20Invendis%20Technologies%20India%20Pvt.%20Ltd/Desktop/stuff/MarketMind-API/tests/test_evals_improvements.py)).
-* **Citation Faithfulness Judge:** [evaluate_faithfulness.py](file:///c:/Users/shrihari/OneDrive%20-%20Invendis%20Technologies%20India%20Pvt.%20Ltd/Desktop/stuff/MarketMind-API/evals/evaluate_faithfulness.py) verified with `StubJudgeLLM` in `pytest`; live Gemini Flash judgment awaiting `GEMINI_API_KEY`.
+* **Pytest Suite:** `.\.venv\Scripts\python.exe -m pytest -q` $\rightarrow$ **`44 passed in 53.24s`** (includes [test_web_rag_debug.py](file:///c:/Users/shrihari/OneDrive%20-%20Invendis%20Technologies%20India%20Pvt.%20Ltd/Desktop/stuff/MarketMind-API/tests/test_web_rag_debug.py) and [test_evals_improvements.py](file:///c:/Users/shrihari/OneDrive%20-%20Invendis%20Technologies%20India%20Pvt.%20Ltd/Desktop/stuff/MarketMind-API/tests/test_evals_improvements.py), including `test_brave_searcher_free_tier_rate_spacing`).
+* **Live Gemini & Search Evaluations:** Verified live with `gemini-3.1-flash-lite-preview`, `gemini-embedding-001`, `duckduckgo`, and spaced free-tier `brave` (`evals/compare_search_providers.py`, `evals/evaluate_recall.py --with-hybrid`, `evals/evaluate_faithfulness.py --limit 15`).

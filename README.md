@@ -235,14 +235,18 @@ pytest tests/test_yfinance_client.py
 
 Comprehensive before/after latency, throughput, guardrail, and stratified retrieval-quality benchmarks for the Web RAG pipeline are recorded in **[`EVALS AND METRICS.md`](./EVALS%20AND%20METRICS.md)** (all evaluation scripts, Postman collections, and corpus artifacts live in [`evals/`](./evals/) and [`postman/`](./postman/)).
 
-Key measured highlights *(retrieval-only scope without `GEMINI_API_KEY`; see [`EVALS AND METRICS.md`](./EVALS%20AND%20METRICS.md) for full stage breakdowns, before/after tables, and `N`-scaling metrics)*:
+Key measured highlights *(see [`EVALS AND METRICS.md`](./EVALS%20AND%20METRICS.md) for full stage breakdowns, before/after tables, search-provider head-to-head, `N`-scaling metrics, and LLM-as-a-Judge faithfulness verdicts)*:
 
 - **Postman Load Test (3 VUs, 68s, `179` requests):** **`3,092 ms` p95** (`939 ms` avg, `2.63 req/s`, `0%` errors) — down **62.4%** from the `8,227 ms` baseline (`32` reqs, `0.47 req/s`).
 - **Stage-by-Stage Retrieval Latency (20 queries, sequential):** Cold retrieval p95 improved from `11,749.56 ms` to **`7,655.96 ms`** (`-34.8%`) via `3.0s` hard scraper timeouts (`scrape_ms` p95 `8,181 ms` $\rightarrow$ `3,105 ms`), `2.5s` quote timeouts (`quote_ms` p95 `653.24 ms`), and `4.5s` search caps; warm-cache runs drop `http_ms` p50 to **`2,045.37 ms`** (`min 33.57 ms`, `quote_ms p50 = 0.04 ms`).
+- **Search Provider Comparison (`duckduckgo` vs. free-tier `brave`, 15 stratified queries):** Both hit `100%` non-empty sources; **`duckduckgo`** achieved **`44.9%` lower retrieval p50** (`5,839 ms` vs. `10,596 ms`) and `+59.5%` more candidates (`13.4` vs. `8.4`), while `brave` (1.05s rate-spaced) achieved a higher per-URL scrape rate (`37.50%` vs. `32.34%`). `duckduckgo` is set as default with `BRAVE_API_KEY` ready in `.env`.
 - **Stratified Tight-Gold Retrieval (55 queries, $N = 157$ docs, `2.98` gold docs/query):**
   - **Production Two-Stage Funnel (`MAX_SCRAPED_SOURCES=12`):** `Recall@5 = 0.6111` (`0.7111` Fundamentals / `0.6000` Breaking News / `0.5222` Comparative), `NDCG@5 = 0.5768`, `Hit@5 = 0.8889`, `MRR = 0.7057`.
+  - **`HybridReranker` (`gemini-embedding-001`, $N = 157$):** `Recall@5 = 0.5741` (`0.6444` Fundamentals / `0.6000` Breaking News), `MRR = 0.6730`, `Hit@5 = 0.9111`.
   - **Apples-to-Apples ($N = 98$):** Bounded intent-aware `FreshnessReranker` lifted `Recall@5` from `0.3810` $\rightarrow$ **`0.4631`** (`+21.5%`, `MRR = 1.0000`), and widened two-stage `Recall@5` rose from `0.3552` $\rightarrow$ **`0.4318`** (`+21.6%`, `Recall@10` `+45.3%`).
-- **Guardrail Classification (55 stratified queries):** **`100.0%` accuracy** (`45/45` in-domain + `10/10` OOD/adversarial abstention).
+- **Live Gemini E2E Faithfulness & Guardrail (`gemini-3.1-flash-lite-preview`):**
+  - **Citation Faithfulness (`13/15` completed queries, `146` claims):** **`82.88%` micro** (`121/146` claims) / **`83.19%` macro** (passage-only judge; `26/27` unverified verdicts were YFinance `StockQuote` fields outside web passages, `1/146` qualitative interpretation), with `llm_ttft_ms` p50 `3,289.64 ms`.
+  - **Guardrail Classification (55 stratified queries):** **`100.0%` accuracy** (`45/45` in-domain + `10/10` OOD/adversarial abstention).
 
 See **[`EVALS AND METRICS.md`](./EVALS%20AND%20METRICS.md)** for all detailed evaluation tables, LLM-as-a-Judge faithfulness setup, and reproduction instructions.
 
