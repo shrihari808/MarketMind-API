@@ -65,15 +65,26 @@ class Settings(BaseSettings):
         description="Search freshness horizon: 'd' (day), 'w' (week), 'm' (month), 'y' (year), or None (all-time)"
     )
     MAX_SEARCH_CANDIDATES: int = Field(
-        default=15,
+        default=20,
         description="Raw search results retrieved prior to pre-filtering"
     )
     MAX_SEARCH_RESULTS: int = Field(default=7, description="Maximum search citations retained in final context")
     MAX_SCRAPED_SOURCES: int = Field(
-        default=5,
+        default=12,
         description="Maximum number of candidate URLs scraped concurrently by Trafilatura"
     )
-    SCRAPER_TIMEOUT_SECONDS: int = 8
+    SCRAPER_TIMEOUT_SECONDS: float = Field(
+        default=3.0,
+        description="Hard per-URL timeout (seconds) for fetching and extracting web articles"
+    )
+    SCRAPER_MAX_CONCURRENCY: int = Field(
+        default=12,
+        description="Maximum concurrent URL scrapes allowed by semaphore"
+    )
+    QUOTE_TIMEOUT_SECONDS: float = Field(
+        default=2.5,
+        description="Hard timeout (seconds) for live market quote fetch in Web RAG"
+    )
     RAG_CHUNK_SIZE: int = Field(default=400, description="Word chunk size for document passages")
     RAG_CHUNK_OVERLAP: int = Field(default=50, description="Overlap between consecutive passage chunks")
 
@@ -83,9 +94,15 @@ class Settings(BaseSettings):
         description="Characteristic half-life (in days) for rational time-decay scoring"
     )
     RAG_RELEVANCE_FLOOR: float = Field(
-        default=0.25,
-        description="Baseline relevance floor (0.0 to 1.0) so authoritative older articles retain score"
+        default=0.85,
+        description="Bounded relevance floor (0.0 to 1.0) preserving evergreen/undated docs with recency tie-breaking"
     )
+
+    # Short-TTL Response & Retrieval Caches (Redis optional, bounded in-memory fallback)
+    REDIS_URL: Optional[str] = Field(default=None, description="Optional Redis connection URL for distributed caching")
+    QUOTE_CACHE_TTL_SECONDS: int = Field(default=300, description="TTL (seconds) for cached stock quotes (5 mins)")
+    SCRAPER_CACHE_TTL_SECONDS: int = Field(default=3600, description="TTL (seconds) for cached scraped articles (1 hour)")
+    SEARCH_CACHE_TTL_SECONDS: int = Field(default=300, description="TTL (seconds) for cached web search candidates (5 mins)")
     
     # Search Engine API Keys
     SERPER_API_KEY: Optional[str] = Field(default=None, description="Serper.dev API Key")

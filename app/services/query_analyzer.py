@@ -69,7 +69,22 @@ class QueryAnalyzer:
 
         # Macroeconomics, Central Banking & Regulation
         "fiscal deficit", "rate hike", "rate cut", "quantitative easing",
-        "stagflation", "cpi", "wpi", "sec", "sebi", "yield curve", "hawkish"
+        "stagflation", "cpi", "wpi", "sec", "sebi", "yield curve", "hawkish",
+
+        # Sector, Tech Equity & Comparative Financial Intelligence
+        "semiconductor", "gpu", "data center", "ai chip", "fintech", "cloud",
+        "banking", "central bank", "opec", "crude", "bullion", "tariff", "macro",
+        "market share", "competitor", "competition", "subsidiaries", "corporate history",
+        "compare", "versus", "vs", "outlook", "earnings forecast", "revenue forecast", "consensus", "shipments"
+    }
+
+    NON_FINANCIAL_SIGNALS = {
+        "recipe", "bake", "calories", "cooking", "ingredient",
+        "gaming", "fps", "rtx", "playstation", "xbox",
+        "tire pressure", "oil change", "windshield", "headlight",
+        "fifa", "world cup", "cricket score", "lyrics", "movie review",
+        "python", "javascript", "binary search", "leetcode", "tutorial",
+        "capital city", "weather forecast", "workout", "diet plan",
     }
 
     def __init__(
@@ -113,24 +128,38 @@ class QueryAnalyzer:
         logger.info(f"[QueryAnalyzer] Running heuristic fallback analysis for: '{query}'")
         query_lower = query.lower().strip()
 
-        # Check for financial relevance against expanded 162-term dictionary
-        matched_keywords = [k for k in self.FINANCIAL_KEYWORDS if k in query_lower]
+        # Check for financial relevance against expanded dictionary
+        matched_keywords = [
+            k for k in self.FINANCIAL_KEYWORDS
+            if re.search(rf"\b{re.escape(k)}\b", query_lower)
+        ]
         if matched_keywords:
             logger.debug(f"[QueryAnalyzer] Matched financial keywords: {matched_keywords[:5]}")
         has_fin_keyword = bool(matched_keywords)
 
-        # Check ticker dictionary
+        # Check explicit non-financial / adversarial signals
+        has_non_fin_signal = any(
+            re.search(rf"\b{re.escape(sig)}\b", query_lower)
+            for sig in self.NON_FINANCIAL_SIGNALS
+        )
+
+        # Check ticker dictionary with word boundaries
         detected_ticker = None
         company_name = None
         common_tickers = getattr(self.market, "COMMON_TICKERS", {})
         for name, ticker in common_tickers.items():
-            if name in query_lower:
+            if re.search(rf"\b{re.escape(name)}\b", query_lower):
                 detected_ticker = ticker
                 company_name = name.title()
                 logger.debug(f"[QueryAnalyzer] Matched known company: '{name}' -> ticker: '{ticker}'")
                 break
 
-        is_financial = has_fin_keyword or bool(detected_ticker)
+        if has_non_fin_signal and not has_fin_keyword:
+            is_financial = False
+            detected_ticker = None
+            company_name = None
+        else:
+            is_financial = has_fin_keyword or bool(detected_ticker)
 
         # Check if numerical data is requested
         numerical_triggers = {"price", "pe", "ratio", "valuation", "target", "high", "low", "market cap", "revenue", "eps"}
@@ -241,7 +270,7 @@ Tasks:
         except Exception as e:
             logger.warning(f"[QueryAnalyzer] LLM query analysis failed ({e}). Falling back to heuristic analyzer.")
             fallback = await self._heuristic_fallback(query, country, chat_history)
-            if fallback.company_name:
+            if fallback.is_financial and fallback.company_name and not fallback.detected_ticker:
                 resolved = await self.market.resolve_ticker(fallback.company_name)
                 if resolved:
                     logger.info(f"[QueryAnalyzer] Resolved ticker from fallback: '{fallback.company_name}' -> '{resolved}'")

@@ -5,8 +5,10 @@ BM25 passage reranking with domain diversification, and Gemini streaming synthes
 """
 
 import asyncio
+import hashlib
 import time
 from typing import AsyncIterator, List, Optional, Dict
+from app.core.cache import get_ttl_cache
 from app.core.config import get_settings
 from app.core.logging import logger
 from app.domain.interfaces.llm import LLMClient
@@ -168,13 +170,16 @@ class WebRAGService:
             yield SSEMessage(event="complete", data=complete_payload)
             return
 
-        # Step 2: Fetch Live Stock Quote if applicable
+        # Step 2: Fetch Live Stock Quote concurrently in background
+        async def _timed_quote(ticker: str):
+            t0 = time.perf_counter()
+            quote = await self.market.get_quote(ticker)
+            return quote, self._ms_since(t0)
+
         quote_task = None
-        quote_start_perf = None
         if analysis.detected_ticker:
             logger.info(f"[WebRAGService] Ticker '{analysis.detected_ticker}' detected. Dispatching live quote fetch.")
-            quote_start_perf = time.perf_counter()
-            quote_task = asyncio.create_task(self.market.get_quote(analysis.detected_ticker))
+            quote_task = asyncio.create_task(_timed_quote(analysis.detected_ticker))
 
         # Step 2.5: Check LanceDB Semantic News Cache
         cached_passages: List[PassageChunk] = []
@@ -244,22 +249,43 @@ class WebRAGService:
             )
 
             t_search = time.perf_counter()
-            search_tasks = [
-                self.search_engine.search_news(q, max_results=per_query_limit, country=request.country, timelimit=timelimit)
-                for q in search_queries[:2]
-            ] + [
-                self.search_engine.search(search_queries[-1], max_results=per_query_limit, country=request.country, timelimit=timelimit)
-            ]
-            search_results_nested = await asyncio.gather(*search_tasks, return_exceptions=True)
+            search_cache = get_ttl_cache("search_results", max_entries=256, redis_url=settings.REDIS_URL)
+            search_cache_key = hashlib.sha256(
+                f"{request.country}|{timelimit}|{per_query_limit}|{'||'.join(search_queries)}".encode()
+            ).hexdigest()[:24]
+            cached_citations = (
+                await search_cache.get(search_cache_key)
+                if settings.SEARCH_CACHE_TTL_SECONDS > 0
+                else None
+            )
 
             all_citations: List[SourceCitation] = []
-            seen_urls = set()
-            for res in search_results_nested:
-                if isinstance(res, list):
-                    for item in res:
-                        if item.url not in seen_urls:
-                            seen_urls.add(item.url)
-                            all_citations.append(item)
+            if cached_citations is not None:
+                all_citations = [SourceCitation(**c) for c in cached_citations]
+                timings.search_cache_hit = True
+            else:
+                search_tasks = [
+                    self.search_engine.search_news(q, max_results=per_query_limit, country=request.country, timelimit=timelimit)
+                    for q in search_queries[:2]
+                ] + [
+                    self.search_engine.search(search_queries[-1], max_results=per_query_limit, country=request.country, timelimit=timelimit)
+                ]
+                search_results_nested = await asyncio.gather(*search_tasks, return_exceptions=True)
+
+                seen_urls = set()
+                for res in search_results_nested:
+                    if isinstance(res, list):
+                        for item in res:
+                            if item.url not in seen_urls:
+                                seen_urls.add(item.url)
+                                all_citations.append(item)
+
+                if all_citations and settings.SEARCH_CACHE_TTL_SECONDS > 0:
+                    await search_cache.set(
+                        search_cache_key,
+                        [c.model_dump() for c in all_citations],
+                        settings.SEARCH_CACHE_TTL_SECONDS,
+                    )
             timings.search_ms = self._ms_since(t_search)
             timings.candidates_found = len(all_citations)
 
@@ -376,14 +402,12 @@ class WebRAGService:
         live_quote: Optional[StockQuote] = None
         if quote_task:
             try:
-                live_quote = await quote_task
+                live_quote, actual_quote_ms = await quote_task
+                timings.quote_ms = actual_quote_ms
                 if live_quote:
                     logger.info(f"[WebRAGService] Live quote retrieved for {live_quote.ticker}: {live_quote.currency} {live_quote.current_price:.2f}")
             except Exception as e:
                 logger.warning(f"[WebRAGService] Failed to retrieve live quote for {analysis.detected_ticker}: {e}")
-            finally:
-                if quote_start_perf is not None:
-                    timings.quote_ms = self._ms_since(quote_start_perf)
 
         timings.retrieval_total_ms = self._ms_since(pipeline_perf)
 

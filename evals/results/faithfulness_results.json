@@ -1,0 +1,4 @@
+{
+  "status": "skipped",
+  "reason": "GEMINI_API_KEY is not configured; cannot execute live Gemini Flash synthesis or LLM-as-a-Judge."
+}

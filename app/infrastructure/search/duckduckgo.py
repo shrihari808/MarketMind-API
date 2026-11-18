@@ -86,7 +86,7 @@ class DuckDuckGoSearcher(SearchEngine):
         logger.info(f"Executing DuckDuckGo web search: '{query}' (region={region}, timelimit={effective_timelimit})")
 
         def _sync_search() -> List[dict]:
-            with DDGS() as ddgs:
+            with DDGS(timeout=3) as ddgs:
                 # 1. Primary search with specified timelimit
                 res = list(ddgs.text(query, region=region, timelimit=effective_timelimit, max_results=max_results))
                 # 2. If limited and empty, fallback to past year
@@ -98,7 +98,7 @@ class DuckDuckGoSearcher(SearchEngine):
                 return res
 
         try:
-            results = await asyncio.to_thread(_sync_search)
+            results = await asyncio.wait_for(asyncio.to_thread(_sync_search), timeout=4.5)
             citations: List[SourceCitation] = []
             for i, item in enumerate(results, start=1):
                 url = item.get("href") or item.get("link", "")
@@ -136,7 +136,7 @@ class DuckDuckGoSearcher(SearchEngine):
         logger.info(f"Executing DuckDuckGo news search: '{query}' (region={region}, timelimit={effective_timelimit})")
 
         def _sync_news() -> List[dict]:
-            with DDGS() as ddgs:
+            with DDGS(timeout=3) as ddgs:
                 # 1. Primary news search with requested timelimit
                 res = list(ddgs.news(query, region=region, timelimit=effective_timelimit, max_results=max_results))
                 # 2. Tiered fallback: if past day/week returned < 3 results, expand to past month
@@ -148,7 +148,7 @@ class DuckDuckGoSearcher(SearchEngine):
                 return res
 
         try:
-            results = await asyncio.to_thread(_sync_news)
+            results = await asyncio.wait_for(asyncio.to_thread(_sync_news), timeout=4.5)
             citations: List[SourceCitation] = []
             for i, item in enumerate(results, start=1):
                 url = item.get("url") or item.get("link", "")

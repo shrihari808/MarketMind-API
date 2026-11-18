@@ -57,6 +57,7 @@ class RAGStageTimings(BaseModel):
     llm_total_ms: Optional[float] = None
     total_ms: float = 0.0
     cache_hit: bool = False
+    search_cache_hit: bool = False
     retrieval_only: bool = False
     candidates_found: int = 0
     urls_scraped: int = 0

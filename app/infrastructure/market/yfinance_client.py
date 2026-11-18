@@ -9,6 +9,8 @@ import asyncio
 from typing import List, Optional, Dict
 import requests
 import yfinance as yf
+from app.core.cache import get_ttl_cache
+from app.core.config import get_settings
 from app.core.logging import logger
 from app.domain.interfaces.market import MarketDataClient
 from app.domain.schemas.market import (
@@ -57,6 +59,15 @@ class YFinanceMarketClient(MarketDataClient):
         "bharti airtel": "BHARTIARTL.NS",
         "itc": "ITC.NS",
         "wipro": "WIPRO.NS",
+        "bajaj finance": "BAJFINANCE.NS",
+        "maruti": "MARUTI.NS",
+        "maruti suzuki": "MARUTI.NS",
+        "larsen & toubro": "LT.NS",
+        "kotak": "KOTAKBANK.NS",
+        "kotak bank": "KOTAKBANK.NS",
+        "axis bank": "AXISBANK.NS",
+        "sun pharma": "SUNPHARMA.NS",
+        "titan": "TITAN.NS",
         "apple": "AAPL",
         "microsoft": "MSFT",
         "google": "GOOGL",
@@ -65,6 +76,13 @@ class YFinanceMarketClient(MarketDataClient):
         "tesla": "TSLA",
         "nvidia": "NVDA",
         "meta": "META",
+        "amd": "AMD",
+        "advanced micro devices": "AMD",
+        "broadcom": "AVGO",
+        "qualcomm": "QCOM",
+        "tsmc": "TSM",
+        "netflix": "NFLX",
+        "jpmorgan": "JPM",
     }
 
     # Friendly human-readable company names for benchmark stocks
@@ -108,6 +126,9 @@ class YFinanceMarketClient(MarketDataClient):
         "COST": "Costco",
         "WMT": "Walmart",
         "NFLX": "Netflix",
+        "AMD": "AMD",
+        "QCOM": "Qualcomm",
+        "TSM": "TSMC",
     }
 
     # Major indices mapping
@@ -213,14 +234,26 @@ class YFinanceMarketClient(MarketDataClient):
                 pass
             return None
 
-        symbol = await asyncio.to_thread(_search)
+        try:
+            symbol = await asyncio.wait_for(asyncio.to_thread(_search), timeout=1.5)
+        except asyncio.TimeoutError:
+            symbol = None
         return symbol or f"{company_name.upper().replace(' ', '')}.NS"
 
     async def get_quote(self, ticker: str) -> Optional[StockQuote]:
         """
-        Fetches latest quote information for a given ticker.
+        Fetches latest quote information for a given ticker with TTL caching and a hard timeout.
         Prioritizes fast_info (chart API) to avoid crumb 401/429 errors on cloud hosts.
         """
+        settings = get_settings()
+        cache = get_ttl_cache("stock_quotes", max_entries=256, redis_url=settings.REDIS_URL)
+        cache_key = ticker.upper().strip()
+
+        if settings.QUOTE_CACHE_TTL_SECONDS > 0:
+            cached = await cache.get(cache_key)
+            if cached is not None:
+                return StockQuote(**cached)
+
         def _fetch_quote() -> Optional[StockQuote]:
             try:
                 session = self._get_session()
@@ -315,7 +348,17 @@ class YFinanceMarketClient(MarketDataClient):
                 logger.error(f"Error fetching quote for {ticker}: {e}")
                 return None
 
-        return await asyncio.to_thread(_fetch_quote)
+        try:
+            quote = await asyncio.wait_for(
+                asyncio.to_thread(_fetch_quote),
+                timeout=settings.QUOTE_TIMEOUT_SECONDS,
+            )
+            if quote is not None and settings.QUOTE_CACHE_TTL_SECONDS > 0:
+                await cache.set(cache_key, quote.model_dump(), settings.QUOTE_CACHE_TTL_SECONDS)
+            return quote
+        except asyncio.TimeoutError:
+            logger.warning(f"Quote fetch timed out after {settings.QUOTE_TIMEOUT_SECONDS}s for {ticker}")
+            return None
 
     async def get_quotes_batch(self, tickers: List[str]) -> List[StockQuote]:
         """Fetches quotes for multiple tickers concurrently with bounded concurrency to prevent throttling."""

@@ -7,6 +7,7 @@ Pre-Scrape Citation Filter, and Two-Stage Web RAG Funnel.
 import argparse
 import asyncio
 import json
+import math
 import os
 import sys
 from typing import Any, Dict, List, Optional, Set, Tuple
@@ -91,10 +92,21 @@ def score_ranking(
         return metrics
 
     for k in ks:
-        top_docs = set(retrieved_doc_ids[:k])
+        top_list = retrieved_doc_ids[:k]
+        top_docs = set(top_list)
         hits = len(top_docs & relevant_doc_ids)
         metrics[f"recall@{k}"] = hits / len(relevant_doc_ids)
         metrics[f"hit@{k}"] = 1.0 if hits > 0 else 0.0
+
+        # Binary NDCG@k
+        dcg = sum(
+            1.0 / math.log2(rank + 1)
+            for rank, doc_id in enumerate(top_list, start=1)
+            if doc_id in relevant_doc_ids
+        )
+        ideal_hits = min(len(relevant_doc_ids), k)
+        idcg = sum(1.0 / math.log2(rank + 1) for rank in range(1, ideal_hits + 1))
+        metrics[f"ndcg@{k}"] = (dcg / idcg) if idcg > 0 else 0.0
 
     rr = 0.0
     for rank, doc_id in enumerate(retrieved_doc_ids, start=1):
@@ -105,15 +117,29 @@ def score_ranking(
     return metrics
 
 
-def aggregate_metrics(per_query: List[Dict[str, float]], ks: List[int]) -> Dict[str, float]:
+def aggregate_metrics(per_query: List[Dict[str, Any]], ks: List[int]) -> Dict[str, float]:
     if not per_query:
         return {}
     agg: Dict[str, float] = {"num_queries": len(per_query)}
-    keys = [f"recall@{k}" for k in ks] + [f"hit@{k}" for k in ks] + ["mrr"]
+    keys = (
+        [f"recall@{k}" for k in ks]
+        + [f"ndcg@{k}" for k in ks]
+        + [f"hit@{k}" for k in ks]
+        + ["mrr"]
+    )
     for key in keys:
         vals = [q[key] for q in per_query if key in q]
         agg[key] = round(sum(vals) / len(vals), 4) if vals else 0.0
     return agg
+
+
+def aggregate_by_category(per_query: List[Dict[str, Any]], ks: List[int]) -> Dict[str, Dict[str, float]]:
+    grouped: Dict[str, List[Dict[str, Any]]] = {}
+    for row in per_query:
+        cat = row.get("category")
+        if cat:
+            grouped.setdefault(cat, []).append(row)
+    return {cat: aggregate_metrics(rows, ks) for cat, rows in sorted(grouped.items())}
 
 
 def subset_for_n(
@@ -217,13 +243,15 @@ async def evaluate(
                 rel_set,
                 [],
             )["mrr"]
+            if q.get("category"):
+                pre_q_metrics["category"] = q["category"]
             prefilter_scores.append(pre_q_metrics)
 
             # 2. BM25 passage rerank at each k (respecting production passage-slot top_k=k and max_per_domain=2)
-            bm25_q_metrics: Dict[str, float] = {}
-            fresh_q_metrics: Dict[str, float] = {}
-            funnel_q_metrics: Dict[str, float] = {}
-            hybrid_q_metrics: Dict[str, float] = {}
+            bm25_q_metrics: Dict[str, Any] = {"category": q.get("category")}
+            fresh_q_metrics: Dict[str, Any] = {"category": q.get("category")}
+            funnel_q_metrics: Dict[str, Any] = {"category": q.get("category")}
+            hybrid_q_metrics: Dict[str, Any] = {"category": q.get("category")}
 
             for k in ks:
                 bm25_top = bm25.rerank(query=query_text, passages=passages, top_k=k, max_per_domain=2)
@@ -304,6 +332,12 @@ async def evaluate(
                 "bm25_reranker": aggregate_metrics(bm25_slot_scores, ks),
                 "freshness_reranker": aggregate_metrics(fresh_slot_scores, ks),
                 "production_two_stage_funnel": aggregate_metrics(funnel_scores, ks),
+            },
+            "by_category": {
+                "pre_filter_citations": aggregate_by_category(prefilter_scores, ks),
+                "bm25_reranker": aggregate_by_category(bm25_slot_scores, ks),
+                "freshness_reranker": aggregate_by_category(fresh_slot_scores, ks),
+                "production_two_stage_funnel": aggregate_by_category(funnel_scores, ks),
             },
         }
         if hybrid is not None:
